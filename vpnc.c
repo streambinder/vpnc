@@ -1326,7 +1326,7 @@ static int do_phase2_notice_check(struct sa_block *s, struct isakmp_packet **r_p
 		if (r->exchange_type == ISAKMP_EXCHANGE_INFORMATIONAL &&
 			r->payload->next != NULL) {
 			if (r->payload->next->type == ISAKMP_PAYLOAD_N) {
-					if (r->payload->next->u.n.type == ISAKMP_N_CISCO_LOAD_BALANCE) {
+				if (r->payload->next->u.n.type == ISAKMP_N_CISCO_LOAD_BALANCE) {
 					/* load balancing notice ==> restart with new gw */
 					if (r->payload->next->u.n.data_length != 4)
 					error(1, 0, "malformed loadbalance target");
@@ -1342,12 +1342,22 @@ static int do_phase2_notice_check(struct sa_block *s, struct isakmp_packet **r_p
 							inet_ntoa(((struct sockaddr_in *)dest_addr)->
 								sin_addr)));
 					return -1;
-				}
-				if (r->payload->next->u.n.type == ISAKMP_N_IPSEC_RESPONDER_LIFETIME) {
+				} else if (r->payload->next->u.n.type == ISAKMP_N_IPSEC_RESPONDER_LIFETIME) {
 					/* responder liftime notice ==> ignore */
 					DEBUG(2, printf("got responder liftime notice, ignoring..\n"));
 					r_length = sendrecv(r_packet, sizeof(r_packet), NULL, 0, 0);
 					continue;
+				} else if (r->payload->next->u.n.type == ISAKMP_N_IPSEC_INITIAL_CONTACT) {
+					/* why in hell do we get this?? */
+					DEBUG(2, printf("got initial contact notice, ignoring..\n"));
+					r_length = sendrecv(r_packet, sizeof(r_packet), NULL, 0, 0);
+					continue;
+				} else {
+					/* whatever */
+					printf("received notice of type %s(%d), giving up\n",
+						isakmp_notify_to_error(r->payload->next->u.n.type),
+						r->payload->next->u.n.type);
+					return reject;
 				}
 			}
 			if (r->payload->next->type == ISAKMP_PAYLOAD_D) {
