@@ -1912,6 +1912,7 @@ int main(int argc, char **argv)
 	
 	hex_dump("hex_test", hex_test, sizeof(hex_test));
 
+	DEBUG(1, printf("vpnc version " VERSION "\n"));
 	DEBUG(2, printf("S1\n"));
 	dest_addr = init_sockaddr(config[CONFIG_IPSEC_GATEWAY], 500);
 	DEBUG(2, printf("S2\n"));
