@@ -20,8 +20,6 @@ TODO list
 
 * DONE NetBSD supported
 
---
-
 * DONE FreeBSD supported
 
 * DONE ignore attr 32136! (Cisco extension: XAUTH Vendor)
@@ -68,25 +66,55 @@ TODO list
 
 * DONE svn-Repository
 
+* DONE implement udp encap via port 10.000
+  - apply patch
+
+* DONE fix Makefile (install, DESTDIR, CFLAGS, ...)
+
+* links to packages, howtos, etc.
+  - http://localhost.ruhr.de/~stefan/uni-duisburg.ai/vpnc.html
+  - link to kvpnc?
+
+* add macosx support
+  - add pointer to http://chrisp.de/en/projects/tunnel.html
+
 * factor out crypto stuff (cipher, hmac, dh)
   - http://libtomcrypt.org/features.html
   - http://www.foldr.org/~michaelw/ patch fertig
-  - openssl
   - libgcrypt (old too?)
-
+  - autodetect?
+  - openssl??
 * relicense to gpl+ssl?
-
-* fix Makefile (install, DESTDIR, CFLAGS, ...)
 
 * --local-address
 
+* update "check pfs setting" error message
+
+* better handling of routing
+
+* better handling of resolv.conf?
+
+* use in kernel ipsec with pf-key
+  - apply patch
+
 * implement udp transport NAT-T
+  - apply patch
+
+* make doing xauth optional
+
+* add support for pcap for packet capture
+
+--
+
+* implement compression
+
+* implement rekeying / DPD / frozen connections?
 
 * implement certificate support
 
 * implement hybrid-auth
 
-* implement rekeying / DPD / frozen connections?
-
 * optional drop root (rekey? reconnect?)
+
+* nortel support?
 

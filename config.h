@@ -41,6 +41,8 @@ enum config_enum {
 	CONFIG_XAUTH_USERNAME,
 	CONFIG_XAUTH_PASSWORD,
 	CONFIG_XAUTH_INTERACTIVE,
+	CONFIG_UDP_ENCAP,
+	CONFIG_UDP_ENCAP_PORT,
 	LAST_CONFIG
 };
 
@@ -55,6 +57,8 @@ extern const char *config[LAST_CONFIG];
 extern int opt_debug;
 extern int opt_nd;
 extern int opt_1des;
+extern int opt_udpencap;
+extern uint16_t opt_udpencapport;
 
 #define DEBUG(lvl, a) do {if (opt_debug >= (lvl)) {a;}} while (0)
 

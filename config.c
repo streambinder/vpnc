@@ -54,6 +54,8 @@ const char *config[LAST_CONFIG];
 int opt_debug = 0;
 int opt_nd;
 int opt_1des;
+int opt_udpencap;
+uint16_t opt_udpencapport;
 
 void hex_dump(const char *str, const void *data, ssize_t len)
 {
@@ -104,6 +106,11 @@ static const char *config_def_pfs(void)
 static const char *config_def_local_port(void)
 {
 	return "500";
+}
+
+static const char *config_def_udp_port(void)
+{
+	return "10000";
 }
 
 static const char *config_def_app_version(void)
@@ -171,6 +178,13 @@ static const struct config_names_s {
 		"Xauth password ",
 		"<ASCII string>",
 		"your password (cleartext, no support for obfuscated strings)",
+		NULL
+	}, {
+		CONFIG_UDP_ENCAP, 0, 0,
+		"--udp",
+		"UDP Encapsulate",
+		NULL,
+		"Use Cisco-UDP encapsulation of IPSEC traffic",
 		NULL
 	}, {
 		CONFIG_DOMAIN, 1, 1,
@@ -259,6 +273,13 @@ static const struct config_names_s {
 		"<0-65535>",
 		"local ISAKMP port number to use (0 == use random port)",
 		config_def_local_port
+	}, {
+		CONFIG_UDP_ENCAP_PORT, 1, 1,
+		"--udp-port",
+		"UDP Encapsulation Port ",
+		"<0-65535>",
+		"local UDP port number to use (0 == use random port)",
+		config_def_udp_port
 	}, {
 		CONFIG_NON_INTERACTIVE, 0, 1,
 		"--non-inter",
@@ -463,6 +484,8 @@ void do_config(int argc, char **argv)
 	opt_debug = (config[CONFIG_DEBUG]) ? atoi(config[CONFIG_DEBUG]) : 0;
 	opt_nd = (config[CONFIG_ND]) ? 1 : 0;
 	opt_1des = (config[CONFIG_ENABLE_1DES]) ? 1 : 0;
+	opt_udpencap=(config[CONFIG_UDP_ENCAP]) ? 1 : 0;
+	opt_udpencapport=atoi(config[CONFIG_UDP_ENCAP_PORT]);
 
 	if (opt_debug >= 99) {
 		printf("WARNING! active debug level is >= 99, output includes username and password (hex encoded)\n");

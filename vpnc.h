@@ -48,6 +48,7 @@ struct sa_block {
 	uint32_t tous_esp_spi, tothem_esp_spi;
 	uint8_t *kill_packet;
 	size_t kill_packet_size;
+	uint16_t peer_udpencap_port;
 	int do_pfs;
 };
 

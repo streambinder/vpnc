@@ -1,6 +1,8 @@
 /* IPSec ESP and AH support.
-   Copyright (c) 1999, 2002, 2003 Pierre Beyssac, Geoffrey Keating
-   and Maurice Massar.
+   Copyright (c) 1999      Pierre Beyssac
+   Copyright (C) 2002      Geoffrey Keating
+   Copyright (C) 2003-2004 Maurice Massar
+   Copyright (C) 2004      Tomas Mraz
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -76,8 +78,6 @@
 
 #define max(a,b)	((a)>(b)?(a):(b))
 
-#define UDP_PORT	2001
-
 struct sa_desc {
 	struct sa_desc *next;
 
@@ -137,6 +137,7 @@ struct encap_method {
 	int buflen;
 	struct sockaddr_in from;
 	int fromlen;
+	uint16_t destport;
 
 	int (*recv) (struct encap_method * encap,
 		unsigned char *buf, unsigned int bufsize, struct sockaddr_in * from);
@@ -148,6 +149,8 @@ struct encap_method {
 
 /* Forward decl */
 void encap_esp_send_peer(struct encap_method *encap,
+	struct peer_desc *peer, unsigned char *buf, unsigned int bufsize);
+void encap_espinudp_send_peer(struct encap_method *encap,
 	struct peer_desc *peer, unsigned char *buf, unsigned int bufsize);
 struct peer_desc *peer_find(unsigned long spi, struct encap_method *encap);
 int encap_esp_recv_peer(struct encap_method *encap, struct peer_desc *peer);
@@ -259,6 +262,46 @@ int encap_rawip_recv(struct encap_method *encap,
 	return r;
 }
 
+/*
+ * Decapsulate from an UDP packet
+ */
+int encap_udp_recv(struct encap_method *encap,
+	unsigned char *buf, unsigned int bufsize,
+	struct sockaddr_in *from)
+{
+	int r;
+
+	encap->fromlen = sizeof(encap->from);
+
+	r = recvfrom(encap->fd, buf, bufsize, 0,
+		(struct sockaddr *)&encap->from, &encap->fromlen);
+	if (r == -1) {
+		syslog(LOG_ERR, "recvfrom: %m");
+		return -1;
+	}
+	if (r < encap->fixed_header_size) {
+		syslog(LOG_ALERT, "packet too short from %s",
+		inet_ntoa(encap->from.sin_addr));
+		return -1;
+	}
+
+#if 0
+	printf("udp got %d bytes\n", r);
+	for (i = 0; i < r; i++) {
+		printf(" %02x", buf[i]);
+		if ((i & 15) == 15) printf("\n");
+	}
+	printf("\n");
+#endif
+
+	encap->buf = buf;
+	encap->buflen = r;
+	encap->bufpayload = 0;
+	encap->bufsize = bufsize;
+	*from = encap->from;
+	return r;
+}
+
 struct peer_desc *encap_esp_peer_find(struct encap_method *encap)
 {
 	esp_encap_header_t *eh;
@@ -315,6 +358,38 @@ int encap_esp_new(struct encap_method *encap, unsigned char proto)
 	encap->recv = encap_rawip_recv;
 	encap->peer_find = encap_esp_peer_find;
 	encap->send_peer = encap_esp_send_peer;
+	encap->recv_peer = encap_esp_recv_peer;
+	encap->fixed_header_size = sizeof(esp_encap_header_t);
+	encap->var_header_size = 0;
+	return 0;
+}
+
+int encap_espinudp_new(struct encap_method *encap, uint16_t our_port, uint16_t their_port)
+{
+	encap->fd = socket(PF_INET, SOCK_DGRAM, 0);
+	encap->destport = their_port;
+
+	if (encap->fd == -1) {
+		perror("socket(SOCK_DGRAM)");
+		return -1;
+	}
+
+	if (our_port != 0) {
+		struct sockaddr_in name;
+
+		name.sin_family = AF_INET;
+		name.sin_port = our_port;
+		name.sin_addr.s_addr = htonl (INADDR_ANY);
+		if (bind (encap->fd, (struct sockaddr *) &name, sizeof (name)) < 0) {
+			perror ("binding to udp port");
+			return -1;
+		}
+	}
+
+	encap->name = "ipespinudp";
+	encap->recv = encap_udp_recv;
+	encap->peer_find = encap_esp_peer_find;
+	encap->send_peer = encap_espinudp_send_peer;
 	encap->recv_peer = encap_esp_recv_peer;
 	encap->fixed_header_size = sizeof(esp_encap_header_t);
 	encap->var_header_size = 0;
@@ -433,27 +508,15 @@ int hmac_compute(int md_algo,
 }
 
 /*
- * Encapsulate a packet in IP ESP and send to the peer.
- * "buf" should have exactly MAX_HEADER free bytes at its beginning
- * to account for encapsulation data (not counted in "size").
+ * Encapsulate a packet in ESP
  */
-void encap_esp_send_peer(struct encap_method *encap,
-	struct peer_desc *peer, unsigned char *buf, unsigned int bufsize)
+void encap_esp_encapsulate(struct encap_method *encap,
+	struct peer_desc *peer)
 {
-	int sent;
 	esp_encap_header_t *eh;
-	struct ip *tip, *ip;
 	unsigned char *iv, *cleartext;
 	size_t i, padding, pad_blksz;
 	unsigned int cleartextlen;
-
-	buf += MAX_HEADER;
-
-	/* Keep a pointer to the old IP header */
-	tip = (struct ip *)buf;
-
-	encap->buf = buf;
-	encap->buflen = bufsize;
 
 	/*
 	 * Add padding as necessary
@@ -465,7 +528,7 @@ void encap_esp_send_peer(struct encap_method *encap,
 	gcry_cipher_algo_info(peer->remote_sa->cry_algo, GCRYCTL_GET_BLKLEN, NULL, &pad_blksz);
 	while (pad_blksz & 3) /* must be multiple of 4 */
 		pad_blksz <<= 1;
-	padding = pad_blksz - ((encap->buflen + 2) % pad_blksz);
+	padding = pad_blksz - ((encap->buflen + 2 - encap->var_header_size - encap->bufpayload) % pad_blksz);
 	DEBUG(2, printf("sending packet: len = %d, padding = %lu\n", encap->buflen, (unsigned long)padding));
 	if (padding == pad_blksz)
 		padding = 0;
@@ -479,19 +542,10 @@ void encap_esp_send_peer(struct encap_method *encap,
 	encap->buf[encap->buflen++] = padding;
 	encap->buf[encap->buflen++] = IPPROTO_IPIP;
 
-	cleartext = buf;
-	cleartextlen = encap->buflen;
-
-	/* Prepend our encapsulation header and new IP header */
-	encap->var_header_size = (encap->fixed_header_size + peer->remote_sa->ivlen);
-
-	encap->buf -= sizeof(struct ip) + encap->var_header_size;
-	encap->buflen += sizeof(struct ip) + encap->var_header_size;
-
-	encap->bufpayload = sizeof(struct ip);
+	cleartext = encap->buf + encap->var_header_size + encap->bufpayload;
+	cleartextlen = encap->buflen - encap->var_header_size - encap->bufpayload;
 
 	eh = (esp_encap_header_t *) (encap->buf + encap->bufpayload);
-	ip = (struct ip *)(encap->buf);
 	eh->spi = htonl(peer->remote_sa->spi);
 	eh->seq_id = htonl(++peer->remote_sa->seq_id);
 
@@ -500,25 +554,6 @@ void encap_esp_send_peer(struct encap_method *encap,
 	gcry_randomize(iv, peer->remote_sa->ivlen, GCRY_WEAK_RANDOM);
 	hex_dump("iv", iv, peer->remote_sa->ivlen);
 	hex_dump("auth_secret", peer->remote_sa->auth_secret, peer->remote_sa->auth_secret_size);
-
-	/* Fill non-mutable fields */
-	ip->ip_v = IPVERSION;
-	ip->ip_hl = 5;
-	ip->ip_len = encap->buflen + (peer->remote_sa->md_algo ? 12 : 0);
-#ifdef NEED_IPLEN_FIX
-	ip->ip_len = htons(ip->ip_len);
-#endif
-	/*gcry_md_get_algo_dlen(md_algo); see RFC .. only use 96 bit */
-	ip->ip_id = htons(ip_id++);
-	ip->ip_p = IPPROTO_ESP;
-	ip->ip_src = peer->remote_sa->source.sin_addr;
-	ip->ip_dst = peer->remote_sa->dest.sin_addr;
-
-	/* Fill mutable fields */
-	ip->ip_tos = (bufsize < sizeof(struct ip)) ? 0 : tip->ip_tos;
-	ip->ip_off = 0;
-	ip->ip_ttl = IPDEFTTL;
-	ip->ip_sum = 0;
 
 #if 1
 	hex_dump("sending ESP packet (before crypt)", encap->buf, encap->buflen);
@@ -546,6 +581,57 @@ void encap_esp_send_peer(struct encap_method *encap,
 		hex_dump("sending ESP packet (after ah)", encap->buf, encap->buflen);
 #endif
 	}
+}
+
+/*
+ * Encapsulate a packet in IP ESP and send to the peer.
+ * "buf" should have exactly MAX_HEADER free bytes at its beginning
+ * to account for encapsulation data (not counted in "size").
+ */
+void encap_esp_send_peer(struct encap_method *encap,
+	struct peer_desc *peer,
+	unsigned char *buf, unsigned int bufsize)
+{
+	ssize_t sent;
+	struct ip *tip, *ip;
+
+	buf += MAX_HEADER;
+
+	/* Keep a pointer to the old IP header */
+	tip = (struct ip *)buf;
+
+	encap->buf = buf;
+	encap->buflen = bufsize;
+
+	/* Prepend our encapsulation header and new IP header */
+	encap->var_header_size = (encap->fixed_header_size + peer->remote_sa->ivlen);
+
+	encap->buf -= sizeof(struct ip) + encap->var_header_size;
+	encap->buflen += sizeof(struct ip) + encap->var_header_size;
+
+	encap->bufpayload = sizeof(struct ip);
+
+	ip = (struct ip *)(encap->buf);
+	/* Fill non-mutable fields */
+	ip->ip_v = IPVERSION;
+	ip->ip_hl = 5;
+	ip->ip_len = encap->buflen + (peer->remote_sa->md_algo? 12 :0);
+#ifdef NEED_IPLEN_FIX
+	ip->ip_len = htons(ip->ip_len);
+#endif
+	/*gcry_md_get_algo_dlen(md_algo); see RFC .. only use 96 bit */
+	ip->ip_id = htons(ip_id++);
+	ip->ip_p = IPPROTO_ESP;
+	ip->ip_src = peer->remote_sa->source.sin_addr;
+	ip->ip_dst = peer->remote_sa->dest.sin_addr;
+
+	/* Fill mutable fields */
+	ip->ip_tos = (bufsize < sizeof(struct ip)) ? 0 : tip->ip_tos;
+	ip->ip_off = 0;
+	ip->ip_ttl = IPDEFTTL;
+	ip->ip_sum = 0;
+
+	encap_esp_encapsulate(encap, peer);
 
 	ip->ip_sum = in_cksum((u_short *) encap->buf, sizeof(struct ip));
 
@@ -557,6 +643,47 @@ void encap_esp_send_peer(struct encap_method *encap,
 	}
 	if (sent != encap->buflen)
 		syslog(LOG_ALERT, "truncated out (%d out of %d)", sent, encap->buflen);
+}
+
+/*
+ * Encapsulate a packet in UDP ESP and send to the peer.
+ * "buf" should have exactly MAX_HEADER free bytes at its beginning
+ * to account for encapsulation data (not counted in "size").
+ */
+void encap_espinudp_send_peer(struct encap_method *encap,
+	struct peer_desc *peer,
+	unsigned char *buf, unsigned int bufsize)
+{
+	ssize_t sent;
+	struct sockaddr_in destaddr;
+
+	buf += MAX_HEADER;
+
+	encap->buf = buf;
+	encap->buflen = bufsize;
+
+	/* Prepend our encapsulation header and new IP header */
+	encap->var_header_size = (encap->fixed_header_size + peer->remote_sa->ivlen);
+
+	encap->buf -= encap->var_header_size;
+	encap->buflen += encap->var_header_size;
+
+	encap->bufpayload = 0;
+
+	encap_esp_encapsulate(encap, peer);
+
+	memcpy(&destaddr, &peer->remote_sa->dest, sizeof(destaddr));
+	destaddr.sin_port = encap->destport;
+
+	sent = sendto(encap->fd, encap->buf, encap->buflen, 0,
+		(struct sockaddr *)&destaddr, sizeof(destaddr));
+	if (sent == -1) {
+		syslog(LOG_ERR, "sendto: %m");
+		return;
+	}
+	if (sent != encap->buflen)
+		syslog(LOG_ALERT, "truncated out (%Zd out of %Zd)",
+			sent, encap->buflen);
 }
 
 int encap_esp_recv_peer(struct encap_method *encap, struct peer_desc *peer)
@@ -796,15 +923,22 @@ vpnc_doit(unsigned long tous_spi,
 	struct sockaddr_in *tothem_dest,
 	int tun_fd, int md_algo, int cry_algo,
 	uint8_t * kill_packet_p, size_t kill_packet_size_p,
-	struct sockaddr *kill_dest_p, const char *pidfile)
+	struct sockaddr *kill_dest_p,
+	uint16_t our_port, uint16_t their_port,
+	const char *pidfile)
 {
 	struct encap_method meth;
 
 	static struct sa_desc tous_sa, tothem_sa;
 	time_t t = time(NULL);
 
-	if (encap_esp_new(&meth, IPPROTO_ESP) == -1)
-		exit(1);
+	if (their_port != 0) {
+		if (encap_espinudp_new(&meth, our_port, their_port) == -1)
+			exit(1);
+	} else {
+		if (encap_esp_new(&meth, IPPROTO_ESP) == -1)
+			exit(1);
+	}
 
 	tous_sa.next = remote_sa_list;
 	remote_sa_list = &tous_sa;

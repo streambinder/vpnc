@@ -1,5 +1,7 @@
 /* IPSec VPN client compatible with Cisco equipment.
-   Copyright (C) 2002, 2003  Geoffrey Keating and Maurice Massar
+   Copyright (C) 2002      Geoffrey Keating
+   Copyright (C) 2003-2004 Maurice Massar
+   Copyright (C) 2004      Tomas Mraz
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -61,7 +63,9 @@ extern void vpnc_doit(unsigned long tous_spi,
 	struct sockaddr_in *tothem_dest,
 	int tun_fd, int md_algo, int cry_algo,
 	uint8_t * kill_packet_p, size_t kill_packet_size_p,
-	struct sockaddr *kill_dest_p, const char *pidfile);
+	struct sockaddr *kill_dest_p,
+	uint16_t our_port, uint16_t their_port,
+	const char *pidfile);
 
 enum supp_algo_key {
 	SUPP_ALGO_NAME,
@@ -1075,11 +1079,11 @@ void do_phase_1(const char *key_id, const char *shared_key, struct sa_block *s)
 			memset(skeyid_e, 0, s->md_len);
 		}
 
-		/* Determine the initial 3DES IV.  */
+		/* Determine the initial IV.  */
 		{
 			gcry_md_hd_t hm;
 
-			assert(s->ivlen < s->md_len);
+			assert(s->ivlen <= s->md_len);
 			gcry_md_open(&hm, s->md_algo, 0);
 			gcry_md_write(hm, dh_public, dh_getlen(dh_grp));
 			gcry_md_write(hm, ke->u.ke.data, ke->u.ke.length);
@@ -1386,6 +1390,8 @@ static void do_phase_2_config(struct sa_block *s)
 
 	a = new_isakmp_attribute(ISAKMP_MODECFG_ATTRIB_CISCO_BANNER, a);
 	a = new_isakmp_attribute(ISAKMP_MODECFG_ATTRIB_CISCO_DO_PFS, a);
+	if (opt_udpencap)
+		a = new_isakmp_attribute(ISAKMP_MODECFG_ATTRIB_CISCO_UDP_ENCAP_PORT, a);
 	a = new_isakmp_attribute(ISAKMP_MODECFG_ATTRIB_CISCO_DEF_DOMAIN, a);
 	a = new_isakmp_attribute(ISAKMP_MODECFG_ATTRIB_INTERNAL_IP4_NBNS, a);
 	a = new_isakmp_attribute(ISAKMP_MODECFG_ATTRIB_INTERNAL_IP4_DNS, a);
@@ -1498,6 +1504,15 @@ static void do_phase_2_config(struct sa_block *s)
 			else {
 				s->do_pfs = a->u.attr_16;
 				DEBUG(2, printf("got pfs setting: %d\n", s->do_pfs));
+			}
+			break;
+
+		case ISAKMP_MODECFG_ATTRIB_CISCO_UDP_ENCAP_PORT:
+			if (a->af != isakmp_attr_16)
+				reject = ISAKMP_N_ATTRIBUTES_NOT_SUPPORTED;
+			else {
+				s->peer_udpencap_port = a->u.attr_16;
+				DEBUG(2, printf("got peer udp encapsulation port: %hu\n", s->peer_udpencap_port));
 			}
 			break;
 
@@ -1851,6 +1866,7 @@ static void setup_link(struct sa_block *s)
 		uint8_t *tous_keys, *tothem_keys;
 		struct sockaddr_in tothem_dest;
 		unsigned char *dh_shared_secret = NULL;
+		uint16_t our_port = 0, their_port = 0;
 
 		if (dh_grp) {
 			/* Determine the shared secret.  */
@@ -1869,11 +1885,16 @@ static void setup_link(struct sa_block *s)
 			ipsec_hash_algo, ipsec_cry_algo,
 			dh_shared_secret, dh_grp ? dh_getlen(dh_grp) : 0,
 			nonce, sizeof(nonce), nonce_r->u.nonce.data, nonce_r->u.nonce.length);
+		if (opt_udpencap) {
+			our_port = htons (opt_udpencapport);
+			their_port = htons (s->peer_udpencap_port);
+		}
 		DEBUG(2, printf("S7.10\n"));
 		vpnc_doit(s->tous_esp_spi, tous_keys, &tothem_dest,
 			s->tothem_esp_spi, tothem_keys, (struct sockaddr_in *)dest_addr,
 			s->tun_fd, ipsec_hash_algo, ipsec_cry_algo,
-			s->kill_packet, s->kill_packet_size, dest_addr, config[CONFIG_PID_FILE]);
+			s->kill_packet, s->kill_packet_size, dest_addr,
+			our_port, their_port, config[CONFIG_PID_FILE]);
 	}
 }
 
