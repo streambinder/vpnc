@@ -39,10 +39,9 @@
  * Returns the length of our exchange value.
  */
 
-int
-dh_getlen (struct group *group)
+int dh_getlen(struct group *group)
 {
-  return group->getlen (group);
+	return group->getlen(group);
 }
 
 /*
@@ -51,15 +50,14 @@ dh_getlen (struct group *group)
  * means the application has to save the exchange value itself,
  * dh_create_exchange should only be called once.
  */
-int
-dh_create_exchange (struct group *group, unsigned char *buf)
+int dh_create_exchange(struct group *group, unsigned char *buf)
 {
-  if (group->setrandom (group, group->c))
-    return -1;
-  if (group->operation (group, group->a, group->gen, group->c))
-    return -1;
-  group->getraw (group, group->a, buf);
-  return 0;
+	if (group->setrandom(group, group->c))
+		return -1;
+	if (group->operation(group, group->a, group->gen, group->c))
+		return -1;
+	group->getraw(group, group->a, buf);
+	return 0;
 }
 
 /*
@@ -67,13 +65,12 @@ dh_create_exchange (struct group *group, unsigned char *buf)
  * is the exchange value offered by the other party. No length verification
  * is done for the value, the application has to do that.
  */
-int
-dh_create_shared (struct group *group, unsigned char *secret, unsigned char *exchange)
+int dh_create_shared(struct group *group, unsigned char *secret, unsigned char *exchange)
 {
-  if (group->setraw (group, group->b, exchange, group->getlen (group)))
-    return -1;
-  if (group->operation (group, group->a, group->b, group->c))
-    return -1;
-  group->getraw (group, group->a, secret);
-  return 0;
+	if (group->setraw(group, group->b, exchange, group->getlen(group)))
+		return -1;
+	if (group->operation(group, group->a, group->b, group->c))
+		return -1;
+	group->getraw(group, group->a, secret);
+	return 0;
 }

@@ -36,7 +36,7 @@
 #define _MATH_GROUP_H_
 
 enum groups {
-  MODP,				/* F_p, Z modulo a prime */
+	MODP, /* F_p, Z modulo a prime */
 };
 
 #define OAKLEY_GRP_1	1
@@ -48,36 +48,36 @@ enum groups {
  */
 
 struct group {
-  enum groups type;
-  int id;			/* Group ID */
-  int bits;			/* Number of key bits provided by this group */
-  void *group;
-  void *a, *b, *c, *d;
-  void *gen;			/* Group Generator */
-  int (*getlen) (struct group *);
-  void (*getraw) (struct group *, void *, unsigned char *);
-  int (*setraw) (struct group *, void *, unsigned char *, int);
-  int (*setrandom) (struct group *, void *);
-  int (*operation) (struct group *, void *, void *, void *);
+	enum groups type;
+	int id; /* Group ID */
+	int bits; /* Number of key bits provided by this group */
+	void *group;
+	void *a, *b, *c, *d;
+	void *gen; /* Group Generator */
+	int (*getlen) (struct group *);
+	void (*getraw) (struct group *, void *, unsigned char *);
+	int (*setraw) (struct group *, void *, unsigned char *, int);
+	int (*setrandom) (struct group *, void *);
+	int (*operation) (struct group *, void *, void *, void *);
 };
 
 /* Description of F_p for Boot-Strapping */
 
 struct modp_dscr {
-  int id;
-  int bits;				/* Key Bits provided by this group */
-  char *prime;				/* Prime */
-  char *gen;				/* Generator */
+	int id;
+	int bits; /* Key Bits provided by this group */
+	char *prime; /* Prime */
+	char *gen; /* Generator */
 };
 
 /* Prototypes */
 
-void group_init (void);
-void group_free (struct group *);
-struct group *group_get (int);
+void group_init(void);
+void group_free(struct group *);
+struct group *group_get(int);
 
-void modp_free (struct group *);
-struct group *modp_clone (struct group *, struct group *);
-void modp_init (struct group *);
+void modp_free(struct group *);
+struct group *modp_clone(struct group *, struct group *);
+void modp_init(struct group *);
 
 #endif /* _MATH_GROUP_H_ */

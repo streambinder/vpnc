@@ -38,8 +38,8 @@
 
 struct group;
 
-int dh_getlen (struct group *);
-int dh_create_exchange (struct group *, unsigned char *);
-int dh_create_shared (struct group *, unsigned char *, unsigned char *);
+int dh_getlen(struct group *);
+int dh_create_exchange(struct group *, unsigned char *);
+int dh_create_shared(struct group *, unsigned char *, unsigned char *);
 
 #endif /* _DH_H_ */
