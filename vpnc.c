@@ -98,7 +98,7 @@ supported_algo_t supp_dh_group[] = {
 	{ "dh1", OAKLEY_GRP_1, IKE_GROUP_MODP_768, IKE_GROUP_MODP_768, 0 },
 	{ "dh2", OAKLEY_GRP_2, IKE_GROUP_MODP_1024, IKE_GROUP_MODP_1024, 0 },
 	{ "dh5", OAKLEY_GRP_5, IKE_GROUP_MODP_1536, IKE_GROUP_MODP_1536, 0 },
-	/*{ "dh7", OAKLEY_GRP_7, IKE_GROUP_EC2N_163K, IKE_GROUP_EC2N_163K, 0 }*/
+	/*{ "dh7", OAKLEY_GRP_7, IKE_GROUP_EC2N_163K, IKE_GROUP_EC2N_163K, 0 } note: code missing */
 };
 
 supported_algo_t supp_hash[] = {
@@ -107,6 +107,7 @@ supported_algo_t supp_hash[] = {
 };
 
 supported_algo_t supp_crypt[] = {
+	/* { "des", GCRY_CIPHER_DES, IKE_ENC_DES_CBC, ISAKMP_IPSEC_ESP_DES, 0 }, note: working, but not recommended */
 	{ "3des", GCRY_CIPHER_3DES, IKE_ENC_3DES_CBC, ISAKMP_IPSEC_ESP_3DES, 0 },
 	{ "aes128", GCRY_CIPHER_AES128, IKE_ENC_AES_CBC, ISAKMP_IPSEC_ESP_AES, 128 },
 	{ "aes192", GCRY_CIPHER_AES192, IKE_ENC_AES_CBC, ISAKMP_IPSEC_ESP_AES, 192 },
@@ -336,9 +337,10 @@ sendrecv (void *recvbuf, size_t recvbufsize, void *tosend, size_t sendsize, uint
     {
       int pollresult;
       
-      if (sendto (sockfd, tosend, sendsize, 0,
+      if (tosend != NULL)
+        if (sendto (sockfd, tosend, sendsize, 0,
 		  dest_addr, sizeof (struct sockaddr_in)) != (int) sendsize)
-	error (1, errno, "can't send packet");
+	  error (1, errno, "can't send packet");
       do {
 	pollresult = poll (&pfd, 1, timeout << tries);
       } while (pollresult == -1 && errno == EINTR);
@@ -504,7 +506,6 @@ hex_dump("i_nonce", i_nonce, sizeof (i_nonce));
 DEBUG(2, printf("S4.2\n"));
   /* Set up the Diffie-Hellman stuff.  */
   {
-    group_init();
     dh_grp = group_get(get_dh_group_ike()->my_id);
     dh_public = xallocc(dh_getlen (dh_grp));
     dh_create_exchange(dh_grp, dh_public);
@@ -646,9 +647,13 @@ DEBUG(2, printf("S4.4\n"));
 		     else
 		       reject = ISAKMP_N_BAD_PROPOSAL_SYNTAX;
 		     break;
+		   case IKE_ATTRIB_LIFE_TYPE:
+		   case IKE_ATTRIB_LIFE_DURATION:
+		     break;
 		 default:
-		   reject = ISAKMP_N_ATTRIBUTES_NOT_SUPPORTED;
-		   break;
+		     DEBUG(1, printf("unknown attribute %d, arborting..\n", a->type));
+		     reject = ISAKMP_N_ATTRIBUTES_NOT_SUPPORTED;
+		     break;
 		 }
 	     if (! seen_group || ! seen_auth || ! seen_hash || ! seen_enc)
 	       reject = ISAKMP_N_BAD_PROPOSAL_SYNTAX;
@@ -667,7 +672,7 @@ DEBUG(2, printf("S4.4\n"));
 			    get_algo(SUPP_ALGO_CRYPT, SUPP_ALGO_IKE_SA,
 				    seen_enc, NULL, seen_keylen)->name,
 			    get_algo(SUPP_ALGO_HASH, SUPP_ALGO_IKE_SA,
-				    seen_auth, NULL, 0)->name));
+				    seen_hash, NULL, 0)->name));
 	     }
 	   }
 	   break;
@@ -686,9 +691,11 @@ DEBUG(2, printf("S4.4\n"));
 	   break;
 	 }
 
-     d->md_len = gcry_md_get_algo_dlen(d->md_algo);
-     gcry_cipher_algo_info(d->cry_algo, GCRYCTL_GET_BLKLEN, NULL, &(d->ivlen));
-     gcry_cipher_algo_info(d->cry_algo, GCRYCTL_GET_KEYLEN, NULL, &(d->keylen));
+     if (reject == 0) {
+        d->md_len = gcry_md_get_algo_dlen(d->md_algo);
+        gcry_cipher_algo_info(d->cry_algo, GCRYCTL_GET_BLKLEN, NULL, &(d->ivlen));
+        gcry_cipher_algo_info(d->cry_algo, GCRYCTL_GET_KEYLEN, NULL, &(d->keylen));
+     }
 
      if (reject == 0
 	 && (ke == NULL || ke->u.ke.length != dh_getlen (dh_grp)))
@@ -1121,7 +1128,7 @@ DEBUG(1, printf("\n\n---!!!!!!!!! entering phase2_fatal !!!!!!!!!---\n\n\n"));
   error (1, 0, msg, isakmp_notify_to_error (id));
 }
 
-static void 
+static int
 do_phase_2_xauth (struct sa_block *s)
 {
   struct isakmp_packet *r;
@@ -1144,6 +1151,21 @@ DEBUG(2, printf("S5.2\n"));
 	  continue;
 	}
       
+  
+  /* check for load balancing notice */
+      if (reject == 0 && 
+	  r->exchange_type == ISAKMP_EXCHANGE_INFORMATIONAL &&
+	  r->payload->next != NULL &&
+	  r->payload->next->type == ISAKMP_PAYLOAD_N &&
+	  r->payload->next->u.n.type == ISAKMP_N_CISCO_LOAD_BALANCE)
+	{
+	  if (r->payload->next->u.n.data_length != 4)
+	    error(1, 0, "malformed loadbalance target");
+	  memcpy(&((struct sockaddr_in *)dest_addr)->sin_addr, r->payload->next->u.n.data, 4);
+DEBUG(2, printf("got cisco loadbalancing notice, diverting to %s\n", inet_ntoa(((struct sockaddr_in *)dest_addr)->sin_addr)));
+	  return 1;
+	}
+  
 DEBUG(2, printf("S5.3\n"));
       /* Check the transaction type is OK.  */
       if (reject == 0 && 
@@ -1318,6 +1340,7 @@ DEBUG(2, printf("S5.6\n"));
       error (2, 0, "authentication unsuccessful");
   }
 DEBUG(2, printf("S5.7\n"));
+  return 0;
 }
 
 static void 
@@ -1913,21 +1936,22 @@ read_config_file (char *name, const char **configs, int missingok)
 	    break;
 	  }
       if (config_names[i].name == NULL && line[0] != '#' && line[0] != 0)
-	error(0, 0, "warning: unknown configuration directive %s at line %d",
-		       name, linenum);
+	DEBUG(1,error(0, 0, "warning: unknown configuration directive %s at line %d",
+		       name, linenum));
     }
 }
 
 int main(int argc, char **argv)
 {
   struct sa_block oursa;
-  int i;
+  int i, do_load_balance;
   int print_config = 0;
   const uint8_t hex_test[] = { 0, 1, 2, 3};
   
   test_pack_unpack();
   gcry_check_version("1.1.12");
   gcry_control( GCRYCTL_INIT_SECMEM, 16384, 0 );
+  group_init();
   hex_dump("hex_test", hex_test, sizeof(hex_test));
 
   for (i = 1; i < argc; i++)
@@ -2012,6 +2036,7 @@ int main(int argc, char **argv)
     else
       read_config_file (argv[i], config, 0);
 
+  read_config_file ("/etc/vpnc/default.conf", config, 1);
   read_config_file ("/etc/vpnc.conf", config, 1);
 
   if (!print_config) {
@@ -2124,12 +2149,14 @@ DEBUG(2, printf("S2\n"));
   sockfd = make_socket (atoi(config[CONFIG_LOCAL_PORT]));
 DEBUG(2, printf("S3\n"));
   setup_tunnel();
-DEBUG(2, printf("S4\n"));
 
-  memset(&oursa, '\0', sizeof(oursa));
-  do_phase_1 (config[CONFIG_IPSEC_ID], config[CONFIG_IPSEC_SECRET], &oursa);
+  do {
+DEBUG(2, printf("S4\n"));
+    memset(&oursa, '\0', sizeof(oursa));
+    do_phase_1 (config[CONFIG_IPSEC_ID], config[CONFIG_IPSEC_SECRET], &oursa);
 DEBUG(2, printf("S5\n"));
-  do_phase_2_xauth (&oursa);
+    do_load_balance = do_phase_2_xauth (&oursa);
+  } while (do_load_balance);
 DEBUG(2, printf("S6\n"));
   do_phase_2_config (&oursa);
 DEBUG(2, printf("S7\n"));

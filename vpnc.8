@@ -1,0 +1,177 @@
+.TH "VPNC" "8" "28 Januar 2004" "Debian" "vpnc"
+
+.SH NAME
+vpnc \- client for cisco3000 VPN Concentrator
+.SH SYNOPSIS
+
+.B vpnc  [ \-\-gateway 
+.I IP-or-hostname
+.B ] [ \-\-id 
+.I IPSec group Id
+.B ] [ \-\-username
+.I name
+.B ] [ \-\-ifname 
+.I name
+.B ] [ \-\-local\-port
+.I port number
+.B ] [ \-\-pid\-file
+.I filename
+.B ] [ \-\-dh 
+.I IKE DH group
+.B ] [ \-\-pfs 
+.I PFS group
+.B ] [ \-\-non\-inter ] [ \-\-debug ] [ \-\-no\-detach ] [ \-\-print\-config ]
+
+
+.SH "DESCRIPTION"
+.PP
+This manual page documents briefly the
+\fBvpnc\fR, \fBvpnc\-connect\fR and
+\fBvpnc\-disconnect\fR commands.
+.PP
+\fBvpnc\fR is a 
+VPN client for the Cisco 3000 VPN  Concentrator,  creating  a IPSec-like
+connection as a tunneling network device for the local system. It uses
+the TUN/TAP driver in  Linux  kernel  2.4  and  above  and device tun(4)
+on BSD. The created connection is presented as a tunneling network
+device to the local system.
+.PP
+The vpnc daemon by it self does not set any routes, the user (or
+the connect script, see below) has to do it on its own, e.g. for a full
+tunnel with IP routing under Linux. Further, the user must care about
+setting a minimal route to the gateway to not cut the essential
+connection.
+.PP
+The command \fBvpnc\-connect\fR (a helper script) will take care of it all: it
+reads the configuration file (specified as the first argument, see
+EXAMPLES below), creates a minimalistic host route to the gateway and
+configures the default gateway configuration of Linux to run over the
+VPN tunnel.
+.PP
+The \fBvpnc\-disconnect\fR command is used to terminate
+the connection previously created by \fBvpnc\-connect\fR
+and restore the previous routing configuration.
+
+.SH CONFIGURATION
+The daemon reads configuration data from the following places:
+.PD 0
+.IP "- command line options"
+.IP "- config file(s) specified on the command line"
+.IP "- /etc/vpnc.conf"
+.IP "- prompting the user if not found above"
+
+.PP
+
+The script expects the 
+.B configuration file
+as the first parameter. This
+can either be an absolute path or the name
+of a config file located in 
+.B /etc/vpnc/<filename>.conf.
+If no config is specified, 
+.B vpnc-connect
+will try
+to load 
+.B /etc/vpnc/default.conf
+or as a last resort
+.B /etc/vpnc.conf.
+
+.SH OPTIONS
+The program options can be either given as argument (but not all of them
+for security reasons) or be stored in a configuration file.
+
+.IP "\-\-gateway IP-or-hostname"
+IP address or hostname of the VPN gateway
+.IP "\-\-id IPSec group Id"
+ID of the IPSec group
+.IP "\-\-username name"
+your user credentials
+.IP "\-\-ifname name"
+name of the tun-interface to use
+.IP "\-\-local\-port port number"
+use this port for the connection <0-65535>, use 0 for random
+.IP "\-\-pid\-file filename"
+store the pid of background process there
+.IP "\-\-dh IKE DH group"
+name of the IKE DH Group <dh1/dh2/dh5>
+.IP "\-\-pfs PFS group"
+Perfect Forward Secrecy <nopfs/dh1/dh2/dh5>
+.IP "\-\-non\-inter"
+non interactive mode, don't ask any questions
+.IP "\-\-debug nr"
+set debugging level <0/1/2/3/99>.
+.B Warning: \-\-debug output of level 99 and greater from later versions cotains (hex-encoded) username and password!
+.IP "\-\-no\-detach"
+do not send daemon to background
+.IP "\-\-print\-config"
+prints your configuration; output can be used as vpnc.conf
+
+.SH FILES
+.I /etc/vpnc.conf
+.RS
+The default configuration file. See
+.BR EXAMPLES
+for further details.
+.RE
+
+.I /etc/vpnc/*.conf
+.RS
+The vpnc\-connect will read configuration files in this directory when
+the config script name (without .conf) is specified on the command line.
+.RE
+
+
+.SH EXAMPLES
+This is an example vpnc.conf:
+
+.RS
+.PD 0
+IKE DH Group dh2
+.P
+Perfect Forward Secrecy nopfs
+.P
+IPSec gateway vpn.rwth\-aachen.de
+.P
+IPSec ID MoPS
+.P
+IPSec secret mopsWLAN
+.P
+Xauth username abcdef
+.P
+Xauth password 123456
+.PD
+.RE
+
+The lines begin with a keyword (no leading spaces!).
+The values start exactly one space after the keywords, and run to the end of
+line. This lets you put any kind of weird character (except EOL and NUL) in
+your strings, but it does mean you can't add comments after a string, or spaces
+before them.
+
+See also the
+.B \-\-print\-config
+option to generate a config file, and the example file in the package
+documentation directory where more advanced usage is described.
+
+Advanced features like manual setting of multiple target routes is
+documented in the example files of the vpnc package.
+
+.SH TODO
+Re-keying is no implemented yet (default rekey-intervall is 8 hours).
+
+.SH AUTHOR
+This man-page has been written by Eduard Bloch <blade(at)debian.org> and
+Christian Lackas <delta(at)lackas.net>, based on vpnc README by
+Maurice Massar <vpnc(at)unix\-ag.uni\-kl.de>.
+Permission is
+granted to copy, distribute and/or modify this document under
+the terms of the GNU General Public License, Version 2 any 
+later version published by the Free Software Foundation.
+.PP
+On Debian systems, the complete text of the GNU General Public
+License can be found in /usr/share/common\-licenses/GPL.
+.SH "SEE ALSO"
+.BR ip (8),
+.BR ifconfig (8),
+.BR route (1),
+.BR http://www.unix\-ag.uni\-kl.de/~massar/vpnc/

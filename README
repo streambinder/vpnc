@@ -3,7 +3,10 @@ A VPN client compatible with Cisco's EasyVPN equipment.
 Supports IPSec (ESP) with Mode Configuration and Xauth.  Supports only
 shared-secret IPSec authentication, 3DES, MD5, and IP tunneling.
 
-It runs entirely in userspace
+It runs entirely in userspace. Only "Universal TUN/TAP device
+driver support" is needed in kernel.
+
+Required Libraries: libgcrypt (version 1.1.90 for 0.2-rm+zomb-pre7 or later)
 
 It reads configuration data from the following places:
 

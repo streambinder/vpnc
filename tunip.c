@@ -64,6 +64,7 @@
 #include <time.h>
 #include <poll.h>
 #include <signal.h>
+#include <err.h>
 
 #include <gcrypt.h>
 #include "sysdep.h"
@@ -251,7 +252,7 @@ int encap_rawip_recv(struct encap_method *encap,
 #ifdef NEED_IPLEN_FIX
     p->ip_len = r;
 #else
-    p->ip_len = ntohs(p->ip_len);
+    p->ip_len = ntohs(r);
 #endif
 
     encap->buf = buf;
@@ -514,6 +515,9 @@ hex_dump("auth_secret", peer->remote_sa->auth_secret, peer->remote_sa->auth_secr
     ip->ip_v = IPVERSION;
     ip->ip_hl = 5;
     ip->ip_len = encap->buflen + (peer->remote_sa->md_algo? 12 :0);
+#ifdef NEED_IPLEN_FIX
+    ip->ip_len = htons(ip->ip_len);
+#endif
                   /*gcry_md_get_algo_dlen(md_algo); see RFC .. only use 96 bit */
     ip->ip_id = htons(ip_id++);
     ip->ip_p = IPPROTO_ESP;
@@ -555,6 +559,8 @@ hex_dump("auth_secret", peer->remote_sa->auth_secret, peer->remote_sa->auth_secr
 #endif
     }
 
+    ip->ip_sum = in_cksum((u_short *)encap->buf, sizeof(struct ip));
+    
     sent = sendto(encap->fd, encap->buf, encap->buflen, 0,
 		  (struct sockaddr *)&peer->remote_sa->dest,
 		  sizeof(peer->remote_sa->dest));
@@ -906,7 +912,6 @@ hex_dump("tothem.auth_secret", tothem_sa.auth_secret, tothem_sa.auth_secret_size
       signal (SIGHUP, killit);
       signal (SIGINT, killit);
       signal (SIGTERM, killit);
-      signal (SIGKILL, killit);
       signal (SIGXCPU, killit);
 #if defined(SIGPWR)
       signal (SIGPWR, killit);

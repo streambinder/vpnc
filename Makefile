@@ -22,12 +22,16 @@ LDFLAGS=-g $(shell libgcrypt-config --libs)
 ifeq ($(shell uname -s), Linux)
 SYSDEP=sysdep-linux.o
 endif
-ifeq ($(shell uname -s), NetBSD)
-CFLAGS += -DSOCKADDR_IN_SIN_LEN
+ifeq ($(shell uname -s), FreeBSD)
+CFLAGS += -DSOCKADDR_IN_SIN_LEN -DHAVE_SA_LEN
 SYSDEP=sysdep-bsd.o
 endif
-ifeq ($(shell uname -s), FreeBSD)
-CFLAGS += -DSOCKADDR_IN_SIN_LEN
+ifeq ($(shell uname -s), NetBSD)
+CFLAGS += -DSOCKADDR_IN_SIN_LEN -DHAVE_SA_LEN
+SYSDEP=sysdep-bsd.o
+endif
+ifeq ($(shell uname -s), OpenBSD)
+CFLAGS += -DSOCKADDR_IN_SIN_LEN -DHAVE_SA_LEN -DNEED_IPLEN_FIX -DNEW_TUN
 SYSDEP=sysdep-bsd.o
 endif
 ifeq ($(shell uname -s), SunOS)
@@ -43,7 +47,7 @@ tunip.o : sysdep.h vpnc.h
 dh.o : dh.h math_group.h
 math_group.o : math_group.h
 
-FILELIST := $(shell echo *.c *.h vpnc-*) Makefile README ChangeLog COPYING TODO VERSION vpnc.conf
+FILELIST := $(shell echo *.c *.h vpnc-*) Makefile README ChangeLog COPYING TODO VERSION vpnc.conf vpnc.8
 
 ../vpnc-%.tar.gz : vpnc-$*.tar.gz
 

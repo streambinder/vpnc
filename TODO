@@ -34,19 +34,35 @@ TODO list
 
 * DONE passcode == password
 
-* post link to http://www.liebchen-online.de/vpn-zaurus.html
+* DONE post link to http://www.liebchen-online.de/vpn-zaurus.html
 
-* post rfcs and drafts
+* DONE post rfcs and drafts
 
-* fix link at alioth
+* DONE include man-page
+
+* DONE fix link at alioth
+
+* DONE memleak fix from Sebastian Biallas
+
+* DONE include OpenBSD support from Nikolay Sturm
+
+* DONE load balancing support (fixes INVALID_EXCHANGE_TYPE in S4.5)
+
+* DONE accept (== ignore) lifetime update in phase1
 
 ****
 
 * implement rekeying
 
+* frozen connections?
+
 * implement ipsec main mode
 
 * implement udp transport
+
+* send version string
+
+* ask for dns servers
 
 ****
 

@@ -253,11 +253,13 @@ modp_getraw (struct group *grp, gcry_mpi_t v, unsigned char *d)
   l = grp->getlen (grp);
   ret = gcry_mpi_aprint(GCRYMPI_FMT_STD, &tmp, &l2, v);
   memcpy(d, tmp + (l2-l), l);
+  gcry_free(tmp);
 #if 0
   {
 	  char *p;
 	  gcry_mpi_aprint(GCRYMPI_FMT_HEX, (void **)&p, NULL, v);
 	  printf("export %d - %d(%d):\n%s\n", l, l2, ret, p);
+  	  gcry_free(p);
   }
 #endif
 }
@@ -280,6 +282,7 @@ modp_setraw (struct group *grp, gcry_mpi_t d, unsigned char *s, int l)
 	  char *p;
 	  gcry_mpi_aprint(GCRYMPI_FMT_HEX, (void **)&p, NULL, d);
 	  printf("import %d:\n%s\n", l, p);
+  	  gcry_free(p);
   }
 #endif
   return 0;
