@@ -95,7 +95,7 @@ int tun_open(char *dev)
 	}
 	close(if_fd);
 
-	sprintf(dev, "tun%d", ppa);
+	snprintf(dev, IFNAMSIZ, "tun%d", ppa);
 
 	memset(&ifr, 0, sizeof(ifr));
 	strcpy(ifr.ifr_name, dev);

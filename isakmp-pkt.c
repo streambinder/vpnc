@@ -300,7 +300,7 @@ struct isakmp_payload *new_isakmp_payload(uint8_t type)
 
 struct isakmp_payload *new_isakmp_data_payload(uint8_t type, const void *data, size_t data_length)
 {
-	struct isakmp_payload *result = xallocc(sizeof(struct isakmp_packet));
+	struct isakmp_payload *result = xallocc(sizeof(struct isakmp_payload));
 
 	if (type != ISAKMP_PAYLOAD_KE && type != ISAKMP_PAYLOAD_HASH
 		&& type != ISAKMP_PAYLOAD_SIG && type != ISAKMP_PAYLOAD_NONCE
@@ -697,7 +697,7 @@ struct isakmp_packet *parse_isakmp_packet(const uint8_t * data, size_t data_len,
 	size_t isakmp_data_len;
 
 	if (data_len < ISAKMP_PAYLOAD_O) {
-		DEBUG(2, printf("packet to short: len = %d < min = %d\n", data_len, ISAKMP_PAYLOAD_O));
+		DEBUG(2, printf("packet to short: len = %lld < min = %lld\n", (long long) data_len, (long long)ISAKMP_PAYLOAD_O));
 		reason = ISAKMP_N_UNEQUAL_PAYLOAD_LENGTHS;
 		goto error;
 	}
@@ -730,8 +730,8 @@ struct isakmp_packet *parse_isakmp_packet(const uint8_t * data, size_t data_len,
 	isakmp_data_len = fetch4();
 	hex_dump("len", &isakmp_data_len, UINT32);
 	if (o_data_len != isakmp_data_len) {
-		DEBUG(2, printf("isakmp length does not match packet length: isakmp = %d != datalen = %d\n",
-			isakmp_data_len, o_data_len));
+		DEBUG(2, printf("isakmp length does not match packet length: isakmp = %lld != datalen = %lld\n",
+			(long long)isakmp_data_len, (long long)o_data_len));
 		reason = ISAKMP_N_UNEQUAL_PAYLOAD_LENGTHS;
 		goto error;
 	}
@@ -793,7 +793,7 @@ const char *isakmp_notify_to_error(uint16_t notify)
 	for (i = 0; i < sizeof(data) / sizeof(data[0]); i++)
 		if (data[i].id == notify)
 			return data[i].name;
-	sprintf(number, "%d", notify);
+	snprintf(number, sizeof(number), "%d", notify);
 	return number;
 }
 

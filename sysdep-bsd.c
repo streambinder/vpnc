@@ -45,15 +45,15 @@ int tun_open(char *dev)
 		if (strncmp(dev, "tun", 3))
 			error(1, 0,
 				"error: arbitrary naming tunnel interface only supported on linux\n");
-		sprintf(tunname, "/dev/%s", dev);
+		snprintf(tunname, sizeof(tunname), "/dev/%s", dev);
 		return open(tunname, O_RDWR);
 	}
 
 	for (i = 0; i < 255; i++) {
-		sprintf(tunname, "/dev/tun%d", i);
+		snprintf(tunname, sizeof(tunname), "/dev/tun%d", i);
 		/* Open device */
 		if ((fd = open(tunname, O_RDWR)) > 0) {
-			sprintf(dev, "tun%d", i);
+			snprintf(dev, IFNAMSIZ, "tun%d", i);
 			return fd;
 		}
 	}

@@ -354,7 +354,7 @@ static void print_desc(const char *pre, const char *text)
 	const char *p, *q;
 
 	for (p = text, q = strchr(p, '\n'); q; p = q+1, q = strchr(p, '\n'))
-		printf("%s%.*s\n", pre, q-p, p);
+		printf("%s%.*s\n", pre, (int)(q-p), p);
 
 	if (*p != '\0')
 		printf("%s%s\n", pre, p);
@@ -364,7 +364,7 @@ static void print_usage(char *argv0, int long_help)
 {
 	int c;
 
-	printf("Usage: %s [--version] [--print-config] [--help] [--long-help] [options] [config file]\n\n",
+	printf("Usage: %s [--version] [--print-config] [--help] [--long-help] [options] [config files]\n\n",
 		argv0);
 	printf("Legend:\n");
 	for (c = 0; config_names[c].name != NULL; c++) {
@@ -425,8 +425,9 @@ static void print_version(void)
 void do_config(int argc, char **argv)
 {
 	char *s;
-	int i, c, known, s_len;
+	int i, c, known;
 	int print_config = 0;
+	size_t s_len;
 
 	for (i = 1; i < argc; i++) {
 		if (argv[i][0] != '-') {
