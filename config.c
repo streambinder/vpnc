@@ -321,9 +321,9 @@ static void read_config_file(char *name, const char **configs, int missingok)
 		if (llen == -1)
 			error(1, errno, "reading `%s'", name);
 		if (line[llen - 1] == '\n')
-			line[llen--] = 0;
+			line[--llen] = 0;
 		if (line[llen - 1] == '\r')
-			line[llen--] = 0;
+			line[--llen] = 0;
 		linenum++;
 		for (i = 0; config_names[i].name != NULL; i++) {
 			if (config_names[i].nm == CONFIG_NONE)
