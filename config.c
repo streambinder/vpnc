@@ -281,6 +281,13 @@ static const struct config_names_s {
 		"local UDP port number to use (0 == use random port)",
 		config_def_udp_port
 	}, {
+		CONFIG_DISABLE_NATT, 0, 1,
+		"--disable-natt",
+		"Disable NAT Traversal",
+		NULL,
+		"disable use of NAT-T",
+		NULL
+	}, {
 		CONFIG_NON_INTERACTIVE, 0, 1,
 		"--non-inter",
 		"Noninteractive",

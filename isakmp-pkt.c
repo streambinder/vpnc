@@ -170,6 +170,8 @@ static void flow_payload(struct flow *f, struct isakmp_payload *p)
 	case ISAKMP_PAYLOAD_SIG:
 	case ISAKMP_PAYLOAD_NONCE:
 	case ISAKMP_PAYLOAD_VID:
+	case ISAKMP_PAYLOAD_NAT_D:
+	case ISAKMP_PAYLOAD_NAT_D_OLD:
 		flow_x(f, p->u.ke.data, p->u.ke.length);
 		break;
 	case ISAKMP_PAYLOAD_ID:
@@ -302,7 +304,8 @@ struct isakmp_payload *new_isakmp_data_payload(uint8_t type, const void *data, s
 
 	if (type != ISAKMP_PAYLOAD_KE && type != ISAKMP_PAYLOAD_HASH
 		&& type != ISAKMP_PAYLOAD_SIG && type != ISAKMP_PAYLOAD_NONCE
-		&& type != ISAKMP_PAYLOAD_VID)
+		&& type != ISAKMP_PAYLOAD_VID && type != ISAKMP_PAYLOAD_NAT_D
+		&& type != ISAKMP_PAYLOAD_NAT_D_OLD)
 		abort();
 	if (data_length >= 16384)
 		abort();
@@ -344,6 +347,8 @@ void free_isakmp_payload(struct isakmp_payload *p)
 	case ISAKMP_PAYLOAD_SIG:
 	case ISAKMP_PAYLOAD_NONCE:
 	case ISAKMP_PAYLOAD_VID:
+	case ISAKMP_PAYLOAD_NAT_D:
+	case ISAKMP_PAYLOAD_NAT_D_OLD:
 		free(p->u.ke.data);
 		break;
 	case ISAKMP_PAYLOAD_ID:
@@ -471,11 +476,12 @@ static struct isakmp_payload *parse_isakmp_payload(uint8_t type,
 	hex_dump("PARSING PAYLOAD type", &type, UINT8);
 	if (type == 0)
 		return NULL;
-	if (type > ISAKMP_PAYLOAD_MODECFG_ATTR) {
-		*reject = ISAKMP_N_INVALID_PAYLOAD_TYPE;
-		return NULL;
-	}
-	if (data_len < min_payload_len[type]) {
+	if (type <= ISAKMP_PAYLOAD_MODECFG_ATTR) {
+		if (data_len < min_payload_len[type]) {
+			*reject = ISAKMP_N_PAYLOAD_MALFORMED;
+			return NULL;
+		}
+	} else if (data_len < 4) {
 		*reject = ISAKMP_N_PAYLOAD_MALFORMED;
 		return NULL;
 	}
@@ -489,7 +495,9 @@ static struct isakmp_payload *parse_isakmp_payload(uint8_t type,
 	}
 	length = fetch2();
 	hex_dump("length", &length, UINT16);
-	if (length > data_len + 4 || length < min_payload_len[type]) {
+	if (length > data_len + 4
+		|| ((type <= ISAKMP_PAYLOAD_MODECFG_ATTR)&&(length < min_payload_len[type]))
+		|| (length < 4)) {
 		*reject = ISAKMP_N_PAYLOAD_MALFORMED;
 		return r;
 	}
@@ -581,6 +589,8 @@ static struct isakmp_payload *parse_isakmp_payload(uint8_t type,
 	case ISAKMP_PAYLOAD_SIG:
 	case ISAKMP_PAYLOAD_NONCE:
 	case ISAKMP_PAYLOAD_VID:
+	case ISAKMP_PAYLOAD_NAT_D:
+	case ISAKMP_PAYLOAD_NAT_D_OLD:
 		r->u.ke.length = length - 4;
 		r->u.ke.data = xallocc(r->u.ke.length);
 		fetchn(r->u.ke.data, r->u.ke.length);
@@ -665,7 +675,11 @@ static struct isakmp_payload *parse_isakmp_payload(uint8_t type,
 		break;
 
 	default:
-		abort();
+		r->u.ke.length = length - 4;
+		r->u.ke.data = xallocc(r->u.ke.length);
+		fetchn(r->u.ke.data, r->u.ke.length);
+		hex_dump("UNKNOWN.data", r->u.ke.data, r->u.ke.length);
+		break;
 	}
 	*data_p = data;
 	*data_len_p = data_len;

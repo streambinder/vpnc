@@ -137,7 +137,6 @@ struct encap_method {
 	int buflen;
 	struct sockaddr_in from;
 	int fromlen;
-	uint16_t destport;
 
 	int (*recv) (struct encap_method * encap,
 		unsigned char *buf, unsigned int bufsize, struct sockaddr_in * from);
@@ -150,7 +149,7 @@ struct encap_method {
 /* Forward decl */
 void encap_esp_send_peer(struct encap_method *encap,
 	struct peer_desc *peer, unsigned char *buf, unsigned int bufsize);
-void encap_espinudp_send_peer(struct encap_method *encap,
+void encap_udp_send_peer(struct encap_method *encap,
 	struct peer_desc *peer, unsigned char *buf, unsigned int bufsize);
 struct peer_desc *peer_find(unsigned long spi, struct encap_method *encap);
 int encap_esp_recv_peer(struct encap_method *encap, struct peer_desc *peer);
@@ -281,7 +280,7 @@ int encap_udp_recv(struct encap_method *encap,
 	}
 	if (r < encap->fixed_header_size) {
 		syslog(LOG_ALERT, "packet too short from %s",
-		inet_ntoa(encap->from.sin_addr));
+			inet_ntoa(encap->from.sin_addr));
 		return -1;
 	}
 
@@ -364,32 +363,14 @@ int encap_esp_new(struct encap_method *encap, unsigned char proto)
 	return 0;
 }
 
-int encap_espinudp_new(struct encap_method *encap, uint16_t our_port, uint16_t their_port)
+int encap_udp_new(struct encap_method *encap, int udp_fd)
 {
-	encap->fd = socket(PF_INET, SOCK_DGRAM, 0);
-	encap->destport = their_port;
+	encap->fd = udp_fd;
 
-	if (encap->fd == -1) {
-		perror("socket(SOCK_DGRAM)");
-		return -1;
-	}
-
-	if (our_port != 0) {
-		struct sockaddr_in name;
-
-		name.sin_family = AF_INET;
-		name.sin_port = our_port;
-		name.sin_addr.s_addr = htonl (INADDR_ANY);
-		if (bind (encap->fd, (struct sockaddr *) &name, sizeof (name)) < 0) {
-			perror ("binding to udp port");
-			return -1;
-		}
-	}
-
-	encap->name = "ipespinudp";
+	encap->name = "udpesp";
 	encap->recv = encap_udp_recv;
 	encap->peer_find = encap_esp_peer_find;
-	encap->send_peer = encap_espinudp_send_peer;
+	encap->send_peer = encap_udp_send_peer;
 	encap->recv_peer = encap_esp_recv_peer;
 	encap->fixed_header_size = sizeof(esp_encap_header_t);
 	encap->var_header_size = 0;
@@ -650,12 +631,11 @@ void encap_esp_send_peer(struct encap_method *encap,
  * "buf" should have exactly MAX_HEADER free bytes at its beginning
  * to account for encapsulation data (not counted in "size").
  */
-void encap_espinudp_send_peer(struct encap_method *encap,
+void encap_udp_send_peer(struct encap_method *encap,
 	struct peer_desc *peer,
 	unsigned char *buf, unsigned int bufsize)
 {
 	ssize_t sent;
-	struct sockaddr_in destaddr;
 
 	buf += MAX_HEADER;
 
@@ -672,11 +652,8 @@ void encap_espinudp_send_peer(struct encap_method *encap,
 
 	encap_esp_encapsulate(encap, peer);
 
-	memcpy(&destaddr, &peer->remote_sa->dest, sizeof(destaddr));
-	destaddr.sin_port = encap->destport;
-
 	sent = sendto(encap->fd, encap->buf, encap->buflen, 0,
-		(struct sockaddr *)&destaddr, sizeof(destaddr));
+		(struct sockaddr *)&peer->remote_sa->dest, sizeof(peer->remote_sa->dest));
 	if (sent == -1) {
 		syslog(LOG_ERR, "sendto: %m");
 		return;
@@ -924,7 +901,7 @@ vpnc_doit(unsigned long tous_spi,
 	int tun_fd, int md_algo, int cry_algo,
 	uint8_t * kill_packet_p, size_t kill_packet_size_p,
 	struct sockaddr *kill_dest_p,
-	uint16_t our_port, uint16_t their_port,
+	uint16_t encap_mode, int udp_fd,
 	const char *pidfile)
 {
 	struct encap_method meth;
@@ -932,12 +909,17 @@ vpnc_doit(unsigned long tous_spi,
 	static struct sa_desc tous_sa, tothem_sa;
 	time_t t = time(NULL);
 
-	if (their_port != 0) {
-		if (encap_espinudp_new(&meth, our_port, their_port) == -1)
-			exit(1);
-	} else {
-		if (encap_esp_new(&meth, IPPROTO_ESP) == -1)
-			exit(1);
+	switch (encap_mode) {
+		case IPSEC_ENCAP_TUNNEL:
+			if (encap_esp_new(&meth, IPPROTO_ESP) == -1)
+				exit(1);
+			break;
+		case IPSEC_ENCAP_UDP_TUNNEL:
+			if (encap_udp_new(&meth, udp_fd) == -1)
+				exit(1);
+			break;
+		default:
+			abort();
 	}
 
 	tous_sa.next = remote_sa_list;

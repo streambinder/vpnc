@@ -41,7 +41,9 @@ enum isakmp_payload_enum {
 	ISAKMP_PAYLOAD_D,
 	ISAKMP_PAYLOAD_VID,
 	ISAKMP_PAYLOAD_MODECFG_ATTR,
-	LAST_ISAKMP_PAYLOAD
+	ISAKMP_PAYLOAD_NAT_D,
+	ISAKMP_PAYLOAD_NAT_OA,
+	ISAKMP_PAYLOAD_NAT_D_OLD = 0x82,
 };
 
 /* Exchange types.  */
@@ -287,7 +289,9 @@ enum {
 /* IPSEC encapsulation attribute numbers.  */
 enum {
 	IPSEC_ENCAP_TUNNEL = 1,
-	IPSEC_ENCAP_TRANSPORT
+	IPSEC_ENCAP_TRANSPORT,
+	IPSEC_ENCAP_UDP_TUNNEL,
+	IPSEC_ENCAP_UDP_TRANSPORT,
 };
 
 /* IPSEC authentication attribute numbers.  */
@@ -314,6 +318,9 @@ enum {
 	0x70, 0x2D, 0x9F, 0xE2, 0x74, 0xCC, 0x01, 0x00 }
 #define UNKNOWN_VENDOR_ID { 0x12, 0x6E, 0x1F, 0x57, 0x72, 0x91, 0x15, 0x3B, \
 	0x20, 0x48, 0x5F, 0x7F, 0x15, 0x5B, 0x4B, 0xC8 }
+/* Support for draft-ietf-ipsec-nat-t-ike-02 */
+#define NATT_VENDOR_ID { 0x90, 0xCB, 0x80, 0x91, 0x3E, 0xBB, 0x69, 0x6E, \
+	0x08, 0x63, 0x81, 0xB5, 0xEC, 0x42, 0x7B, 0x1F }
 
 enum {
 	XAUTH_AUTH_XAUTHInitPreShared = 65001,

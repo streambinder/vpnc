@@ -67,7 +67,7 @@ struct isakmp_payload {
 		struct {
 			uint16_t length;
 			uint8_t *data;
-		} ke, hash, sig, nonce, vid;
+		} ke, hash, sig, nonce, vid, natd;
 		struct {
 			uint8_t type;
 			uint8_t protocol;
