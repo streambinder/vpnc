@@ -66,7 +66,7 @@
 #include <signal.h>
 
 #include <gcrypt.h>
-#include "tun_dev.h"
+#include "sysdep.h"
 #include "vpnc.h"
 
 #define max(a,b)	((a)>(b)?(a):(b))
@@ -798,6 +798,7 @@ killit(int signum)
 	      kill_dest, sizeof (struct sockaddr_in));
       close (sock);
     }
+  syslog(LOG_NOTICE, "terminated");
   _exit (0);
 }
 
@@ -906,7 +907,9 @@ hex_dump("tothem.auth_secret", tothem_sa.auth_secret, tothem_sa.auth_secret_size
       signal (SIGTERM, killit);
       signal (SIGKILL, killit);
       signal (SIGXCPU, killit);
+#if defined(SIGPWR)
       signal (SIGPWR, killit);
+#endif
 
       chdir ("/");
       
@@ -921,7 +924,7 @@ hex_dump("tothem.auth_secret", tothem_sa.auth_secret, tothem_sa.auth_secret_size
             vpnc_main_loop (&vpnpeer, &meth, tun_fd); /* never returns */
             exit(0);
          } else {
-            printf("VPNC started in background...\n");
+            printf("VPNC started in background (pid: %d)...\n", pid);
             exit(0);
          }
       }

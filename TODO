@@ -18,7 +18,15 @@ TODO list
 
 * DONE fix vpnc-disconnect
 
+* DONE NetBSD supported
+
 * rekeying?
+
+****
+
+* check config-file mode??
+
+* retry login??
 
 * getopt()? libpopt?
 

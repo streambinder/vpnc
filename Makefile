@@ -16,15 +16,26 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 CC=gcc
-CFLAGS=-W -Wall -O -g '-DVERSION="$(shell cat VERSION)"'
-LDFLAGS=-lgcrypt -g
+CFLAGS=-W -Wall -O -g '-DVERSION="$(shell cat VERSION)"' $(shell libgcrypt-config --cflags)
+LDFLAGS=-g $(shell libgcrypt-config --libs)
 
-vpnc : vpnc.o isakmp-pkt.o tunip.o tun_dev-linux.o dh.o math_group.o
+ifeq ($(shell uname -s), Linux)
+SYSDEP=sysdep-linux.o
+endif
+ifeq ($(shell uname -s), NetBSD)
+CFLAGS += -DSOCKADDR_IN_SIN_LEN
+SYSDEP=sysdep-bsd.o
+endif
+ifeq ($(shell uname -s), SunOS)
+SYSDEP=sysdep-svr4.o
+endif
+
+vpnc : vpnc.o isakmp-pkt.o tunip.o $(SYSDEP) dh.o math_group.o
 	$(CC) -o $@ $^ $(LDFLAGS)
 
-vpnc.o : isakmp.h isakmp-pkt.h dh.h tun_dev.h math_group.h vpnc.h VERSION
+vpnc.o : isakmp.h isakmp-pkt.h dh.h sysdep.h math_group.h vpnc.h VERSION
 isakmp-pkt.o : isakmp.h isakmp-pkt.h vpnc.h
-tunip.o : tun_dev.h vpnc.h
+tunip.o : sysdep.h vpnc.h
 dh.o : dh.h math_group.h
 math_group.o : math_group.h
 

@@ -22,7 +22,6 @@
 #include <sys/fcntl.h>
 #include <stdio.h>
 #include <errno.h>
-#include <error.h>
 #include <string.h>
 #include <time.h>
 #include <stdlib.h>
@@ -32,13 +31,12 @@
 #include <arpa/inet.h>
 #include <poll.h>
 #include <net/if.h>
-#include <linux/if_tun.h>
 #include <sys/ioctl.h>
 
 #include <gcrypt.h>
 
 #include "isakmp-pkt.h"
-#include "tun_dev.h"
+#include "sysdep.h"
 #include "math_group.h"
 #include "dh.h"
 #include "vpnc.h"
@@ -253,6 +251,7 @@ setup_tunnel(void)
 	  memcpy(tun_name, config[CONFIG_IF_NAME], strlen(config[CONFIG_IF_NAME]));
   
   tun_fd = tun_open(tun_name);
+  DEBUG(2,printf("using interface %s\n", tun_name));
 
   if (tun_fd == -1)
     error (1, errno, "can't initialise tunnel interface");
@@ -272,8 +271,8 @@ recv_ignore_dup (void *recvbuf, size_t recvbufsize, uint8_t reply_extype)
   socklen_t recvaddr_size = sizeof (recvaddr);
   char ntop_buf[32];
 
-  recvsize = recvfrom (sockfd, recvbuf, recvbufsize, 0, &recvaddr,
-		       &recvaddr_size);
+  recvsize = recvfrom (sockfd, recvbuf, recvbufsize, 0,
+		       (struct sockaddr *)&recvaddr, &recvaddr_size);
   if (recvsize == -1)
     error (1, errno, "receiving packet");
   if (recvsize > 0)
@@ -1386,41 +1385,46 @@ do_phase_2_config (struct sa_block *s)
   if (reject != 0)
     phase2_fatal (s, "configuration response rejected: %s", reject);
 
+  DEBUG(1,printf("got address %s\n", inet_ntoa(*((struct in_addr *)s->our_address))));
 }
 
-static void
-config_tunnel (struct sa_block *s)
+void config_tunnel(const char *dev, struct in_addr myaddr)
 {
   int sock;
   struct ifreq ifr;
   uint8_t *addr;
-  uint8_t real_netmask[4];
-  /*int i;*/
-  
-  real_netmask[0] = 0xFF;
-  real_netmask[1] = 0xFF;
-  real_netmask[2] = 0xFF;
-  real_netmask[3] = 0xFF;
 
+  /* prepare socket and ifr */
   sock = socket (AF_INET, SOCK_DGRAM, 0);
   if (sock < 0)
     error (1, errno, "making socket");
   memset (&ifr, 0, sizeof(ifr));
-  memcpy (ifr.ifr_name, tun_name, IFNAMSIZ);
-  ifr.ifr_addr.sa_family = AF_INET;
+  memcpy (ifr.ifr_name, dev, IFNAMSIZ);
+  
   addr = (uint8_t *)&((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr;
-  memcpy (addr, s->our_address, 4);
+#ifdef SOCKADDR_IN_SIN_LEN
+  ((struct sockaddr_in *)&ifr.ifr_addr)->sin_len = sizeof(struct sockaddr_in);
+#endif
+  
+  /* set my address */
+  ifr.ifr_addr.sa_family = AF_INET;
+  memcpy (addr, &myaddr, 4);
   if (ioctl (sock, SIOCSIFADDR, &ifr) != 0)
     error (1, errno, "setting interface address");
-  memcpy (addr, real_netmask, 4);
+  
+  /* set p-t-p addr (== my address) */
+  ifr.ifr_addr.sa_family = AF_INET;
+  memcpy (addr, &myaddr, 4);
+  if (ioctl (sock, SIOCSIFDSTADDR, &ifr) != 0)
+    error (1, errno, "setting interface dest address");
+  
+  /* set netmask (== 255.255.255.255) */
+  ifr.ifr_addr.sa_family = AF_INET;
+  memset (addr, 0xFF, 4);
   if (ioctl (sock, SIOCSIFNETMASK, &ifr) != 0)
     error (1, errno, "setting interface netmask");
-#if 0
-  for (i = 0; i < 4; i++)
-    addr[i] = s->our_address[i] | ~real_netmask[i];
-  if (ioctl (sock, SIOCSIFBRDADDR, &ifr) != 0)
-    error (1, errno, "setting interface broadcast");
-#endif
+  
+  /* set MTU */
   /* The magic constants are:
      1500  the normal ethernet MTU
      -20   the size of an IP header
@@ -1432,11 +1436,14 @@ config_tunnel (struct sa_block *s)
   ifr.ifr_mtu = 1412;
   if (ioctl (sock, SIOCSIFMTU, &ifr) != 0)
     error (1, errno, "setting interface MTU");
+  
+  /* set interface flags */
   if (ioctl (sock, SIOCGIFFLAGS, &ifr) != 0)
     error (1, errno, "getting interface flags");
-  ifr.ifr_flags |= (IFF_UP /*| IFF_BROADCAST | IFF_MULTICAST */ | IFF_RUNNING);
+  ifr.ifr_flags |= (IFF_UP | IFF_RUNNING);
   if (ioctl (sock, SIOCSIFFLAGS, &ifr) != 0)
     error (1, errno, "setting interface flags");
+  
   close (sock);
 }
 
@@ -1839,10 +1846,12 @@ static const struct config_names_s {
   const int needsArgument;
 } config_names[] = {
   /* Note: broken config file parser does NOT support option
-   * names where one is a prefix of another option */
-  { "<0/1/2/3/99> Show extraneous debug messages", "Debug ", "--debug", CONFIG_DEBUG, 1 },
-  { "Don't detach from the console after login", "No Detach", "--no-detach", CONFIG_ND, 0 },
-  { "Don't ask anything, exit on missing options", "Noninteractive", "--non-inter", CONFIG_NON_INTERACTIVE, 0 },
+   * names where one is a prefix of another option. Needs just a bit work to
+   * fix the parser to care about ' ' or '\t' after the wanted
+   * option... */
+  { "<0/1/2/3/99> -- Show verbose debug messages", "Debug ", "--debug", CONFIG_DEBUG, 1 },
+  { "-- Don't detach from the console after login", "No Detach", "--no-detach", CONFIG_ND, 0 },
+  { "-- Don't ask anything, exit on missing options", "Noninteractive", "--non-inter", CONFIG_NON_INTERACTIVE, 0 },
   { "<filename> -- store the pid of background process there", "Pidfile ", "--pid-file", CONFIG_PID_FILE, 1 },
   { "<0-65535> -- store the pid of background process there", "Local Port ", "--local-port", CONFIG_LOCAL_PORT, 1 },
   { "<ascii string> -- visible name of the TUN interface", "Interface name ", "--ifname", CONFIG_IF_NAME, 1 },
@@ -1899,8 +1908,8 @@ read_config_file (char *name, const char **configs, int missingok)
 	    break;
 	  }
       if (config_names[i].name == NULL && line[0] != '#' && line[0] != 0)
-	error_at_line (0, 0, name, linenum, 
-		       "warning: unknown configuration directive");
+	error(0, 0, "warning: unknown configuration directive %s at line %d",
+		       name, linenum);
     }
 }
 
@@ -2116,7 +2125,7 @@ DEBUG(2, printf("S5\n"));
 DEBUG(2, printf("S6\n"));
   do_phase_2_config (&oursa);
 DEBUG(2, printf("S7\n"));
-  config_tunnel (&oursa);
+  config_tunnel (tun_name, *((struct in_addr *)oursa.our_address));
 DEBUG(2, printf("S8\n"));
 
   setup_link (&oursa);

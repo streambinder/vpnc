@@ -27,10 +27,13 @@
 #include <string.h>
 #include <syslog.h>
 #include <sys/ioctl.h>
+#include <errno.h>
 
 #include <sys/socket.h>
 #include <linux/if.h>
 #include <linux/if_tun.h>
+
+#include "sysdep.h"
 
 /* 
  * Allocate TUN device, returns opened fd. 
@@ -101,3 +104,7 @@ int tun_read(int fd, char *buf, int len)
 {
     return read(fd, buf, len);
 }
+
+/***********************************************************************/
+/* other support functions */
+

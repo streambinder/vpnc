@@ -19,11 +19,12 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
-#include <error.h>
 #include <errno.h>
 #include <stdio.h>
+
 #include "isakmp-pkt.h"
 #include "vpnc.h"
+#include "sysdep.h"
 
 void *
 xallocc (size_t x)

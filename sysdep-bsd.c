@@ -22,15 +22,19 @@
 
 #include <unistd.h>
 #include <fcntl.h>
+#include <errno.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <syslog.h>
 #include <sys/ioctl.h>
+#include <stdarg.h>
 
 #include <sys/socket.h>
 #include <net/if.h>
 #include <net/if_tun.h>
+
+#include "sysdep.h"
 
 /* 
  * Allocate TUN device, returns opened fd. 
@@ -59,6 +63,7 @@ int tun_open(char *dev)
 
 int tun_close(int fd, char *dev)
 {
+    dev = NULL; /*unused*/
     return close(fd);
 }
 
@@ -71,4 +76,47 @@ int tun_write(int fd, char *buf, int len)
 int tun_read(int fd, char *buf, int len)
 {
     return read(fd, buf, len);
+}
+
+/***********************************************************************/
+/* other support functions */
+
+void error(int status, int errornum, const char *fmt, ...)
+{
+	char   *buf2;
+	va_list        ap;
+
+	va_start(ap, fmt);
+	vasprintf(&buf2, fmt, ap);
+	va_end(ap);
+	fprintf(stderr, "%s", buf2);
+	if (errornum)
+		fprintf(stderr, ": %s\n", strerror(errornum));
+	free(buf2);
+	
+	if (status)
+		exit(status);
+}
+
+int getline(char **line, size_t *length, FILE *stream)
+{
+	char *tmpline;
+	size_t len;
+
+	tmpline = fgetln(stream, &len);
+	if (feof(stream))
+		return -1;
+	if (*line == NULL) {
+		*line = malloc(len + 1);
+		*length = len + 1;
+	}
+	if (*length < len + 1) {
+		*line = realloc(*line, len + 1);
+		*length = len + 1;
+	}
+	if (*line == NULL)
+		return -1;
+	memcpy(*line, tmpline, len);
+	(*line)[len] = '\0';
+	return len;
 }
