@@ -1226,27 +1226,28 @@ static int do_phase_2_xauth(struct sa_block *s)
 					break;
 				}
 			case ISAKMP_XAUTH_ATTRIB_ANSWER:
-				{
-					char *line = NULL;
-					size_t linelen = 0;
-					ssize_t linesz;
+			case ISAKMP_XAUTH_ATTRIB_USER_PASSWORD:
+			case ISAKMP_XAUTH_ATTRIB_PASSCODE:
+				if (seen_answer || config[CONFIG_XAUTH_INTERACTIVE]) {
+					char *pass, *prompt = NULL;
 					struct isakmp_attribute *na;
 
-					if ((linesz = getline(&line, &linelen, stdin)) == -1)
-						error(1, errno, "reading user input");
-					if (line[linesz - 1] == '\n')
-						linesz--;
+					asprintf(&prompt, "%s for VPN %s@%s: ",
+						(ap->type == ISAKMP_XAUTH_ATTRIB_ANSWER) ?
+						"Answer" :
+						(ap->type == ISAKMP_XAUTH_ATTRIB_USER_PASSWORD) ?
+						"Password" : "Passcode",
+						config[CONFIG_XAUTH_USERNAME], ntop_buf);
+					pass = getpass(prompt);
+					free(prompt);
 
 					na = new_isakmp_attribute(ap->type, reply_attr);
 					reply_attr = na;
-					na->u.lots.length = linesz;
-					na->u.lots.data = line;
-				}
-				break;
-
-			case ISAKMP_XAUTH_ATTRIB_USER_PASSWORD:
-			case ISAKMP_XAUTH_ATTRIB_PASSCODE:
-				{
+					na->u.lots.length = strlen(pass);
+					na->u.lots.data = xallocc(na->u.lots.length);
+					memcpy(na->u.lots.data, pass, na->u.lots.length);
+					memset(pass, 0, na->u.lots.length);
+				} else {
 					struct isakmp_attribute *na;
 					na = new_isakmp_attribute(ap->type, reply_attr);
 					reply_attr = na;
@@ -1254,8 +1255,8 @@ static int do_phase_2_xauth(struct sa_block *s)
 					na->u.lots.data = xallocc(na->u.lots.length);
 					memcpy(na->u.lots.data, config[CONFIG_XAUTH_PASSWORD],
 						na->u.lots.length);
-					break;
 				}
+				break;
 			default:
 				;
 			}

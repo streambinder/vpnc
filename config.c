@@ -473,6 +473,8 @@ void do_config(int argc, char **argv)
 	for (i = 0; i < LAST_CONFIG; i++) {
 		if (config[i] != NULL || config[CONFIG_NON_INTERACTIVE] != NULL)
 			continue;
+		if (config[CONFIG_XAUTH_INTERACTIVE] && i == CONFIG_XAUTH_PASSWORD)
+			continue;
 		
 		s = NULL;
 		s_len = 0;
@@ -533,7 +535,7 @@ void do_config(int argc, char **argv)
 		error(1, 0, "missing IPSec secret");
 	if (!config[CONFIG_XAUTH_USERNAME])
 		error(1, 0, "missing Xauth username");
-	if (!config[CONFIG_XAUTH_PASSWORD])
+	if (!config[CONFIG_XAUTH_PASSWORD] && !config[CONFIG_XAUTH_INTERACTIVE])
 		error(1, 0, "missing Xauth password");
 	if (get_dh_group_ike() == NULL)
 		error(1, 0, "IKE DH Group \"%s\" unsupported\n", config[CONFIG_IKE_DH]);
