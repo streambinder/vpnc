@@ -43,6 +43,36 @@
 #include "dh.h"
 #include "vpnc.h"
 
+struct sa_block {
+	uint8_t i_cookie[ISAKMP_COOKIE_LENGTH];
+	uint8_t r_cookie[ISAKMP_COOKIE_LENGTH];
+	uint8_t *key;
+	int keylen;
+	uint8_t *initial_iv;
+	uint8_t *skeyid_a;
+	uint8_t *skeyid_d;
+	int cry_algo, ivlen;
+	int md_algo, md_len;
+	uint8_t current_iv_msgid[4];
+	uint8_t *current_iv;
+	uint8_t our_address[4], our_netmask[4];
+	uint32_t tous_esp_spi, tothem_esp_spi;
+	uint8_t *kill_packet;
+	size_t kill_packet_size;
+	int do_pfs;
+};
+
+int tun_fd = -1;
+char tun_name[IFNAMSIZ];
+
+static int sockfd = -1;
+static struct sockaddr *dest_addr;
+static int timeout = 5000; /* 5 seconds */
+static uint8_t *resend_hash = NULL;
+
+static uint8_t r_packet[2048];
+static ssize_t r_length;
+
 extern void vpnc_doit(unsigned long tous_spi,
 	const unsigned char *tous_key,
 	struct sockaddr_in *tous_dest,
@@ -82,7 +112,8 @@ supported_algo_t supp_hash[] = {
 };
 
 supported_algo_t supp_crypt[] = {
-	{"des", GCRY_CIPHER_DES, IKE_ENC_DES_CBC, ISAKMP_IPSEC_ESP_DES, 0}, /*note: working, but not recommended */
+	/*note: working, but not recommended */
+	{"des", GCRY_CIPHER_DES, IKE_ENC_DES_CBC, ISAKMP_IPSEC_ESP_DES, 0},
 	{"3des", GCRY_CIPHER_3DES, IKE_ENC_3DES_CBC, ISAKMP_IPSEC_ESP_3DES, 0},
 	{"aes128", GCRY_CIPHER_AES128, IKE_ENC_AES_CBC, ISAKMP_IPSEC_ESP_AES, 128},
 	{"aes192", GCRY_CIPHER_AES192, IKE_ENC_AES_CBC, ISAKMP_IPSEC_ESP_AES, 192},
@@ -151,11 +182,32 @@ const supported_algo_t *get_dh_group_ipsec(int server_setting)
 	return get_algo(SUPP_ALGO_DH_GROUP, SUPP_ALGO_NAME, 0, pfs_setting, 0);
 }
 
-/* * */
-
 static __inline__ int min(int a, int b)
 {
 	return (a < b) ? a : b;
+}
+
+static void addenv(const void *name, const char *value)
+{
+	char *strbuf = NULL, *oldval;
+
+	oldval = getenv(name);
+	if (oldval != NULL) {
+		strbuf = xallocc(strlen(oldval) + 1 + strlen(value) + 1);
+		strcat(strbuf, oldval);
+		strcat(strbuf, " ");
+		strcat(strbuf, value);
+	}
+
+	setenv(name, strbuf ? strbuf : value, 1);
+
+	if (strbuf)
+		free(strbuf);
+}
+
+static void addenv_ipv4(const void *name, uint8_t * data)
+{
+	addenv(name, inet_ntoa(*((struct in_addr *)data)));
 }
 
 static int make_socket(uint16_t port)
@@ -198,9 +250,6 @@ static struct sockaddr *init_sockaddr(const char *hostname, uint16_t port)
 	return (struct sockaddr *)result;
 }
 
-int tun_fd = -1;
-char tun_name[IFNAMSIZ];
-
 static void setup_tunnel(void)
 {
 	if (config[CONFIG_IF_NAME])
@@ -213,10 +262,13 @@ static void setup_tunnel(void)
 		error(1, errno, "can't initialise tunnel interface");
 }
 
-static int sockfd = -1;
-static struct sockaddr *dest_addr;
-static int timeout = 5000; /* 5 seconds */
-static uint8_t *resend_hash = NULL;
+void config_tunnel(const char *dev)
+{
+	setenv("TUNDEV", dev, 1);
+	setenv("VPNGATEWAY", inet_ntoa(((struct sockaddr_in *)dest_addr)->sin_addr), 1);
+
+	system(config[CONFIG_CONFIG_SCRIPT]);
+}
 
 static int recv_ignore_dup(void *recvbuf, size_t recvbufsize, uint8_t reply_extype)
 {
@@ -319,6 +371,284 @@ sendrecv(void *recvbuf, size_t recvbufsize, void *tosend, size_t sendsize, uint8
 	return recvsize;
 }
 
+void isakmp_crypt(struct sa_block *s, uint8_t * block, size_t blocklen, int enc)
+{
+	unsigned char *new_iv;
+	gcry_cipher_hd_t cry_ctx;
+
+	if (blocklen < ISAKMP_PAYLOAD_O || ((blocklen - ISAKMP_PAYLOAD_O) % s->ivlen != 0))
+		abort();
+
+	if ((memcmp(block + ISAKMP_MESSAGE_ID_O, s->current_iv_msgid, 4) != 0) && (enc >= 0)) {
+		unsigned char *iv;
+		gcry_md_hd_t md_ctx;
+
+		gcry_md_open(&md_ctx, s->md_algo, 0);
+		gcry_md_write(md_ctx, s->initial_iv, s->ivlen);
+		gcry_md_write(md_ctx, block + ISAKMP_MESSAGE_ID_O, 4);
+		gcry_md_final(md_ctx);
+		iv = gcry_md_read(md_ctx, 0);
+		memcpy(s->current_iv, iv, s->ivlen);
+		memcpy(s->current_iv_msgid, block + ISAKMP_MESSAGE_ID_O, 4);
+		gcry_md_close(md_ctx);
+	}
+
+	new_iv = xallocc(s->ivlen);
+	gcry_cipher_open(&cry_ctx, s->cry_algo, GCRY_CIPHER_MODE_CBC, 0);
+	gcry_cipher_setkey(cry_ctx, s->key, s->keylen);
+	gcry_cipher_setiv(cry_ctx, s->current_iv, s->ivlen);
+	if (!enc) {
+		memcpy(new_iv, block + blocklen - s->ivlen, s->ivlen);
+		gcry_cipher_decrypt(cry_ctx, block + ISAKMP_PAYLOAD_O, blocklen - ISAKMP_PAYLOAD_O,
+			NULL, 0);
+		memcpy(s->current_iv, new_iv, s->ivlen);
+	} else { /* enc == -1 (no longer used) || enc == 1 */
+		gcry_cipher_encrypt(cry_ctx, block + ISAKMP_PAYLOAD_O, blocklen - ISAKMP_PAYLOAD_O,
+			NULL, 0);
+		if (enc > 0)
+			memcpy(s->current_iv, block + blocklen - s->ivlen, s->ivlen);
+	}
+	gcry_cipher_close(cry_ctx);
+
+}
+
+static uint16_t unpack_verify_phase2(struct sa_block *s,
+	uint8_t * r_packet,
+	size_t r_length, struct isakmp_packet **r_p, const uint8_t * nonce, size_t nonce_size)
+{
+	struct isakmp_packet *r;
+	uint16_t reject = 0;
+
+	*r_p = NULL;
+
+	if (r_length < ISAKMP_PAYLOAD_O || ((r_length - ISAKMP_PAYLOAD_O) % s->ivlen != 0))
+		return ISAKMP_N_UNEQUAL_PAYLOAD_LENGTHS;
+
+	isakmp_crypt(s, r_packet, r_length, 0);
+
+	{
+		r = parse_isakmp_packet(r_packet, r_length, &reject);
+		if (reject != 0)
+			return reject;
+	}
+
+	/* Verify the basic stuff.  */
+	if (memcmp(r->i_cookie, s->i_cookie, ISAKMP_COOKIE_LENGTH) != 0
+		|| memcmp(r->r_cookie, s->r_cookie, ISAKMP_COOKIE_LENGTH) != 0)
+		return ISAKMP_N_INVALID_COOKIE;
+	if (r->flags != ISAKMP_FLAG_E)
+		return ISAKMP_N_INVALID_FLAGS;
+
+	{
+		size_t sz, spos;
+		gcry_md_hd_t hm;
+		unsigned char *expected_hash;
+		struct isakmp_payload *h = r->payload;
+
+		if (h == NULL || h->type != ISAKMP_PAYLOAD_HASH || h->u.hash.length != s->md_len)
+			return ISAKMP_N_INVALID_HASH_INFORMATION;
+
+		spos = (ISAKMP_PAYLOAD_O + (r_packet[ISAKMP_PAYLOAD_O + 2] << 8)
+			+ r_packet[ISAKMP_PAYLOAD_O + 3]);
+
+		/* Compute the real length based on the payload lengths.  */
+		for (sz = spos; r_packet[sz] != 0; sz += r_packet[sz + 2] << 8 | r_packet[sz + 3]) ;
+		sz += r_packet[sz + 2] << 8 | r_packet[sz + 3];
+
+		gcry_md_open(&hm, s->md_algo, GCRY_MD_FLAG_HMAC);
+		gcry_md_setkey(hm, s->skeyid_a, s->md_len);
+		gcry_md_write(hm, r_packet + ISAKMP_MESSAGE_ID_O, 4);
+		if (nonce)
+			gcry_md_write(hm, nonce, nonce_size);
+		gcry_md_write(hm, r_packet + spos, sz - spos);
+		gcry_md_final(hm);
+		expected_hash = gcry_md_read(hm, 0);
+
+		if (opt_debug >= 3) {
+			printf("hashlen: %d\n", s->md_len);
+			printf("u.hash.length: %d\n", h->u.hash.length);
+			hex_dump("expected_hash", expected_hash, s->md_len);
+			hex_dump("h->u.hash.data", h->u.hash.data, s->md_len);
+		}
+
+		reject = 0;
+		if (memcmp(h->u.hash.data, expected_hash, s->md_len) != 0)
+			reject = ISAKMP_N_AUTHENTICATION_FAILED;
+		gcry_md_close(hm);
+#if 0
+		if (reject != 0)
+			return reject;
+#endif
+	}
+	*r_p = r;
+	return 0;
+}
+
+static void
+phase2_authpacket(struct sa_block *s, struct isakmp_payload *pl,
+	uint8_t exchange_type, uint32_t msgid,
+	uint8_t ** p_flat, size_t * p_size,
+	uint8_t * nonce_i, int ni_len, uint8_t * nonce_r, int nr_len)
+{
+	struct isakmp_packet *p;
+	uint8_t *pl_flat;
+	size_t pl_size;
+	gcry_md_hd_t hm;
+	uint8_t msgid_sent[4];
+
+	/* Build up the packet.  */
+	p = new_isakmp_packet();
+	memcpy(p->i_cookie, s->i_cookie, ISAKMP_COOKIE_LENGTH);
+	memcpy(p->r_cookie, s->r_cookie, ISAKMP_COOKIE_LENGTH);
+	p->flags = ISAKMP_FLAG_E;
+	p->isakmp_version = ISAKMP_VERSION;
+	p->exchange_type = exchange_type;
+	p->message_id = msgid;
+	p->payload = new_isakmp_payload(ISAKMP_PAYLOAD_HASH);
+	p->payload->next = pl;
+	p->payload->u.hash.length = s->md_len;
+	p->payload->u.hash.data = xallocc(s->md_len);
+
+	/* Set the MAC.  */
+	gcry_md_open(&hm, s->md_algo, GCRY_MD_FLAG_HMAC);
+	gcry_md_setkey(hm, s->skeyid_a, s->md_len);
+
+	if (pl == NULL) {
+		DEBUG(3, printf("authing NULL package!\n"));
+		gcry_md_write(hm, "" /* \0 */ , 1);
+	}
+
+	msgid_sent[0] = msgid >> 24;
+	msgid_sent[1] = msgid >> 16;
+	msgid_sent[2] = msgid >> 8;
+	msgid_sent[3] = msgid;
+	gcry_md_write(hm, msgid_sent, sizeof(msgid_sent));
+
+	if (nonce_i != NULL)
+		gcry_md_write(hm, nonce_i, ni_len);
+
+	if (nonce_r != NULL)
+		gcry_md_write(hm, nonce_r, nr_len);
+
+	if (pl != NULL) {
+		flatten_isakmp_payload(pl, &pl_flat, &pl_size);
+		gcry_md_write(hm, pl_flat, pl_size);
+		memset(pl_flat, 0, pl_size);
+		free(pl_flat);
+	}
+
+	gcry_md_final(hm);
+	memcpy(p->payload->u.hash.data, gcry_md_read(hm, 0), s->md_len);
+	gcry_md_close(hm);
+
+	flatten_isakmp_packet(p, p_flat, p_size, s->ivlen);
+	free_isakmp_packet(p);
+}
+
+static void sendrecv_phase2(struct sa_block *s, struct isakmp_payload *pl,
+	uint8_t exchange_type, uint32_t msgid, int sendonly, uint8_t reply_extype,
+	uint8_t ** save_p_flat, size_t * save_p_size,
+	uint8_t * nonce_i, int ni_len, uint8_t * nonce_r, int nr_len)
+{
+	uint8_t *p_flat;
+	size_t p_size;
+
+	if ((save_p_flat == NULL) || (*save_p_flat == NULL)) {
+		phase2_authpacket(s, pl, exchange_type, msgid, &p_flat, &p_size,
+			nonce_i, ni_len, nonce_r, nr_len);
+		isakmp_crypt(s, p_flat, p_size, 1);
+	} else {
+		p_flat = *save_p_flat;
+		p_size = *save_p_size;
+	}
+
+	if (!sendonly)
+		r_length = sendrecv(r_packet, sizeof(r_packet), p_flat, p_size, reply_extype);
+	else {
+		if (sendto(sockfd, p_flat, p_size, 0,
+				dest_addr, sizeof(struct sockaddr_in)) != (int)p_size
+			&& sendonly == 1)
+			error(1, errno, "can't send packet");
+	}
+	if (save_p_flat == NULL) {
+		free(p_flat);
+	} else {
+		*save_p_flat = p_flat;
+		*save_p_size = p_size;
+	}
+}
+
+static void phase2_fatal(struct sa_block *s, const char *msg, uint16_t id)
+{
+	struct isakmp_payload *pl;
+	uint32_t msgid;
+
+	DEBUG(1, printf("\n\n---!!!!!!!!! entering phase2_fatal !!!!!!!!!---\n\n\n"));
+	gcry_randomize((uint8_t *) & msgid, sizeof(msgid), GCRY_WEAK_RANDOM);
+	pl = new_isakmp_payload(ISAKMP_PAYLOAD_N);
+	pl->u.n.doi = ISAKMP_DOI_IPSEC;
+	pl->u.n.protocol = ISAKMP_IPSEC_PROTO_ISAKMP;
+	pl->u.n.type = id;
+	sendrecv_phase2(s, pl, ISAKMP_EXCHANGE_INFORMATIONAL, msgid, 2, 0, 0, 0, 0, 0, 0, 0);
+
+	gcry_randomize((uint8_t *) & msgid, sizeof(msgid), GCRY_WEAK_RANDOM);
+	pl = new_isakmp_payload(ISAKMP_PAYLOAD_D);
+	pl->u.d.doi = ISAKMP_DOI_IPSEC;
+	pl->u.d.protocol = ISAKMP_IPSEC_PROTO_ISAKMP;
+	pl->u.d.spi_length = 2 * ISAKMP_COOKIE_LENGTH;
+	pl->u.d.num_spi = 1;
+	pl->u.d.spi = xallocc(1 * sizeof(uint8_t *));
+	pl->u.d.spi[0] = xallocc(2 * ISAKMP_COOKIE_LENGTH);
+	memcpy(pl->u.d.spi[0] + ISAKMP_COOKIE_LENGTH * 0, s->i_cookie, ISAKMP_COOKIE_LENGTH);
+	memcpy(pl->u.d.spi[0] + ISAKMP_COOKIE_LENGTH * 1, s->r_cookie, ISAKMP_COOKIE_LENGTH);
+	sendrecv_phase2(s, pl, ISAKMP_EXCHANGE_INFORMATIONAL, msgid, 2, 0, 0, 0, 0, 0, 0, 0);
+
+	error(1, 0, msg, isakmp_notify_to_error(id));
+}
+
+static uint8_t *gen_keymat(struct sa_block *s,
+	uint8_t protocol, uint32_t spi,
+	int md_algo, int crypt_algo,
+	const uint8_t * dh_shared, size_t dh_size,
+	const uint8_t * ni_data, size_t ni_size, const uint8_t * nr_data, size_t nr_size)
+{
+	gcry_md_hd_t hm;
+	uint8_t *block;
+	int i;
+	int blksz;
+	int cnt;
+
+	int md_len = gcry_md_get_algo_dlen(md_algo);
+	int cry_len;
+
+	gcry_cipher_algo_info(crypt_algo, GCRYCTL_GET_KEYLEN, NULL, &cry_len);
+	blksz = md_len + cry_len;
+	cnt = (blksz + s->md_len - 1) / s->md_len;
+	block = xallocc(cnt * s->md_len);
+	DEBUG(3, printf("generating %d bytes keymat (cnt=%d)\n", blksz, cnt));
+	if (cnt < 1)
+		abort();
+
+	for (i = 0; i < cnt; i++) {
+		gcry_md_open(&hm, s->md_algo, GCRY_MD_FLAG_HMAC);
+		gcry_md_setkey(hm, s->skeyid_d, s->md_len);
+		if (i != 0)
+			gcry_md_write(hm, block + (i - 1) * s->md_len, s->md_len);
+		if (dh_shared != NULL)
+			gcry_md_write(hm, dh_shared, dh_size);
+		gcry_md_write(hm, &protocol, 1);
+		gcry_md_write(hm, (uint8_t *) & spi, sizeof(spi));
+		gcry_md_write(hm, ni_data, ni_size);
+		gcry_md_write(hm, nr_data, nr_size);
+		gcry_md_final(hm);
+		memcpy(block + i * s->md_len, gcry_md_read(hm, 0), s->md_len);
+		gcry_md_close(hm);
+	}
+	return block;
+}
+
+/* * */
+
 struct isakmp_attribute *make_transform_ike(int dh_group, int crypt, int hash, int keylen)
 {
 	struct isakmp_attribute *a = NULL;
@@ -370,69 +700,6 @@ struct isakmp_payload *make_our_sa_ike(void)
 	r->u.sa.proposals->u.p.transforms = t;
 	return r;
 }
-
-struct sa_block {
-	uint8_t i_cookie[ISAKMP_COOKIE_LENGTH];
-	uint8_t r_cookie[ISAKMP_COOKIE_LENGTH];
-	uint8_t *key;
-	int keylen;
-	uint8_t *initial_iv;
-	uint8_t *skeyid_a;
-	uint8_t *skeyid_d;
-	int cry_algo, ivlen;
-	int md_algo, md_len;
-	uint8_t current_iv_msgid[4];
-	uint8_t *current_iv;
-	uint8_t our_address[4], our_netmask[4];
-	uint32_t tous_esp_spi, tothem_esp_spi;
-	uint8_t *kill_packet;
-	size_t kill_packet_size;
-	int do_pfs;
-};
-
-void isakmp_crypt(struct sa_block *s, uint8_t * block, size_t blocklen, int enc)
-{
-	unsigned char *new_iv;
-	gcry_cipher_hd_t cry_ctx;
-
-	if (blocklen < ISAKMP_PAYLOAD_O || ((blocklen - ISAKMP_PAYLOAD_O) % s->ivlen != 0))
-		abort();
-
-	if ((memcmp(block + ISAKMP_MESSAGE_ID_O, s->current_iv_msgid, 4) != 0) && (enc >= 0)) {
-		unsigned char *iv;
-		gcry_md_hd_t md_ctx;
-
-		gcry_md_open(&md_ctx, s->md_algo, 0);
-		gcry_md_write(md_ctx, s->initial_iv, s->ivlen);
-		gcry_md_write(md_ctx, block + ISAKMP_MESSAGE_ID_O, 4);
-		gcry_md_final(md_ctx);
-		iv = gcry_md_read(md_ctx, 0);
-		memcpy(s->current_iv, iv, s->ivlen);
-		memcpy(s->current_iv_msgid, block + ISAKMP_MESSAGE_ID_O, 4);
-		gcry_md_close(md_ctx);
-	}
-
-	new_iv = xallocc(s->ivlen);
-	gcry_cipher_open(&cry_ctx, s->cry_algo, GCRY_CIPHER_MODE_CBC, 0);
-	gcry_cipher_setkey(cry_ctx, s->key, s->keylen);
-	gcry_cipher_setiv(cry_ctx, s->current_iv, s->ivlen);
-	if (!enc) {
-		memcpy(new_iv, block + blocklen - s->ivlen, s->ivlen);
-		gcry_cipher_decrypt(cry_ctx, block + ISAKMP_PAYLOAD_O, blocklen - ISAKMP_PAYLOAD_O,
-			NULL, 0);
-		memcpy(s->current_iv, new_iv, s->ivlen);
-	} else { /* enc == -1 (no longer used) || enc == 1 */
-		gcry_cipher_encrypt(cry_ctx, block + ISAKMP_PAYLOAD_O, blocklen - ISAKMP_PAYLOAD_O,
-			NULL, 0);
-		if (enc > 0)
-			memcpy(s->current_iv, block + blocklen - s->ivlen, s->ivlen);
-	}
-	gcry_cipher_close(cry_ctx);
-
-}
-
-static uint8_t r_packet[2048];
-static ssize_t r_length;
 
 void do_phase_1(const char *key_id, const char *shared_key, struct sa_block *d)
 {
@@ -892,202 +1159,6 @@ void do_phase_1(const char *key_id, const char *shared_key, struct sa_block *d)
 	free(returned_hash);
 }
 
-static uint16_t
-unpack_verify_phase2(struct sa_block *s,
-	uint8_t * r_packet,
-	size_t r_length, struct isakmp_packet **r_p, const uint8_t * nonce, size_t nonce_size)
-{
-	struct isakmp_packet *r;
-	uint16_t reject = 0;
-
-	*r_p = NULL;
-
-	if (r_length < ISAKMP_PAYLOAD_O || ((r_length - ISAKMP_PAYLOAD_O) % s->ivlen != 0))
-		return ISAKMP_N_UNEQUAL_PAYLOAD_LENGTHS;
-
-	isakmp_crypt(s, r_packet, r_length, 0);
-
-	{
-		r = parse_isakmp_packet(r_packet, r_length, &reject);
-		if (reject != 0)
-			return reject;
-	}
-
-	/* Verify the basic stuff.  */
-	if (memcmp(r->i_cookie, s->i_cookie, ISAKMP_COOKIE_LENGTH) != 0
-		|| memcmp(r->r_cookie, s->r_cookie, ISAKMP_COOKIE_LENGTH) != 0)
-		return ISAKMP_N_INVALID_COOKIE;
-	if (r->flags != ISAKMP_FLAG_E)
-		return ISAKMP_N_INVALID_FLAGS;
-
-	{
-		size_t sz, spos;
-		gcry_md_hd_t hm;
-		unsigned char *expected_hash;
-		struct isakmp_payload *h = r->payload;
-
-		if (h == NULL || h->type != ISAKMP_PAYLOAD_HASH || h->u.hash.length != s->md_len)
-			return ISAKMP_N_INVALID_HASH_INFORMATION;
-
-		spos = (ISAKMP_PAYLOAD_O + (r_packet[ISAKMP_PAYLOAD_O + 2] << 8)
-			+ r_packet[ISAKMP_PAYLOAD_O + 3]);
-
-		/* Compute the real length based on the payload lengths.  */
-		for (sz = spos; r_packet[sz] != 0; sz += r_packet[sz + 2] << 8 | r_packet[sz + 3]) ;
-		sz += r_packet[sz + 2] << 8 | r_packet[sz + 3];
-
-		gcry_md_open(&hm, s->md_algo, GCRY_MD_FLAG_HMAC);
-		gcry_md_setkey(hm, s->skeyid_a, s->md_len);
-		gcry_md_write(hm, r_packet + ISAKMP_MESSAGE_ID_O, 4);
-		if (nonce)
-			gcry_md_write(hm, nonce, nonce_size);
-		gcry_md_write(hm, r_packet + spos, sz - spos);
-		gcry_md_final(hm);
-		expected_hash = gcry_md_read(hm, 0);
-
-		if (opt_debug >= 3) {
-			printf("hashlen: %d\n", s->md_len);
-			printf("u.hash.length: %d\n", h->u.hash.length);
-			hex_dump("expected_hash", expected_hash, s->md_len);
-			hex_dump("h->u.hash.data", h->u.hash.data, s->md_len);
-		}
-
-		reject = 0;
-		if (memcmp(h->u.hash.data, expected_hash, s->md_len) != 0)
-			reject = ISAKMP_N_AUTHENTICATION_FAILED;
-		gcry_md_close(hm);
-#if 0
-		if (reject != 0)
-			return reject;
-#endif
-	}
-	*r_p = r;
-	return 0;
-}
-
-static void
-phase2_authpacket(struct sa_block *s, struct isakmp_payload *pl,
-	uint8_t exchange_type, uint32_t msgid,
-	uint8_t ** p_flat, size_t * p_size,
-	uint8_t * nonce_i, int ni_len, uint8_t * nonce_r, int nr_len)
-{
-	struct isakmp_packet *p;
-	uint8_t *pl_flat;
-	size_t pl_size;
-	gcry_md_hd_t hm;
-	uint8_t msgid_sent[4];
-
-	/* Build up the packet.  */
-	p = new_isakmp_packet();
-	memcpy(p->i_cookie, s->i_cookie, ISAKMP_COOKIE_LENGTH);
-	memcpy(p->r_cookie, s->r_cookie, ISAKMP_COOKIE_LENGTH);
-	p->flags = ISAKMP_FLAG_E;
-	p->isakmp_version = ISAKMP_VERSION;
-	p->exchange_type = exchange_type;
-	p->message_id = msgid;
-	p->payload = new_isakmp_payload(ISAKMP_PAYLOAD_HASH);
-	p->payload->next = pl;
-	p->payload->u.hash.length = s->md_len;
-	p->payload->u.hash.data = xallocc(s->md_len);
-
-	/* Set the MAC.  */
-	gcry_md_open(&hm, s->md_algo, GCRY_MD_FLAG_HMAC);
-	gcry_md_setkey(hm, s->skeyid_a, s->md_len);
-
-	if (pl == NULL) {
-		DEBUG(3, printf("authing NULL package!\n"));
-		gcry_md_write(hm, "" /* \0 */ , 1);
-	}
-
-	msgid_sent[0] = msgid >> 24;
-	msgid_sent[1] = msgid >> 16;
-	msgid_sent[2] = msgid >> 8;
-	msgid_sent[3] = msgid;
-	gcry_md_write(hm, msgid_sent, sizeof(msgid_sent));
-
-	if (nonce_i != NULL)
-		gcry_md_write(hm, nonce_i, ni_len);
-
-	if (nonce_r != NULL)
-		gcry_md_write(hm, nonce_r, nr_len);
-
-	if (pl != NULL) {
-		flatten_isakmp_payload(pl, &pl_flat, &pl_size);
-		gcry_md_write(hm, pl_flat, pl_size);
-		memset(pl_flat, 0, pl_size);
-		free(pl_flat);
-	}
-
-	gcry_md_final(hm);
-	memcpy(p->payload->u.hash.data, gcry_md_read(hm, 0), s->md_len);
-	gcry_md_close(hm);
-
-	flatten_isakmp_packet(p, p_flat, p_size, s->ivlen);
-	free_isakmp_packet(p);
-}
-
-static void
-sendrecv_phase2(struct sa_block *s, struct isakmp_payload *pl,
-	uint8_t exchange_type, uint32_t msgid, int sendonly, uint8_t reply_extype,
-	uint8_t ** save_p_flat, size_t * save_p_size,
-	uint8_t * nonce_i, int ni_len, uint8_t * nonce_r, int nr_len)
-{
-	uint8_t *p_flat;
-	size_t p_size;
-
-	if ((save_p_flat == NULL) || (*save_p_flat == NULL)) {
-		phase2_authpacket(s, pl, exchange_type, msgid, &p_flat, &p_size,
-			nonce_i, ni_len, nonce_r, nr_len);
-		isakmp_crypt(s, p_flat, p_size, 1);
-	} else {
-		p_flat = *save_p_flat;
-		p_size = *save_p_size;
-	}
-
-	if (!sendonly)
-		r_length = sendrecv(r_packet, sizeof(r_packet), p_flat, p_size, reply_extype);
-	else {
-		if (sendto(sockfd, p_flat, p_size, 0,
-				dest_addr, sizeof(struct sockaddr_in)) != (int)p_size
-			&& sendonly == 1)
-			error(1, errno, "can't send packet");
-	}
-	if (save_p_flat == NULL) {
-		free(p_flat);
-	} else {
-		*save_p_flat = p_flat;
-		*save_p_size = p_size;
-	}
-}
-
-static void phase2_fatal(struct sa_block *s, const char *msg, uint16_t id)
-{
-	struct isakmp_payload *pl;
-	uint32_t msgid;
-
-	DEBUG(1, printf("\n\n---!!!!!!!!! entering phase2_fatal !!!!!!!!!---\n\n\n"));
-	gcry_randomize((uint8_t *) & msgid, sizeof(msgid), GCRY_WEAK_RANDOM);
-	pl = new_isakmp_payload(ISAKMP_PAYLOAD_N);
-	pl->u.n.doi = ISAKMP_DOI_IPSEC;
-	pl->u.n.protocol = ISAKMP_IPSEC_PROTO_ISAKMP;
-	pl->u.n.type = id;
-	sendrecv_phase2(s, pl, ISAKMP_EXCHANGE_INFORMATIONAL, msgid, 2, 0, 0, 0, 0, 0, 0, 0);
-
-	gcry_randomize((uint8_t *) & msgid, sizeof(msgid), GCRY_WEAK_RANDOM);
-	pl = new_isakmp_payload(ISAKMP_PAYLOAD_D);
-	pl->u.d.doi = ISAKMP_DOI_IPSEC;
-	pl->u.d.protocol = ISAKMP_IPSEC_PROTO_ISAKMP;
-	pl->u.d.spi_length = 2 * ISAKMP_COOKIE_LENGTH;
-	pl->u.d.num_spi = 1;
-	pl->u.d.spi = xallocc(1 * sizeof(uint8_t *));
-	pl->u.d.spi[0] = xallocc(2 * ISAKMP_COOKIE_LENGTH);
-	memcpy(pl->u.d.spi[0] + ISAKMP_COOKIE_LENGTH * 0, s->i_cookie, ISAKMP_COOKIE_LENGTH);
-	memcpy(pl->u.d.spi[0] + ISAKMP_COOKIE_LENGTH * 1, s->r_cookie, ISAKMP_COOKIE_LENGTH);
-	sendrecv_phase2(s, pl, ISAKMP_EXCHANGE_INFORMATIONAL, msgid, 2, 0, 0, 0, 0, 0, 0, 0);
-
-	error(1, 0, msg, isakmp_notify_to_error(id));
-}
-
 static int do_phase_2_xauth(struct sa_block *s)
 {
 	struct isakmp_packet *r;
@@ -1301,29 +1372,6 @@ static int do_phase_2_xauth(struct sa_block *s)
 	return 0;
 }
 
-static void addenv(const void *name, const char *value)
-{
-	char *strbuf = NULL, *oldval;
-
-	oldval = getenv(name);
-	if (oldval != NULL) {
-		strbuf = xallocc(strlen(oldval) + 1 + strlen(value) + 1);
-		strcat(strbuf, oldval);
-		strcat(strbuf, " ");
-		strcat(strbuf, value);
-	}
-
-	setenv(name, strbuf ? strbuf : value, 1);
-
-	if (strbuf)
-		free(strbuf);
-}
-
-static void addenv_ipv4(const void *name, uint8_t * data)
-{
-	addenv(name, inet_ntoa(*((struct in_addr *)data)));
-}
-
 static void do_phase_2_config(struct sa_block *s)
 {
 	struct isakmp_payload *rp;
@@ -1485,55 +1533,6 @@ static void do_phase_2_config(struct sa_block *s)
 		phase2_fatal(s, "configuration response rejected: %s", reject);
 
 	DEBUG(1, printf("got address %s\n", getenv("INTERNAL_IP4_ADDRESS")));
-}
-
-void config_tunnel(const char *dev)
-{
-	setenv("TUNDEV", dev, 1);
-	setenv("VPNGATEWAY", inet_ntoa(((struct sockaddr_in *)dest_addr)->sin_addr), 1);
-
-	system(config[CONFIG_CONFIG_SCRIPT]);
-}
-
-static uint8_t *gen_keymat(struct sa_block *s,
-	uint8_t protocol, uint32_t spi,
-	int md_algo, int crypt_algo,
-	const uint8_t * dh_shared, size_t dh_size,
-	const uint8_t * ni_data, size_t ni_size, const uint8_t * nr_data, size_t nr_size)
-{
-	gcry_md_hd_t hm;
-	uint8_t *block;
-	int i;
-	int blksz;
-	int cnt;
-
-	int md_len = gcry_md_get_algo_dlen(md_algo);
-	int cry_len;
-
-	gcry_cipher_algo_info(crypt_algo, GCRYCTL_GET_KEYLEN, NULL, &cry_len);
-	blksz = md_len + cry_len;
-	cnt = (blksz + s->md_len - 1) / s->md_len;
-	block = xallocc(cnt * s->md_len);
-	DEBUG(3, printf("generating %d bytes keymat (cnt=%d)\n", blksz, cnt));
-	if (cnt < 1)
-		abort();
-
-	for (i = 0; i < cnt; i++) {
-		gcry_md_open(&hm, s->md_algo, GCRY_MD_FLAG_HMAC);
-		gcry_md_setkey(hm, s->skeyid_d, s->md_len);
-		if (i != 0)
-			gcry_md_write(hm, block + (i - 1) * s->md_len, s->md_len);
-		if (dh_shared != NULL)
-			gcry_md_write(hm, dh_shared, dh_size);
-		gcry_md_write(hm, &protocol, 1);
-		gcry_md_write(hm, (uint8_t *) & spi, sizeof(spi));
-		gcry_md_write(hm, ni_data, ni_size);
-		gcry_md_write(hm, nr_data, nr_size);
-		gcry_md_final(hm);
-		memcpy(block + i * s->md_len, gcry_md_read(hm, 0), s->md_len);
-		gcry_md_close(hm);
-	}
-	return block;
 }
 
 struct isakmp_attribute *make_transform_ipsec(int dh_group, int hash, int keylen)
