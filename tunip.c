@@ -907,38 +907,38 @@ hex_dump("tothem.auth_secret", tothem_sa.auth_secret, tothem_sa.auth_secret_size
   vpnpeer.local_sa = &tous_sa;
   vpnpeer.remote_sa = &tothem_sa;
 
-  openlog ("vpnc", LOG_PID, LOG_DAEMON);
-    {
-      kill_packet = kill_packet_p;
-      kill_packet_size = kill_packet_size_p;
-      kill_dest = kill_dest_p;
-      
-      signal (SIGHUP, killit);
-      signal (SIGINT, killit);
-      signal (SIGTERM, killit);
-      signal (SIGXCPU, killit);
+  kill_packet = kill_packet_p;
+  kill_packet_size = kill_packet_size_p;
+  kill_dest = kill_dest_p;
+  
+  signal (SIGHUP, killit);
+  signal (SIGINT, killit);
+  signal (SIGTERM, killit);
+  signal (SIGXCPU, killit);
 #if defined(SIGPWR)
-      signal (SIGPWR, killit);
+  signal (SIGPWR, killit);
 #endif
 
-      chdir ("/");
-      
-      setsid ();
-      if (!opt_nd) {
-         pid_t pid;
-         if((pid=fork()) < 0) {
-            fprintf(stderr, "Warning, could not fork the child process!\n");
-         } else if (pid==0) {
-            close (0); close (1); close (2);
-	    write_pidfile(pidfile);
-            vpnc_main_loop (&vpnpeer, &meth, tun_fd); /* never returns */
-            exit(0);
-         } else {
-            printf("VPNC started in background (pid: %d)...\n", (int)pid);
-            exit(0);
-         }
-      }
-      printf("VPNC started in foreground...\n");
-      vpnc_main_loop (&vpnpeer, &meth, tun_fd);
+  chdir ("/");
+  
+  setsid ();
+  if (!opt_nd) {
+     pid_t pid;
+     if((pid=fork()) < 0) {
+        fprintf(stderr, "Warning, could not fork the child process!\n");
+     } else if (pid==0) {
+        close (0); close (1); close (2);
+        openlog ("vpnc", LOG_PID, LOG_DAEMON);
+        write_pidfile(pidfile);
+     } else {
+        printf("VPNC started in background (pid: %d)...\n", (int)pid);
+        exit(0);
+     }
+  } else {
+     printf("VPNC started in foreground...\n");
+     openlog ("vpnc", LOG_PID, LOG_DAEMON);
   }
+  
+  vpnc_main_loop (&vpnpeer, &meth, tun_fd); /* never returns */
+  exit(0);
 }
