@@ -16,10 +16,6 @@
     GNU General Public License for more details.
  */
 
-/*
- * $Id: tun_dev.c,v 1.1.2.2 2000/11/20 08:15:53 maxk Exp $
- */
-
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>

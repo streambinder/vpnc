@@ -34,7 +34,7 @@ struct sa_block {
 	char tun_name[IFNAMSIZ];
 	uint8_t i_cookie[ISAKMP_COOKIE_LENGTH];
 	uint8_t r_cookie[ISAKMP_COOKIE_LENGTH];
-	uint8_t *key;
+	uint8_t *key; /* ike encryption key */
 	int keylen;
 	uint8_t *initial_iv;
 	uint8_t *skeyid_a;
