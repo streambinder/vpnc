@@ -19,6 +19,7 @@
 #ifndef __VPNC_H__
 #define __VPNC_H__
 
+#include <sys/socket.h>
 #include <net/if.h>
 #include "sysdep.h"
 #include "isakmp.h"

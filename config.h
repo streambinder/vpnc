@@ -19,6 +19,8 @@
 #ifndef __CONFIG_H__
 #define __CONFIG_H__
 
+#include <unistd.h>
+
 enum config_enum {
 	CONFIG_NONE,
 	CONFIG_CONFIG_SCRIPT,
