@@ -215,7 +215,7 @@ static int make_socket(uint16_t port)
 	name.sin_port = port;
 	name.sin_addr.s_addr = htonl(INADDR_ANY);
 	if (bind(sock, (struct sockaddr *)&name, sizeof(name)) < 0)
-		error(1, errno, "binding to port %d", port);
+		error(1, errno, "binding to port %d", ntohs(port));
 
 	return sock;
 }

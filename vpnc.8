@@ -1,38 +1,11 @@
 .TH "VPNC" "8" "13 Mai 2004" "Debian" "vpnc"
 
 .SH NAME
-vpnc \- client for cisco3000 VPN Concentrator
+vpnc \- client for Cisco VPN3000 Concentrator, IOS and PIX
 .SH SYNOPSIS
 
-.B vpnc  [ \-\-gateway 
-.I <IP or hostname>
-.B ] [ \-\-id
-.I <IPSec group Id>
-.B ] [ \-\-username
-.I <user name>
-.B ] [ \-\-script 
-.I <command>
-.B ] [ \-\-domain
-.I <domain name>
-.B ] [ \-\-dh
-.I <dh1/dh2/dh5>
-.B ] [ \-\-pfs
-.I <nopfs/dh1/dh2/dh5/server>
-.B ] [ \-\-enable-1des 
-.B ] [ \-\-application-version 
-.I <version string>
-.B ] [ \-\-ifname 
-.I <interface>
-.B ] [ \-\-debug
-.I <0/1/2/3/99>
-.B ] [ \-\-no-detach 
-.B ] [ \-\-pid-file 
-.I <filename>
-.B ] [ \-\-local-port
-.I <0-65535>
-.B ] [ \-\-non-inter 
-.B ] 
-
+see
+.B vpnc  \-\-long\-help
 
 .SH "DESCRIPTION"
 .PP
@@ -100,64 +73,12 @@ The program options can be either given as argument (but not all of them
 for security reasons) or be stored in a configuration file.
 
 
-.IP "\-\-gateway <ip/hostname>"
-IP or host name of your IPSec gateway
-
-.IP "\-\-id <ASCII string>"
- Your group name in <ASCII string>
-      
-.IP "\-\-username <ASCII string>"
-  Your username
-
-.IP "\-\-script <command>"
-  The <command> specified here is executed when the connection has been
-  established, in order to configure the interface, routing and so on.
-  Device name, IP, etc. are passed using enviroment variables, see
-  README. This script is executed right after ISAKMP is done, but befor
-  tunneling is enabled. Some environment variables are set and can be
-  used for the detail configuration. Default command: ifconfig $TUNDEV
-  inet $INTERNAL_IP4_ADDRESS pointopoint $INTERNAL_IP4_ADDRESS netmask
-  255.255.255.255 mtu 1412 up
-
-.IP "\-\-domain <ASCII string>"
-  Domain name for authentication, sometimes needed for authentification
-  against Windows NT domains.
-
-.IP "\-\-dh <dh1/dh2/dh5>"
-  Name of the IKE DH Group (default: dh2)
-
-.IP "\-\-pfs <nopfs/dh1/dh2/dh5/server>"
-  Diffie-Hellman group to use for PFS, one of nopfs, dh1, dh2, dh5 or
-  server (default: server).
-
-.IP "\-\-enable\-1des"
- Enables weak Single DES encryption
-
-.IP "\-\-application\-version <ASCII string>"
- Application Version to report to the server when identifying ourself
- (default: Cisco Systems VPN Client <vpnc-version>)
-
-.IP "\-\-ifname <ASCII string>"
- The virtual name of the Linux network interface assigned to the tunnel
- endpoint
-
-.IP "\-\-debug <0/1/2/3/99>"
-  Show verbose debug messages with different verbosity levels
-
-.IP "\-\-no\-detach"
- Don't detach from the console (go to background) after login
-
-.IP "\-\-pid\-file <filename>"
- Store the pid of background process in a file
-
-.IP "\-\-local-port <0-65535>"
-  Local ISAKMP port number to use (0 == use random port, 500 is default)
-
-.IP "\-\-non-inter"
- Don't ask anything, exit on missing options
-
 .IP "\-\-print\-config"
  Prints your configuration; output can be used as vpnc.conf
+
+See output of
+.B vpnc \-\-long\-help
+for a complete description
 
 .SH FILES
 .I /etc/vpnc.conf
@@ -218,8 +139,6 @@ documented in the example files of the vpnc package.
 Re-keying is not implemented yet (default rekey-intervall is 8 hours).
 .P
 Certificate support (Pre-Shared-Key + XAUTH is known to be insecure).
-.P
-IPSec over UDP
 .PD
 
 .SH AUTHOR

@@ -71,6 +71,9 @@ TODO list
 
 * DONE fix Makefile (install, DESTDIR, CFLAGS, ...)
 
+* DONE implement udp transport NAT-T
+  - apply patch
+
 * links to packages, howtos, etc.
   - http://localhost.ruhr.de/~stefan/uni-duisburg.ai/vpnc.html
   - link to kvpnc?
@@ -88,16 +91,15 @@ TODO list
 
 * --local-address
 
+* clean up scripts
+
 * update "check pfs setting" error message
 
 * better handling of routing
 
 * better handling of resolv.conf?
 
-* use in kernel ipsec with pf-key
-  - apply patch
-
-* implement udp transport NAT-T
+* use in-kernel-ipsec with pf-key
   - apply patch
 
 * make doing xauth optional

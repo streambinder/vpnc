@@ -46,7 +46,7 @@ LDFLAGS += -lnsl -lresolv -lsocket
 SYSDEP=sysdep-svr4.o
 endif
 
-FILELIST := $(shell echo *.c *.h vpnc-*) Makefile README ChangeLog COPYING TODO VERSION vpnc.conf vpnc.8
+FILELIST := $(shell echo *.c *.h vpnc-*) Makefile README ChangeLog COPYING TODO VERSION vpnc.conf vpnc.8 pcf2vpnc
 
 vpnc : vpnc.o isakmp-pkt.o tunip.o config.o $(SYSDEP) dh.o math_group.o
 	$(CC) -o $@ $^ $(LDFLAGS)
