@@ -68,11 +68,13 @@ TODO list
 
 * DONE svn-Repository
 
+* fix Makefile (install, DESTDIR, CFLAGS, ...)
+
 * implement udp transport NAT-T
 
 * implement certificate support
 
 * implement rekeying / DPD / frozen connections?
 
-* optional drop root
+* optional drop root (rekey? reconnect?)
 
