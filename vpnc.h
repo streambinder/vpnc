@@ -1,5 +1,5 @@
 /* IPSec VPN client compatible with Cisco equipment.
-   Copyright (C) 2002, 2003  Geoffrey Keating and Maurice Massar
+   Copyright (C) 2002, 2003, 2004  Geoffrey Keating and Maurice Massar
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -19,12 +19,20 @@
 #ifndef __VPNC_H__
 #define __VPNC_H__
 
-extern int opt_debug;
-extern int opt_nd;
+typedef struct {
+	const char *name;
+	int my_id, ike_sa_id, ipsec_sa_id;
+	int keylen;
+} supported_algo_t;
+
+extern supported_algo_t supp_dh_group[];
+extern supported_algo_t supp_hash[];
+extern supported_algo_t supp_crypt[];
+
 extern int tun_fd;
 extern char tun_name[];
-extern void hex_dump(const char *str, const void *data, size_t len);
 
-#define DEBUG(lvl, a) do {if (opt_debug >= (lvl)) {a;}} while (0)
+extern const supported_algo_t *get_dh_group_ike(void);
+extern const supported_algo_t *get_dh_group_ipsec(int server_setting);
 
 #endif

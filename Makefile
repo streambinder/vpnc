@@ -40,12 +40,13 @@ LDFLAGS += -lnsl -lresolv -lsocket
 SYSDEP=sysdep-svr4.o
 endif
 
-vpnc : vpnc.o isakmp-pkt.o tunip.o $(SYSDEP) dh.o math_group.o
+vpnc : vpnc.o isakmp-pkt.o tunip.o config.o $(SYSDEP) dh.o math_group.o
 	$(CC) -o $@ $^ $(LDFLAGS)
 
-vpnc.o : isakmp.h isakmp-pkt.h dh.h sysdep.h math_group.h vpnc.h VERSION
-isakmp-pkt.o : isakmp.h isakmp-pkt.h vpnc.h
-tunip.o : sysdep.h vpnc.h
+vpnc.o : isakmp.h isakmp-pkt.h dh.h sysdep.h math_group.h config.h VERSION
+isakmp-pkt.o : isakmp.h isakmp-pkt.h config.h
+tunip.o : sysdep.h vpnc.h config.h
+config.o : vpnc.h config.h VERSION
 dh.o : dh.h math_group.h
 math_group.o : math_group.h
 

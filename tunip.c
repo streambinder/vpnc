@@ -71,6 +71,7 @@
 
 #include <gcrypt.h>
 #include "sysdep.h"
+#include "config.h"
 #include "vpnc.h"
 
 #define max(a,b)	((a)>(b)?(a):(b))
