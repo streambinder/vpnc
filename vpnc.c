@@ -1361,7 +1361,7 @@ static int do_phase2_notice_check(struct sa_block *s, struct isakmp_packet **r_p
 				}
 			}
 			if (r->payload->next->type == ISAKMP_PAYLOAD_D) {
-				/* responder liftime notice ==> ignore */
+				/* delete notice ==> ignore */
 				DEBUG(2, printf("got delete for old connection, ignoring..\n"));
 				r_length = sendrecv(r_packet, sizeof(r_packet), NULL, 0, 0);
 				continue;

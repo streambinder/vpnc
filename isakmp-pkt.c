@@ -293,7 +293,7 @@ struct isakmp_packet *new_isakmp_packet(void)
 
 struct isakmp_payload *new_isakmp_payload(uint8_t type)
 {
-	struct isakmp_payload *result = xallocc(sizeof(struct isakmp_packet));
+	struct isakmp_payload *result = xallocc(sizeof(struct isakmp_payload));
 	result->type = type;
 	return result;
 }
