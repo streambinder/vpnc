@@ -467,14 +467,15 @@ void encap_esp_send_peer(struct encap_method *encap,
     /*
      * Add padding as necessary
      *
-     * XXX: this should be checked, RFC 2406 section 2.4 is quite
+     * done: this should be checked, RFC 2406 section 2.4 is quite
      *	    obscure on that point.
+     * seems fine
      */
     pad_blksz = gcry_cipher_algo_info(peer->remote_sa->cry_algo, GCRYCTL_GET_BLKLEN, NULL, NULL);
     while (pad_blksz & 3) /* must be multiple of 4 */
 	    pad_blksz <<= 1;
     padding = pad_blksz - ((encap->buflen+2) % pad_blksz);
-opt_debug&&printf("sending packet: len = %d, padding = %d\n", encap->buflen, padding);
+DEBUG(2, printf("sending packet: len = %d, padding = %d\n", encap->buflen, padding));
     if (padding == pad_blksz)
         padding = 0;
 

@@ -12,9 +12,13 @@ TODO list
 
 * DONE don't ignore all notifies at ipsec-sa-negotation
 
-* getopt()? libpopt?
+* DONE hide user/pass from --debug output
 
-......
+* DONE --verbose
+
+* DONE fix vpnc-disconnect
 
 * rekeying?
+
+* getopt()? libpopt?
 

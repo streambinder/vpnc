@@ -265,7 +265,7 @@ void flatten_isakmp_packet (struct isakmp_packet *p,
     padding = blksz - (sz % blksz);
     if (padding == blksz)
       padding = 0;
-    opt_debug && printf("size = %d, blksz = %d, padding = %d\n", sz, blksz, padding);
+    DEBUG(3, printf("size = %d, blksz = %d, padding = %d\n", sz, blksz, padding));
     flow_reserve (&f, padding);
   }
   f.base[lpos] = (f.end - f.base) >> 24;
@@ -275,7 +275,7 @@ void flatten_isakmp_packet (struct isakmp_packet *p,
   *result = f.base;
   *size = f.end - f.base;
 /*DUMP*/
-  if (opt_debug) {
+  if (opt_debug >= 3) {
     printf("\n sending: ========================>\n");
     free_isakmp_packet(parse_isakmp_packet(f.base, f.end - f.base, NULL));
   }
@@ -451,7 +451,10 @@ parse_isakmp_attributes (const uint8_t **data_p,
 hex_dump("t.attributes.type", &r->type, 2);
       r->af = isakmp_attr_16;
       r->u.attr_16 = length;
-hex_dump("t.attributes.u.attr_16", &r->u.attr_16, 2);
+if ((ISAKMP_XAUTH_ATTRIB_TYPE <=r->type)&&(r->type<= ISAKMP_XAUTH_ATTRIB_ANSWER)&&(opt_debug < 99))
+		DEBUG(3,printf("(not dumping xauth data)\n"));
+	else
+		hex_dump("t.attributes.u.attr_16", &r->u.attr_16, 2);
     }
   else
     {
@@ -459,7 +462,10 @@ hex_dump("t.attributes.u.attr_16", &r->u.attr_16, 2);
 hex_dump("t.attributes.type", &r->type, 2);
       r->af = isakmp_attr_lots;
       r->u.lots.length = length;
-hex_dump("t.attributes.u.lots.length", &r->u.lots.length, 2);
+if ((ISAKMP_XAUTH_ATTRIB_TYPE <=r->type)&&(r->type<= ISAKMP_XAUTH_ATTRIB_ANSWER)&&(opt_debug < 99))
+		DEBUG(3,printf("(not dumping xauth data length)\n"));
+	else
+		hex_dump("t.attributes.u.lots.length", &r->u.lots.length, 2);
       if (data_len < length)
 	{
 	  *reject = ISAKMP_N_PAYLOAD_MALFORMED;
@@ -467,7 +473,10 @@ hex_dump("t.attributes.u.lots.length", &r->u.lots.length, 2);
 	}
       r->u.lots.data = xallocc (length);
       fetchn (r->u.lots.data, length);
-hex_dump("t.attributes.u.lots.data", r->u.lots.data, r->u.lots.length);
+if ((ISAKMP_XAUTH_ATTRIB_TYPE <= type)&&(type <= ISAKMP_XAUTH_ATTRIB_ANSWER)&&(opt_debug < 99))
+		DEBUG(3,printf("(not dumping xauth data)\n"));
+	else
+		hex_dump("t.attributes.u.lots.data", r->u.lots.data, r->u.lots.length);
     }
   r->next = parse_isakmp_attributes (&data, data_len, reject);
   *data_p = data;
@@ -728,7 +737,7 @@ parse_isakmp_packet (const uint8_t *data, size_t data_len, uint16_t *reject)
       goto error;
     }
   
-opt_debug&&printf("\nBEGIN_PARSE\n");
+DEBUG(3, printf("\nBEGIN_PARSE\n"));
   fetchn (r->i_cookie, ISAKMP_COOKIE_LENGTH);
 hex_dump("i_cookie", r->i_cookie, ISAKMP_COOKIE_LENGTH);
   fetchn (r->r_cookie, ISAKMP_COOKIE_LENGTH);
@@ -765,7 +774,7 @@ hex_dump("len", &o_data_len, sizeof(o_data_len));
   if (reason != 0)
     goto error;
   
-opt_debug && printf("PARSE_OK\n\n");
+DEBUG(3, printf("PARSE_OK\n\n"));
   return r;
 
  error:

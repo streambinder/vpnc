@@ -59,6 +59,7 @@ enum config_enum {
   CONFIG_ND,
   CONFIG_NON_INTERACTIVE,
   CONFIG_PID_FILE,
+  CONFIG_LOCAL_PORT,
   CONFIG_IF_NAME,
   CONFIG_IKE_DH,
   CONFIG_IPSEC_PFS,
@@ -185,7 +186,7 @@ void hex_dump (const char *str, const void *data, size_t len)
 	size_t i;
 	const uint8_t *p = data;
 	
-  if(opt_debug) {
+  if(opt_debug >= 3) {
        	printf("%s:%c", str, (len <= 32)? ' ':'\n');
        	for (i = 0; i < len; i++) {
        		if (i && !(i%32))
@@ -293,7 +294,7 @@ recv_ignore_dup (void *recvbuf, size_t recvbufsize, uint8_t reply_extype)
       
 hex_dump("exchange_type", ((uint8_t*)recvbuf) + ISAKMP_EXCHANGE_TYPE_O, 1);
       if (reply_extype && (((uint8_t*)recvbuf)[ISAKMP_EXCHANGE_TYPE_O] != reply_extype)) {
-opt_debug&&printf("want extype %d, got %d, ignoring\n", reply_extype, ((uint8_t*)recvbuf)[ISAKMP_EXCHANGE_TYPE_O]);
+DEBUG(2, printf("want extype %d, got %d, ignoring\n", reply_extype, ((uint8_t*)recvbuf)[ISAKMP_EXCHANGE_TYPE_O]));
 	return -1;
       }
 
@@ -494,14 +495,14 @@ do_phase_1 (const char *key_id, const char *shared_key,
   
   struct isakmp_packet *p1;
   
-opt_debug&&printf("S4.1\n");
+DEBUG(2, printf("S4.1\n"));
   gcry_randomize(d->i_cookie, ISAKMP_COOKIE_LENGTH, GCRY_STRONG_RANDOM);
   if (d->i_cookie[0] == 0)
     d->i_cookie[0] = 1;
 hex_dump("i_cookie", d->i_cookie, ISAKMP_COOKIE_LENGTH);
   gcry_randomize(i_nonce, sizeof (i_nonce), GCRY_STRONG_RANDOM);
 hex_dump("i_nonce", i_nonce, sizeof (i_nonce));
-opt_debug&&printf("S4.2\n");
+DEBUG(2, printf("S4.2\n"));
   /* Set up the Diffie-Hellman stuff.  */
   {
     group_init();
@@ -511,7 +512,7 @@ opt_debug&&printf("S4.2\n");
 hex_dump("dh_public", dh_public, dh_getlen (dh_grp));
   }
   
-opt_debug&&printf("S4.3\n");
+DEBUG(2, printf("S4.3\n"));
   /* Create the first packet.  */
   {
     struct isakmp_payload *l;
@@ -547,7 +548,7 @@ opt_debug&&printf("S4.3\n");
 			 pkt, pkt_len, 0);
     free (pkt);
   }
-opt_debug&&printf("S4.4\n");
+DEBUG(2, printf("S4.4\n"));
   /* Decode the recieved packet.  */
   {
      struct isakmp_packet *r;
@@ -663,11 +664,11 @@ opt_debug&&printf("S4.4\n");
 			     seen_enc, NULL, seen_keylen)->my_id;
 	       d->md_algo = get_algo(SUPP_ALGO_HASH, SUPP_ALGO_IKE_SA,
 			     seen_hash, NULL, 0)->my_id;
-	       opt_debug && printf("IKE SA selected %s-%s\n",
+	       DEBUG(1, printf("IKE SA selected %s-%s\n",
 			    get_algo(SUPP_ALGO_CRYPT, SUPP_ALGO_IKE_SA,
 				    seen_enc, NULL, seen_keylen)->name,
 			    get_algo(SUPP_ALGO_HASH, SUPP_ALGO_IKE_SA,
-				    seen_auth, NULL, 0)->name);
+				    seen_auth, NULL, 0)->name));
 	     }
 	   }
 	   break;
@@ -749,7 +750,7 @@ hex_dump("skeyid", skeyid, d->md_len);
        
        if (memcmp (expected_hash, hash->u.hash.data, d->md_len) != 0)
 	 {
-	   error (1, 0, "hash comparison failed: %s", 
+	   error (1, 0, "hash comparison failed: %s\ncheck group password!", 
 		  isakmp_notify_to_error (ISAKMP_N_AUTHENTICATION_FAILED));
 	 }
        gcry_md_close(hm);
@@ -869,7 +870,7 @@ hex_dump("current_iv", d->current_iv, d->ivlen);
      gcry_md_close(skeyid_ctx);
   }
 
-opt_debug&&printf("S4.5\n");
+DEBUG(2, printf("S4.5\n"));
   /* Send final phase 1 packet.  */
   {
     struct isakmp_packet *p2;
@@ -907,7 +908,7 @@ hex_dump("initial_iv", d->initial_iv, d->ivlen);
 			 p2kt, p2kt_len, 0);
     free (p2kt);
   }
-opt_debug&&printf("S4.6\n");
+DEBUG(2, printf("S4.6\n"));
   
   free(returned_hash);
 }
@@ -975,8 +976,7 @@ unpack_verify_phase2 (struct sa_block *s,
     gcry_md_final(hm);
     expected_hash = gcry_md_read(hm, 0);
     
-    if(opt_debug)
-    {
+    if(opt_debug >= 3) {
 	    printf("hashlen: %d\n", s->md_len);
 	    printf("u.hash.length: %d\n", h->u.hash.length);
 	    hex_dump("expected_hash", expected_hash,  s->md_len);
@@ -1026,7 +1026,7 @@ phase2_authpacket (struct sa_block *s, struct isakmp_payload *pl,
   gcry_md_setkey(hm, s->skeyid_a, s->md_len);
   
   if (pl == NULL) {
-    opt_debug&&printf("authing NULL package!\n");
+    DEBUG(3, printf("authing NULL package!\n"));
     gcry_md_write(hm, "" /* \0 */, 1);
   }
   
@@ -1099,7 +1099,7 @@ phase2_fatal (struct sa_block *s, const char *msg, uint16_t id)
   struct isakmp_payload *pl;
   uint32_t msgid;
 
-opt_debug&&printf("\n\n---!!!!!!!!! entering phase2_fatal !!!!!!!!!---\n\n\n");
+DEBUG(1, printf("\n\n---!!!!!!!!! entering phase2_fatal !!!!!!!!!---\n\n\n"));
   gcry_randomize((uint8_t *) &msgid, sizeof (msgid), GCRY_WEAK_RANDOM);
   pl = new_isakmp_payload (ISAKMP_PAYLOAD_N);
   pl->u.n.doi = ISAKMP_DOI_IPSEC;
@@ -1119,7 +1119,7 @@ opt_debug&&printf("\n\n---!!!!!!!!! entering phase2_fatal !!!!!!!!!---\n\n\n");
   memcpy(pl->u.d.spi[0]+ISAKMP_COOKIE_LENGTH*1, s->r_cookie, ISAKMP_COOKIE_LENGTH);
   sendrecv_phase2 (s, pl, ISAKMP_EXCHANGE_INFORMATIONAL, msgid, 2, 0,0,0,0,0,0,0);
 
-  error (1, 0, "%s: %s", msg, isakmp_notify_to_error (id));
+  error (1, 0, msg, isakmp_notify_to_error (id));
 }
 
 static void 
@@ -1128,7 +1128,7 @@ do_phase_2_xauth (struct sa_block *s)
   struct isakmp_packet *r;
   int loopcount;
 
-opt_debug&&printf("S5.1\n");
+DEBUG(2, printf("S5.1\n"));
   /* This can go around for a while.  */
   for (loopcount = 0;; loopcount++)
     {
@@ -1137,7 +1137,7 @@ opt_debug&&printf("S5.1\n");
       struct isakmp_attribute *a, *ap, *reply_attr;
       char ntop_buf[32];
       
-opt_debug&&printf("S5.2\n");
+DEBUG(2, printf("S5.2\n"));
       reject = unpack_verify_phase2 (s, r_packet, r_length, &r, NULL, 0);
       if (reject == ISAKMP_N_PAYLOAD_MALFORMED)
 	{
@@ -1145,7 +1145,7 @@ opt_debug&&printf("S5.2\n");
 	  continue;
 	}
       
-opt_debug&&printf("S5.3\n");
+DEBUG(2, printf("S5.3\n"));
       /* Check the transaction type is OK.  */
       if (reject == 0 && 
 	  r->exchange_type != ISAKMP_EXCHANGE_MODECFG_TRANSACTION)
@@ -1166,9 +1166,9 @@ opt_debug&&printf("S5.3\n");
 	reject = ISAKMP_N_INVALID_PAYLOAD_TYPE;
       
       if (reject != 0)
-	phase2_fatal (s, "expected xauth packet; rejected", reject);
+	phase2_fatal (s, "expected xauth packet; rejected: %s", reject);
       
-opt_debug && printf("S5.4\n");
+DEBUG(2, printf("S5.4\n"));
       a = r->payload->next->u.modecfg.attributes;
       /* First, print any messages, and verify that we understand the
 	 conversation.  */
@@ -1186,19 +1186,19 @@ opt_debug && printf("S5.4\n");
 	    break;
 	  case ISAKMP_XAUTH_ATTRIB_MESSAGE:
 	    if (ap->af == isakmp_attr_16)
-	      opt_debug && printf ("%c%c\n", ap->u.attr_16 >> 8, ap->u.attr_16);
+	      DEBUG(1, printf ("%c%c\n", ap->u.attr_16 >> 8, ap->u.attr_16));
 	    else
-	      opt_debug && printf ("%.*s%s", ap->u.lots.length, ap->u.lots.data,
+	      DEBUG(1, printf ("%.*s%s", ap->u.lots.length, ap->u.lots.data,
 		      ((ap->u.lots.data
 			&& ap->u.lots.data[ap->u.lots.length - 1] != '\n')
-		       ? "\n" : ""));
+		       ? "\n" : "")));
 	    break;
 	  default:
 	    reject = ISAKMP_N_ATTRIBUTES_NOT_SUPPORTED;
 	  }
-opt_debug && printf("S5.5\n");
+DEBUG(2, printf("S5.5\n"));
       if (reject != 0)
-	phase2_fatal (s, "xauth packet unsupported", reject);
+	phase2_fatal (s, "xauth packet unsupported: %s", reject);
       
       inet_ntop (dest_addr->sa_family, 
 		 &((struct sockaddr_in *)dest_addr)->sin_addr,
@@ -1287,7 +1287,7 @@ opt_debug && printf("S5.5\n");
       free_isakmp_packet (r);
     }
   
-opt_debug && printf("S5.6\n");
+DEBUG(2, printf("S5.6\n"));
   {
     /* The final SET should have just one attribute.  */
     uint16_t reject = 0;
@@ -1300,7 +1300,7 @@ opt_debug && printf("S5.6\n");
 	|| a->next != NULL)
       {
 	reject = ISAKMP_N_INVALID_PAYLOAD_TYPE;
-	phase2_fatal (s, "xauth SET response rejected", reject);
+	phase2_fatal (s, "xauth SET response rejected: %s", reject);
       }
     set_result = a->u.attr_16;
 
@@ -1314,7 +1314,7 @@ opt_debug && printf("S5.6\n");
     if (set_result == 0)
       error (2, 0, "authentication unsuccessful");
   }
-opt_debug && printf("S5.7\n");
+DEBUG(2, printf("S5.7\n"));
 }
 
 static void 
@@ -1360,7 +1360,7 @@ do_phase_2_config (struct sa_block *s)
     reject = ISAKMP_N_PAYLOAD_MALFORMED;
 
   if (reject != 0)
-    phase2_fatal (s, "configuration response rejected", reject);
+    phase2_fatal (s, "configuration response rejected: %s", reject);
 
   for (a = r->payload->next->u.modecfg.attributes; 
        a && reject == 0; 
@@ -1384,7 +1384,7 @@ do_phase_2_config (struct sa_block *s)
     reject = ISAKMP_N_ATTRIBUTES_NOT_SUPPORTED;
 
   if (reject != 0)
-    phase2_fatal (s, "configuration response rejected", reject);
+    phase2_fatal (s, "configuration response rejected: %s", reject);
 
 }
 
@@ -1460,7 +1460,7 @@ gen_keymat (struct sa_block *s,
   blksz = md_len + cry_len;
   cnt = (blksz + s->md_len - 1) / s->md_len;
   block = xallocc (cnt * s->md_len);
-opt_debug && printf("generating %d bytes keymat (cnt=%d)\n", blksz, cnt);
+DEBUG(3, printf("generating %d bytes keymat (cnt=%d)\n", blksz, cnt));
   if (cnt < 1)
     abort ();
 
@@ -1546,16 +1546,16 @@ setup_link (struct sa_block *s)
   struct group *dh_grp = NULL;
   uint32_t msgid;
   uint16_t reject;
-  uint8_t *p_flat = NULL, *realiv = NULL, realiv_msgid[4];;
+  uint8_t *p_flat = NULL, *realiv = NULL, realiv_msgid[4];
   size_t p_size = 0;
   uint8_t nonce[20], *dh_public = NULL;
   int ipsec_cry_algo = 0, ipsec_hash_algo = 0, i;
   
-opt_debug && printf("S8.1\n");
+DEBUG(2, printf("S8.1\n"));
   /* Set up the Diffie-Hellman stuff.  */
   if (get_dh_group_ipsec()->my_id) {
     dh_grp = group_get(get_dh_group_ipsec()->my_id);
-    opt_debug && printf("len = %d\n", dh_getlen (dh_grp));
+    DEBUG(3, printf("len = %d\n", dh_getlen (dh_grp)));
     dh_public = xallocc(dh_getlen (dh_grp));
     dh_create_exchange(dh_grp, dh_public);
 hex_dump("dh_public", dh_public, dh_getlen (dh_grp));
@@ -1591,7 +1591,7 @@ hex_dump("dh_public", dh_public, dh_getlen (dh_grp));
   if (msgid == 0)
     msgid = 1;
   
-opt_debug && printf("S8.2\n");
+DEBUG(2, printf("S8.2\n"));
   for (i = 0; i < 4; i++) {
     sendrecv_phase2 (s, rp, ISAKMP_EXCHANGE_IKE_QUICK,
 		     msgid, 0, 0, &p_flat, &p_size, 0,0,0,0);
@@ -1602,11 +1602,11 @@ opt_debug && printf("S8.2\n");
       memcpy(realiv_msgid, s->current_iv_msgid, 4);
     }
 
-opt_debug && printf("S8.3\n");
+DEBUG(2, printf("S8.3\n"));
     reject = unpack_verify_phase2 (s, r_packet, r_length, &r, 
 				   nonce, sizeof (nonce));
 
-opt_debug && printf("S8.4\n");
+DEBUG(2, printf("S8.4\n"));
     if (((reject == 0)||(reject == ISAKMP_N_AUTHENTICATION_FAILED))
 	&& r->exchange_type == ISAKMP_EXCHANGE_INFORMATIONAL) {
        /* handle notifie responder-lifetime (ignore)*/
@@ -1615,7 +1615,7 @@ opt_debug && printf("S8.4\n");
          reject = ISAKMP_N_INVALID_PAYLOAD_TYPE;
        
        if (reject == 0 && r->payload->next->u.n.type == ISAKMP_N_IPSEC_RESPONDER_LIFETIME) {
-opt_debug && printf("ignoring responder-lifetime notify\n");
+DEBUG(2, printf("ignoring responder-lifetime notify\n"));
 	 memcpy(s->current_iv, realiv, s->ivlen);
 	 memcpy(s->current_iv_msgid, realiv_msgid, 4);
 	 continue;
@@ -1640,11 +1640,11 @@ opt_debug && printf("ignoring responder-lifetime notify\n");
     break;
   }
 
-opt_debug && printf("S8.5\n");
+DEBUG(2, printf("S8.5\n"));
   if (reject != 0)
-    phase2_fatal (s, "quick mode response rejected, try checking pfs setting", reject);
+    phase2_fatal (s, "quick mode response rejected: %s\ncheck pfs setting", reject);
 
-opt_debug && printf("S8.6\n");
+DEBUG(2, printf("S8.6\n"));
   for (rp = r->payload->next; rp && reject == 0; rp = rp->next)
     switch (rp->type)
       {
@@ -1724,11 +1724,11 @@ opt_debug && printf("S8.6\n");
 		     seen_enc, NULL, seen_keylen)->my_id;
 	    ipsec_hash_algo = get_algo(SUPP_ALGO_HASH, SUPP_ALGO_IPSEC_SA,
 			     seen_auth, NULL, 0)->my_id;
-	    opt_debug && printf("IPSEC SA selected %s-%s\n",
+	    DEBUG(1, printf("IPSEC SA selected %s-%s\n",
 			    get_algo(SUPP_ALGO_CRYPT, SUPP_ALGO_IPSEC_SA,
 				    seen_enc, NULL, seen_keylen)->name,
 			    get_algo(SUPP_ALGO_HASH, SUPP_ALGO_IPSEC_SA,
-				    seen_auth, NULL, 0)->name);
+				    seen_auth, NULL, 0)->name));
 	  }
 	}
 	break;
@@ -1755,14 +1755,14 @@ opt_debug && printf("S8.6\n");
 	 && (ke == NULL || ke->u.ke.length != dh_getlen (dh_grp)))
        reject = ISAKMP_N_INVALID_KEY_INFORMATION;
   if (reject != 0)
-    phase2_fatal (s, "quick mode response rejected [2]", reject);
+    phase2_fatal (s, "quick mode response rejected [2]: %s", reject);
   
   /* send final packet */
   sendrecv_phase2 (s, NULL, ISAKMP_EXCHANGE_IKE_QUICK,
                    msgid, 1, 0,0,0, nonce, sizeof (nonce),
 		   nonce_r->u.nonce.data, nonce_r->u.nonce.length);
   
-opt_debug && printf("S8.7\n");
+DEBUG(2, printf("S8.7\n"));
   /* Create the delete payload, now that we have all the information.  */
   {
     struct isakmp_payload *d_isakmp, *d_ipsec;
@@ -1795,7 +1795,7 @@ opt_debug && printf("S8.7\n");
 		       nonce_r->u.nonce.data, nonce_r->u.nonce.length);
     isakmp_crypt (s, s->kill_packet, s->kill_packet_size, 1);
   }
-opt_debug && printf("S8.8\n");
+DEBUG(2, printf("S8.8\n"));
   
   /* Set up the interface here so it's ready when our acknowledgement
      arrives.  */
@@ -1823,7 +1823,7 @@ hex_dump("dh_shared_secret", dh_shared_secret, dh_getlen (dh_grp));
 			      dh_shared_secret, dh_grp?dh_getlen (dh_grp):0,
 			      nonce, sizeof (nonce), 
 			      nonce_r->u.nonce.data, nonce_r->u.nonce.length);
-opt_debug && printf("S8.9\n");
+DEBUG(2, printf("S8.9\n"));
     vpnc_doit (s->tous_esp_spi, tous_keys, &tothem_dest,
 	       s->tothem_esp_spi, tothem_keys, (struct sockaddr_in *)dest_addr,
 	       tun_fd, ipsec_hash_algo, ipsec_cry_algo,
@@ -1840,10 +1840,11 @@ static const struct config_names_s {
 } config_names[] = {
   /* Note: broken config file parser does NOT support option
    * names where one is a prefix of another option */
-  { "Show extraneous debug messages", "Debug", "--debug", CONFIG_DEBUG, 0 },
+  { "<0/1/2/3/99> Show extraneous debug messages", "Debug ", "--debug", CONFIG_DEBUG, 1 },
   { "Don't detach from the console after login", "No Detach", "--no-detach", CONFIG_ND, 0 },
   { "Don't ask anything, exit on missing options", "Noninteractive", "--non-inter", CONFIG_NON_INTERACTIVE, 0 },
-  { "<filename> -- store the pid of background process there", "Pidfile", "--pid-file", CONFIG_PID_FILE, 1 },
+  { "<filename> -- store the pid of background process there", "Pidfile ", "--pid-file", CONFIG_PID_FILE, 1 },
+  { "<0-65535> -- store the pid of background process there", "Local Port ", "--local-port", CONFIG_LOCAL_PORT, 1 },
   { "<ascii string> -- visible name of the TUN interface", "Interface name ", "--ifname", CONFIG_IF_NAME, 1 },
   { "<dh1/dh2/dh5> -- name of the IKE DH Group", "IKE DH Group ", "--dh", CONFIG_IKE_DH, 1 },
   { "<nopfs/dh1/dh2/dh5>", "Perfect Forward Secrecy ", "--pfs", CONFIG_IPSEC_PFS, 1 },
@@ -2003,10 +2004,16 @@ int main(int argc, char **argv)
     config[CONFIG_IKE_DH] = "dh2";
   if (!config[CONFIG_IPSEC_PFS])
     config[CONFIG_IPSEC_PFS] = "nopfs";
+  if (!config[CONFIG_LOCAL_PORT])
+    config[CONFIG_LOCAL_PORT] = "500";
 
-  opt_debug=(config[CONFIG_DEBUG]) ? 1 : 0;
+  opt_debug=(config[CONFIG_DEBUG]) ? atoi(config[CONFIG_DEBUG]) : 0;
   opt_nd=(config[CONFIG_ND]) ? 1 : 0;
 
+  if (opt_debug >= 99) {
+	  printf("WARNING! debug levels >= 99 include username and password (hex encoded)\n");
+  }
+  
   for (i = 0; i < LAST_CONFIG; i++)
     if ((config[i] == NULL)&&(config[CONFIG_NON_INTERACTIVE] == NULL))
       {
@@ -2020,6 +2027,7 @@ int main(int argc, char **argv)
           case CONFIG_ND:
           case CONFIG_NON_INTERACTIVE:
           case CONFIG_PID_FILE:
+          case CONFIG_LOCAL_PORT:
 	  case CONFIG_IKE_DH:
 	  case CONFIG_IPSEC_PFS:
              /* no interaction */
@@ -2056,6 +2064,7 @@ int main(int argc, char **argv)
            case CONFIG_ND:
            case CONFIG_NON_INTERACTIVE:
            case CONFIG_PID_FILE:
+           case CONFIG_LOCAL_PORT:
 	   case CONFIG_IKE_DH:
 	   case CONFIG_IPSEC_PFS:
               /* no interaction */
@@ -2092,23 +2101,23 @@ int main(int argc, char **argv)
       exit (0);
     }
 
-opt_debug && printf("S1\n");
+DEBUG(2, printf("S1\n"));
   dest_addr = init_sockaddr (config[CONFIG_IPSEC_GATEWAY], 500);
-opt_debug && printf("S2\n");
-  sockfd = make_socket (500);
-opt_debug && printf("S3\n");
+DEBUG(2, printf("S2\n"));
+  sockfd = make_socket (atoi(config[CONFIG_LOCAL_PORT]));
+DEBUG(2, printf("S3\n"));
   setup_tunnel();
-opt_debug && printf("S4\n");
+DEBUG(2, printf("S4\n"));
 
   memset(&oursa, '\0', sizeof(oursa));
   do_phase_1 (config[CONFIG_IPSEC_ID], config[CONFIG_IPSEC_SECRET], &oursa);
-opt_debug && printf("S5\n");
+DEBUG(2, printf("S5\n"));
   do_phase_2_xauth (&oursa);
-opt_debug && printf("S6\n");
+DEBUG(2, printf("S6\n"));
   do_phase_2_config (&oursa);
-opt_debug && printf("S7\n");
+DEBUG(2, printf("S7\n"));
   config_tunnel (&oursa);
-opt_debug && printf("S8\n");
+DEBUG(2, printf("S8\n"));
 
   setup_link (&oursa);
 

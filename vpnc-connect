@@ -10,6 +10,7 @@ getvar () {
 }
 
 defr=/var/run/vpnc/defaultroute
+gateway=/var/run/vpnc/gateway
 pid=/var/run/vpnc/pid
 
 if [ $# -ne 1 ]; then
@@ -19,6 +20,8 @@ fi
 
 if [ -x "`which vpnc`" ]; then
 	VPNC="`which vpnc`"
+elif [ -x /usr/local/sbin/vpnc ]; then
+	VPNC=/usr/sbin/vpnc
 elif [ -x /usr/sbin/vpnc ]; then
 	VPNC=/usr/sbin/vpnc
 elif [ -x ./vpnc ]; then
@@ -26,6 +29,15 @@ elif [ -x ./vpnc ]; then
 else
 	echo No vpnc daemon found, aborting...
 	exit 1
+fi
+
+PID="$(cat "$pid" 2> /dev/null)"
+
+if [ "$PID" ]; then
+	if kill -0 "$PID" > /dev/null 2>&1; then
+		echo "vpnc found running (pid: $PID, pidfile: $pid)"
+		exit 1
+	fi
 fi
 
 GW="$(getvar "$1" "IPSec gateway")"
@@ -43,8 +55,9 @@ if [ ! "`echo "$GW" | grep ^[[:digit:]]`" ] ; then
 fi
 
 "$VPNC" --pid-file "$pid" "$1" || exit 1
-ip route add $(ip route get $(getvar "$1" "IPSec gateway") | sed 's/cache//' | xargs echo)
+ip route add $(ip route get $GW | sed 's/cache//' | xargs echo)
 ip route | grep '^default' | sed 's/cache//' > "$defr"
+echo "$GW" > "$gateway"
 ip route del default
 ip route add default dev $(getvar "$1" "Interface name")
 ip route flush cache
