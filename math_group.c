@@ -36,6 +36,7 @@
 #include <sys/param.h>
 #include <stdlib.h>
 #include <string.h>
+#include <netinet/in.h>
 
 #include <gcrypt.h>
 
@@ -292,7 +293,7 @@ int
 modp_setrandom (struct group *grp, gcry_mpi_t d)
 {
   int i, l = grp->getlen (grp);
-  u_int32_t tmp = 0;
+  uint32_t tmp = 0;
 
   gcry_mpi_set_ui (d, 0);
 

@@ -54,13 +54,16 @@ extern void vpnc_doit(unsigned long tous_spi,
 		      const char *pidfile);
 
 enum config_enum {
+  CONFIG_NONE,
   CONFIG_CONFIG_SCRIPT,
   CONFIG_DEBUG,
+  CONFIG_DOMAIN,
   CONFIG_ENABLE_1DES,
   CONFIG_ND,
   CONFIG_NON_INTERACTIVE,
   CONFIG_PID_FILE,
   CONFIG_LOCAL_PORT,
+  CONFIG_VERSION,
   CONFIG_IF_NAME,
   CONFIG_IKE_DH,
   CONFIG_IPSEC_PFS,
@@ -253,8 +256,8 @@ init_sockaddr (const char *hostname,
   return (struct sockaddr *)result;
 }
 
-static int tun_fd = -1;
-static char tun_name[IFNAMSIZ];
+int tun_fd = -1;
+char tun_name[IFNAMSIZ];
 
 static void
 setup_tunnel(void)
@@ -1176,6 +1179,7 @@ DEBUG(2, printf("S5.1\n"));
       struct isakmp_payload *rp;
       struct isakmp_attribute *a, *ap, *reply_attr;
       char ntop_buf[32];
+      int seen_answer = 0;
       
 DEBUG(2, printf("S5.2\n"));
       reject = unpack_verify_phase2 (s, r_packet, r_length, &r, NULL, 0);
@@ -1237,6 +1241,10 @@ DEBUG(2, printf("S5.4\n"));
       a = r->payload->next->u.modecfg.attributes;
       /* First, print any messages, and verify that we understand the
 	 conversation.  */
+      for (ap = a; ap && seen_answer == 0; ap = ap->next)
+	if (ap->type == ISAKMP_XAUTH_ATTRIB_ANSWER)
+	  seen_answer = 1;
+      
       for (ap = a; ap && reject == 0; ap = ap->next)
 	switch (ap->type)
 	  {
@@ -1247,14 +1255,15 @@ DEBUG(2, printf("S5.4\n"));
 	  case ISAKMP_XAUTH_ATTRIB_USER_NAME:
 	  case ISAKMP_XAUTH_ATTRIB_USER_PASSWORD:
 	  case ISAKMP_XAUTH_ATTRIB_PASSCODE:
+	  case ISAKMP_XAUTH_ATTRIB_DOMAIN:
 	  case ISAKMP_XAUTH_ATTRIB_ANSWER:
 	  case ISAKMP_XAUTH_ATTRIB_CISCOEXT_VENDOR:
 	    break;
 	  case ISAKMP_XAUTH_ATTRIB_MESSAGE:
 	    if (ap->af == isakmp_attr_16)
-	      DEBUG(1, printf ("%c%c\n", ap->u.attr_16 >> 8, ap->u.attr_16));
+	      DEBUG(seen_answer ? 0 : 1, printf ("%c%c\n", ap->u.attr_16 >> 8, ap->u.attr_16));
 	    else
-	      DEBUG(1, printf ("%.*s%s", ap->u.lots.length, ap->u.lots.data,
+	      DEBUG(seen_answer ? 0 : 1, printf ("%.*s%s", ap->u.lots.length, ap->u.lots.data,
 		      ((ap->u.lots.data
 			&& ap->u.lots.data[ap->u.lots.length - 1] != '\n')
 		       ? "\n" : "")));
@@ -1275,19 +1284,28 @@ DEBUG(2, printf("S5.5\n"));
       for (ap = a; ap && reject == 0; ap = ap->next)
 	switch (ap->type)
 	  {
-	  case ISAKMP_XAUTH_ATTRIB_USER_NAME:
-	    /*if (loopcount == 0)*/
-	      {
+	  case ISAKMP_XAUTH_ATTRIB_DOMAIN:
+	    {
 		struct isakmp_attribute *na;
 		na = new_isakmp_attribute(ap->type, reply_attr);
 		reply_attr = na;
-		na->u.lots.length = strlen (config[CONFIG_XAUTH_USERNAME]) + 1;
+		na->u.lots.length = strlen (config[CONFIG_DOMAIN]);
+		if (na->u.lots.length == 0)
+		  error (1, 0, "server requested domain, but none set (use \"Domain ...\" in config or --domain");
 		na->u.lots.data = xallocc (na->u.lots.length);
-		strcpy (na->u.lots.data, config[CONFIG_XAUTH_USERNAME]);
+		memcpy (na->u.lots.data, config[CONFIG_DOMAIN], na->u.lots.length);
 		break;
-	      }
-	    printf ("User name for %s: ", ntop_buf);
-	    fflush (stdout);
+	    }
+	  case ISAKMP_XAUTH_ATTRIB_USER_NAME:
+	    {
+		struct isakmp_attribute *na;
+		na = new_isakmp_attribute(ap->type, reply_attr);
+		reply_attr = na;
+		na->u.lots.length = strlen (config[CONFIG_XAUTH_USERNAME]);
+		na->u.lots.data = xallocc (na->u.lots.length);
+		memcpy (na->u.lots.data, config[CONFIG_XAUTH_USERNAME], na->u.lots.length);
+		break;
+	    }
 	  case ISAKMP_XAUTH_ATTRIB_ANSWER:
 	    {
 	      char *line = NULL;
@@ -1309,38 +1327,15 @@ DEBUG(2, printf("S5.5\n"));
 	    
 	  case ISAKMP_XAUTH_ATTRIB_USER_PASSWORD:
 	  case ISAKMP_XAUTH_ATTRIB_PASSCODE:
-	    /*if (loopcount == 0)*/
-	      {
+	    {
 		struct isakmp_attribute *na;
 		na = new_isakmp_attribute(ap->type, reply_attr);
 		reply_attr = na;
-		na->u.lots.length = strlen (config[CONFIG_XAUTH_PASSWORD]) + 1;
+		na->u.lots.length = strlen (config[CONFIG_XAUTH_PASSWORD]);
 		na->u.lots.data = xallocc (na->u.lots.length);
-		strcpy (na->u.lots.data, config[CONFIG_XAUTH_PASSWORD]);
+		memcpy (na->u.lots.data, config[CONFIG_XAUTH_PASSWORD], na->u.lots.length);
 		break;
-	      }
-#if 0
-	  case ISAKMP_XAUTH_ATTRIB_PASSCODE:
-	    {
-	      char prompt[64];
-	      char *pass;
-	      struct isakmp_attribute *na;
-	      
-	      if (ap->type == ISAKMP_XAUTH_ATTRIB_USER_PASSWORD)
-		sprintf (prompt, "Password for VPN at %s: ", ntop_buf);
-	      else
-		sprintf (prompt, "Passcode for VPN at %s: ", ntop_buf);
-	      pass = getpass (prompt);
-	      
-	      na = new_isakmp_attribute(ap->type, reply_attr);
-	      reply_attr = na;
-	      na->u.lots.length = strlen (pass) + 1;
-	      na->u.lots.data = xallocc (na->u.lots.length);
-	      memcpy (na->u.lots.data, pass, na->u.lots.length);
-	      memset (pass, 0, na->u.lots.length);
 	    }
-	    break;
-#endif
 	  default:
 	    ;
 	  }
@@ -1436,9 +1431,9 @@ do_phase_2_config (struct sa_block *s)
   a = NULL;
   
   a = new_isakmp_attribute(ISAKMP_MODECFG_ATTRIB_APPLICATION_VERSION, a);
-  a->u.lots.length = sizeof("vpnc version " VERSION)-1 + 1 + strlen(uts.sysname);
-  a->u.lots.data = xallocc(a->u.lots.length + 1);
-  snprintf(a->u.lots.data, a->u.lots.length + 1, "vpnc version " VERSION":%s", uts.sysname);
+  a->u.lots.length = strlen(config[CONFIG_VERSION]);
+  a->u.lots.data = xallocc(a->u.lots.length);
+  memcpy(a->u.lots.data, config[CONFIG_VERSION], a->u.lots.length);
   
   a = new_isakmp_attribute(ISAKMP_MODECFG_ATTRIB_CISCO_DDNS_HOSTNAME, a);
   a->u.lots.length = strlen(uts.nodename);
@@ -1527,10 +1522,10 @@ do_phase_2_config (struct sa_block *s)
 	  reject = ISAKMP_N_ATTRIBUTES_NOT_SUPPORTED;
 	  break;
 	}
-	strbuf = xallocc(a->u.lots.length)+1;
+	strbuf = xallocc(a->u.lots.length+1);
 	memcpy(strbuf, a->u.lots.data, a->u.lots.length);
 	addenv("CISCO_DEF_DOMAIN", strbuf);
-	/*free(strbuf); free(): invalid pointer 0x80593f9! FIXME */
+	free(strbuf);
 	break;
 	
       case ISAKMP_MODECFG_ATTRIB_CISCO_BANNER:
@@ -1538,7 +1533,7 @@ do_phase_2_config (struct sa_block *s)
 	  reject = ISAKMP_N_ATTRIBUTES_NOT_SUPPORTED;
 	  break;
 	}
-	strbuf = xallocc(a->u.lots.length)+1;
+	strbuf = xallocc(a->u.lots.length+1);
 	memcpy(strbuf, a->u.lots.data, a->u.lots.length);
 	addenv("CISCO_BANNER", strbuf);
 	free(strbuf);
@@ -1990,33 +1985,153 @@ DEBUG(2, printf("S7.10\n"));
   }
 }
 
+const char *config_def_description(void)
+{ return "default value for this option"; }
+
+const char *config_def_ike_dh(void)
+{ return "dh2"; }
+
+const char *config_def_pfs(void)
+{ return "server"; }
+
+const char *config_def_local_port(void)
+{ return "500"; }
+
+const char *config_def_app_version(void)
+{
+	struct utsname uts;
+	char *version;
+ 	
+	uname(&uts);
+	asprintf(&version, "Cisco Systems VPN Client %s:%s", VERSION, uts.sysname);
+	return version;
+}
+
 static const struct config_names_s {
-  const char *desc;
-  const char *name;
-  const char *option;
   enum config_enum nm;
   const int needsArgument;
+  const char *option;
+  const char *name;
+  const char *type;
+  const char *desc;
+  const char *(*get_def)(void);
 } config_names[] = {
   /* Note: broken config file parser does NOT support option
    * names where one is a prefix of another option. Needs just a bit work to
    * fix the parser to care about ' ' or '\t' after the wanted
    * option... */
-  { "<command> -- executed using system() to configure interface etc.", "Config Script ", "--script", CONFIG_CONFIG_SCRIPT, 1 },
-  { "<0/1/2/3/99> -- Show verbose debug messages", "Debug ", "--debug", CONFIG_DEBUG, 1 },
-  { "-- enables weak single des encryption", "Enable Single DES", "--enable-1des", CONFIG_ENABLE_1DES, 0 },
-  { "-- Don't detach from the console after login", "No Detach", "--no-detach", CONFIG_ND, 0 },
-  { "-- Don't ask anything, exit on missing options", "Noninteractive", "--non-inter", CONFIG_NON_INTERACTIVE, 0 },
-  { "<filename> -- store the pid of background process there", "Pidfile ", "--pid-file", CONFIG_PID_FILE, 1 },
-  { "<0-65535> -- store the pid of background process there", "Local Port ", "--local-port", CONFIG_LOCAL_PORT, 1 },
-  { "<ascii string> -- visible name of the TUN interface", "Interface name ", "--ifname", CONFIG_IF_NAME, 1 },
-  { "<dh1/dh2/dh5> -- name of the IKE DH Group", "IKE DH Group ", "--dh", CONFIG_IKE_DH, 1 },
-  { "<nopfs/dh1/dh2/dh5>", "Perfect Forward Secrecy ", "--pfs", CONFIG_IPSEC_PFS, 1 },
-  { "<ip/hostname> -- name of your IPSec gateway", "IPSec gateway ", "--gateway", CONFIG_IPSEC_GATEWAY, 1 },
-  { "<ascii string>", "IPSec ID ", "--id", CONFIG_IPSEC_ID, 1 },
-  { "<ascii string>", "IPSec secret ", NULL, CONFIG_IPSEC_SECRET, 1 },
-  { "<ascii string>", "Xauth username ", "--username", CONFIG_XAUTH_USERNAME, 1 },
-  { "<ascii string>", "Xauth password ", NULL, CONFIG_XAUTH_PASSWORD, 1 },
-  { NULL, NULL, NULL, 0, 0 }
+  { CONFIG_NONE, 0,
+    "commandline option,",
+    "configfile variable, ",
+    "argument type",
+    "description",
+    config_def_description },
+  { CONFIG_IPSEC_GATEWAY, 1,
+    "--gateway",
+    "IPSec gateway ",
+    "<ip/hostname>",
+    "IP/name of your IPSec gateway",
+    NULL },
+  { CONFIG_IPSEC_ID, 1,
+    "--id",
+    "IPSec ID ",
+    "<ASCII string>",
+    "your group name",
+    NULL },
+  { CONFIG_IPSEC_SECRET, 1,
+    NULL,
+    "IPSec secret ",
+    "<ASCII string>",
+    "your group password (cleartext, no support for obfuscated strings)",
+    NULL },
+  { CONFIG_XAUTH_USERNAME, 1,
+    "--username",
+    "Xauth username ",
+    "<ASCII string>",
+    "your username",
+    NULL },
+  { CONFIG_XAUTH_PASSWORD, 1,
+    NULL,
+    "Xauth password ",
+    "<ASCII string>",
+    "your password (cleartext, no support for obfuscated strings)",
+    NULL },
+  { CONFIG_CONFIG_SCRIPT, 1,
+    "--script",
+    "Config Script ",
+    "<command>",
+    "command is executed using system() to configure the interface,\n"
+    "      routing and so on. Device name, IP, etc. are passed using enviroment\n"
+    "      variables, see README. This script is executed right after ISAKMP is\n"
+    "      done, but befor tunneling is enabled.",
+    sysdep_config_script },
+  { CONFIG_DOMAIN, 1,
+    "--domain",
+    "Domain ",
+    "<ASCII string>",
+    "(NT-) Domain name for authentication",
+    NULL },
+  { CONFIG_IKE_DH, 1,
+    "--dh",
+    "IKE DH Group ",
+    "<dh1/dh2/dh5>",
+    "name of the IKE DH Group",
+    config_def_ike_dh },
+  { CONFIG_IPSEC_PFS, 1,
+    "--pfs",
+    "Perfect Forward Secrecy ",
+    "<nopfs/dh1/dh2/dh5/server>",
+    "Diffie-Hellman group to use for PFS",
+    config_def_pfs },
+  { CONFIG_ENABLE_1DES, 0,
+    "--enable-1des",
+    "Enable Single DES",
+    NULL,
+    "enables weak single DES encryption",
+    NULL },
+  { CONFIG_VERSION, 1,
+    "--application-version",
+    "Application version ",
+    "<ASCII string>",
+    "Application Version to report",
+    config_def_app_version },
+  { CONFIG_IF_NAME, 1,
+    "--ifname",
+    "Interface name ",
+    "<ASCII string>",
+    "visible name of the TUN interface",
+    NULL },
+  { CONFIG_DEBUG, 1,
+    "--debug",
+    "Debug ",
+    "<0/1/2/3/99>",
+    "Show verbose debug messages",
+    NULL },
+  { CONFIG_ND, 0,
+    "--no-detach",
+    "No Detach",
+    NULL,
+    "Don't detach from the console after login",
+    NULL },
+  { CONFIG_PID_FILE, 1,
+    "--pid-file",
+    "Pidfile ",
+    "<filename>",
+    "store the pid of background process in <filename>",
+    NULL },
+  { CONFIG_LOCAL_PORT, 1,
+    "--local-port",
+    "Local Port ",
+    "<0-65535>",
+    "local ISAKMP port number to use (0 == use random port)",
+    config_def_local_port },
+  { CONFIG_NON_INTERACTIVE, 0,
+    "--non-inter",
+    "Noninteractive",
+    NULL,
+    "Don't ask anything, exit on missing options",
+    NULL },
+  { 0, 0, NULL, NULL, NULL, NULL, NULL }
 };
 
 void
@@ -2045,7 +2160,9 @@ read_config_file (char *name, const char **configs, int missingok)
       if (line[llen - 1] == '\n')
 	line[llen - 1] = 0;
       linenum++;
-      for (i = 0; config_names[i].name != NULL; i++)
+      for (i = 0; config_names[i].name != NULL; i++) {
+	if (config_names[i].nm == CONFIG_NONE)
+	  continue;
 	if (strncasecmp (config_names[i].name, line, 
 			 strlen (config_names[i].name)) == 0)
 	  {
@@ -2061,10 +2178,36 @@ read_config_file (char *name, const char **configs, int missingok)
 	      error (1, errno, "can't allocate memory");
 	    break;
 	  }
+      }
       if (config_names[i].name == NULL && line[0] != '#' && line[0] != 0)
-	DEBUG(1,error(0, 0, "warning: unknown configuration directive %s at line %d",
-		       name, linenum));
+	error(0, 0, "warning: unknown configuration directive in %s at line %d",
+	       name, linenum);
     }
+}
+
+void print_usage(char *argv0)
+{
+	int c;
+ 	
+	printf ("Usage: %s [--version] [--print-config] [--help] [options] [config file]\n\n",
+		argv0);
+	printf ("Legend:\n");
+	for (c = 0; config_names[c].name != NULL; c++) {
+		printf ("  %s %s\n"
+			"  %s%s\n"
+			"      %s\n", 
+			(config_names[c].option == NULL ? "(configfile only option)" :
+				 config_names[c].option),
+			((config_names[c].type == NULL || config_names[c].option == NULL) ?
+				 "" : config_names[c].type),
+			config_names[c].name,
+			(config_names[c].type == NULL ? "" : config_names[c].type),
+			config_names[c].desc);
+		if (config_names[c].get_def != NULL)
+			printf("    Default: %s\n", config_names[c].get_def());
+		printf("\n");
+	}
+	printf ("Report bugs to vpnc@unix-ag.uni-kl.de\n");
 }
 
 int main(int argc, char **argv)
@@ -2087,7 +2230,7 @@ int main(int argc, char **argv)
 	int known = 0;
 
 	for (c = 0; config_names[c].name != NULL && ! known; c++)
-	  if (config_names[c].option != NULL
+	  if (config_names[c].option != NULL && config_names[c].nm != CONFIG_NONE
 	      && strncmp (argv[i], config_names[c].option,
 			  strlen (config_names[c].option)) == 0)
 	    {
@@ -2145,18 +2288,11 @@ int main(int argc, char **argv)
 	
 	if (! known)
 	  {
-	    int c;
+	    if (strcmp(argv[i], "--help") != 0)
+	      printf ("%s: unknown option %s\n\n", argv[0], argv[i]);
 	    
-	    printf ("usage: %s [--version] [--print-config] [options] [config file]\n", argv[0]);
-	    printf ("%13s %s\n", "Option", "Config file directive <arguments> -- Description");
-	    for (c = 0; config_names[c].name != NULL; c++)
-	      printf ("%13s %s %s\n", 
-		      (config_names[c].option == NULL
-		       ? "(no option)"
-		       : config_names[c].option),
-		      config_names[c].name, config_names[c].desc);
-	    printf ("Report bugs to vpnc@unix-ag.uni-kl.de\n");
-	    exit (0);
+	    print_usage(argv[0]),
+	    exit(1);
 	  }
       }
     else
@@ -2165,16 +2301,10 @@ int main(int argc, char **argv)
   read_config_file ("/etc/vpnc/default.conf", config, 1);
   read_config_file ("/etc/vpnc.conf", config, 1);
 
-  if (!print_config) {
-    if (!config[CONFIG_IKE_DH])
-      config[CONFIG_IKE_DH] = "dh2";
-    if (!config[CONFIG_IPSEC_PFS])
-      config[CONFIG_IPSEC_PFS] = "server";
-    if (!config[CONFIG_LOCAL_PORT])
-      config[CONFIG_LOCAL_PORT] = "500";
-    if (!config[CONFIG_CONFIG_SCRIPT])
-      config[CONFIG_CONFIG_SCRIPT] = sysdep_config_script();
-  }
+  if (!print_config)
+    for (i = 0; config_names[i].name != NULL; i++)
+      if (!config[config_names[i].nm] && i != CONFIG_NONE && config_names[i].get_def != NULL)
+        config[config_names[i].nm] = config_names[i].get_def();
 
   opt_debug=(config[CONFIG_DEBUG]) ? atoi(config[CONFIG_DEBUG]) : 0;
   opt_nd=(config[CONFIG_ND]) ? 1 : 0;
@@ -2182,6 +2312,7 @@ int main(int argc, char **argv)
 
   if (opt_debug >= 99) {
 	  printf("WARNING! active debug level is >= 99, output includes username and password (hex encoded)\n");
+	  fprintf(stderr, "WARNING! active debug level is >= 99, output includes username and password (hex encoded)\n");
   }
   
   for (i = 0; i < LAST_CONFIG; i++)
@@ -2192,18 +2323,6 @@ int main(int argc, char **argv)
 	
 	switch (i)
 	  {
-	  case CONFIG_DEBUG:
-	  case CONFIG_IF_NAME:
-          case CONFIG_ND:
-          case CONFIG_NON_INTERACTIVE:
-          case CONFIG_PID_FILE:
-          case CONFIG_LOCAL_PORT:
-	  case CONFIG_IKE_DH:
-	  case CONFIG_IPSEC_PFS:
-	  case CONFIG_CONFIG_SCRIPT:
-	  case CONFIG_ENABLE_1DES:
-             /* no interaction */
-	    break;
 	  case CONFIG_IPSEC_GATEWAY:
 	    printf ("Enter IPSec gateway address: ");
 	    break;
@@ -2231,19 +2350,9 @@ int main(int argc, char **argv)
            case CONFIG_XAUTH_PASSWORD:
               s = strdup (getpass (""));
               break;
-           case CONFIG_DEBUG:
-           case CONFIG_IF_NAME:
-           case CONFIG_ND:
-           case CONFIG_NON_INTERACTIVE:
-           case CONFIG_PID_FILE:
-           case CONFIG_LOCAL_PORT:
-	   case CONFIG_IKE_DH:
-	   case CONFIG_IPSEC_PFS:
-	   case CONFIG_CONFIG_SCRIPT:
-	   case CONFIG_ENABLE_1DES:
-              /* no interaction */
-              break;
-           default:
+           case CONFIG_IPSEC_GATEWAY:
+	   case CONFIG_IPSEC_ID:
+	   case CONFIG_XAUTH_USERNAME:
               getline (&s, &s_len, stdin);
         }
 	if (s != NULL && s[strlen (s) - 1] == '\n')
@@ -2253,6 +2362,7 @@ int main(int argc, char **argv)
   
   if (print_config)
     {
+      fprintf(stderr, "vpnc.conf:\n\n");
       for (i = 0; config_names[i].name != NULL; i++)
 	if (config[config_names[i].nm] != NULL)
 	  printf ("%s%s\n", config_names[i].name, (config_names[i].needsArgument)?config[config_names[i].nm]:"");

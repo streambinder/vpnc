@@ -1,26 +1,37 @@
-.TH "VPNC" "8" "28 Januar 2004" "Debian" "vpnc"
+.TH "VPNC" "8" "13 Mai 2004" "Debian" "vpnc"
 
 .SH NAME
 vpnc \- client for cisco3000 VPN Concentrator
 .SH SYNOPSIS
 
 .B vpnc  [ \-\-gateway 
-.I IP-or-hostname
-.B ] [ \-\-id 
-.I IPSec group Id
+.I <IP or hostname>
+.B ] [ \-\-id
+.I <IPSec group Id>
 .B ] [ \-\-username
-.I name
+.I <user name>
+.B ] [ \-\-script 
+.I <command>
+.B ] [ \-\-domain
+.I <domain name>
+.B ] [ \-\-dh
+.I <dh1/dh2/dh5>
+.B ] [ \-\-pfs
+.I <nopfs/dh1/dh2/dh5/server>
+.B ] [ \-\-enable-1des 
+.B ] [ \-\-application-version 
+.I <version string>
 .B ] [ \-\-ifname 
-.I name
-.B ] [ \-\-local\-port
-.I port number
-.B ] [ \-\-pid\-file
-.I filename
-.B ] [ \-\-dh 
-.I IKE DH group
-.B ] [ \-\-pfs 
-.I PFS group
-.B ] [ \-\-non\-inter ] [ \-\-debug ] [ \-\-no\-detach ] [ \-\-print\-config ]
+.I <interface>
+.B ] [ \-\-debug
+.I <0/1/2/3/99>
+.B ] [ \-\-no-detach 
+.B ] [ \-\-pid-file 
+.I <filename>
+.B ] [ \-\-local-port
+.I <0-65535>
+.B ] [ \-\-non-inter 
+.B ] 
 
 
 .SH "DESCRIPTION"
@@ -42,11 +53,18 @@ tunnel with IP routing under Linux. Further, the user must care about
 setting a minimal route to the gateway to not cut the essential
 connection.
 .PP
-The command \fBvpnc\-connect\fR (a helper script) will take care of it all: it
-reads the configuration file (specified as the first argument, see
-EXAMPLES below), creates a minimalistic host route to the gateway and
-configures the default gateway configuration of Linux to run over the
-VPN tunnel.
+However, when connection has been established, vpnc will run a simple
+command (see \-\-script) to configure the interface and care about the
+route setup. By default, only a simple ifconfig command is executed.
+.PP
+The command \fBvpnc\-connect\fR is a helper script that will assist on
+connection invocation and routing configuration. It can also be used to manage configuration files
+for multiple VPN connections. The script can be started by the user or
+from the daemon (see \-\-script) when the connection is established. In
+the first case, it will simply run the daemon after some environment
+checks. When executed by the daemon later, it will create a minimalistic
+host route to the gateway and configures the default gateway
+configuration of Linux to run over the VPN tunnel.
 .PP
 The \fBvpnc\-disconnect\fR command is used to terminate
 the connection previously created by \fBvpnc\-connect\fR
@@ -57,19 +75,20 @@ The daemon reads configuration data from the following places:
 .PD 0
 .IP "- command line options"
 .IP "- config file(s) specified on the command line"
+.IP "- /etc/vpnc/default.conf"
 .IP "- /etc/vpnc.conf"
 .IP "- prompting the user if not found above"
 
 .PP
 
-The script expects the 
+The vpnc-connect script expects the 
 .B configuration file
 as the first parameter. This
 can either be an absolute path or the name
 of a config file located in 
 .B /etc/vpnc/<filename>.conf.
 If no config is specified, 
-.B vpnc-connect
+.B vpnc\-connect
 will try
 to load 
 .B /etc/vpnc/default.conf
@@ -80,36 +99,78 @@ or as a last resort
 The program options can be either given as argument (but not all of them
 for security reasons) or be stored in a configuration file.
 
-.IP "\-\-gateway IP-or-hostname"
-IP address or hostname of the VPN gateway
-.IP "\-\-id IPSec group Id"
-ID of the IPSec group
-.IP "\-\-username name"
-your user credentials
-.IP "\-\-ifname name"
-name of the tun-interface to use
-.IP "\-\-local\-port port number"
-use this port for the connection <0-65535>, use 0 for random
-.IP "\-\-pid\-file filename"
-store the pid of background process there
-.IP "\-\-dh IKE DH group"
-name of the IKE DH Group <dh1/dh2/dh5>
-.IP "\-\-pfs PFS group"
-Perfect Forward Secrecy <nopfs/dh1/dh2/dh5>
-.IP "\-\-non\-inter"
-non interactive mode, don't ask any questions
-.IP "\-\-debug nr"
-set debugging level <0/1/2/3/99>.
-.B Warning: \-\-debug output of level 99 and greater from later versions cotains (hex-encoded) username and password!
+
+.IP "\-\-gateway <ip/hostname>"
+IP or host name of your IPSec gateway
+
+.IP "\-\-id <ASCII string>"
+ Your group name in <ASCII string>
+      
+.IP "\-\-username <ASCII string>"
+  Your username
+
+.IP "\-\-script <command>"
+  The <command> specified here is executed when the connection has been
+  established, in order to configure the interface, routing and so on.
+  Device name, IP, etc. are passed using enviroment variables, see
+  README. This script is executed right after ISAKMP is done, but befor
+  tunneling is enabled. Some environment variables are set and can be
+  used for the detail configuration. Default command: ifconfig $TUNDEV
+  inet $INTERNAL_IP4_ADDRESS pointopoint $INTERNAL_IP4_ADDRESS netmask
+  255.255.255.255 mtu 1412 up
+
+.IP "\-\-domain <ASCII string>"
+  Domain name for authentication, sometimes needed for authentification
+  against Windows NT domains.
+
+.IP "\-\-dh <dh1/dh2/dh5>"
+  Name of the IKE DH Group (default: dh2)
+
+.IP "\-\-pfs <nopfs/dh1/dh2/dh5/server>"
+  Diffie-Hellman group to use for PFS, one of nopfs, dh1, dh2, dh5 or
+  server (default: server).
+
+.IP "\-\-enable\-1des"
+ Enables weak Single DES encryption
+
+.IP "\-\-application\-version <ASCII string>"
+ Application Version to report to the server when identifying ourself
+ (default: Cisco Systems VPN Client <vpnc-version>)
+
+.IP "\-\-ifname <ASCII string>"
+ The virtual name of the Linux network interface assigned to the tunnel
+ endpoint
+
+.IP "\-\-debug <0/1/2/3/99>"
+  Show verbose debug messages with different verbosity levels
+
 .IP "\-\-no\-detach"
-do not send daemon to background
+ Don't detach from the console (go to background) after login
+
+.IP "\-\-pid\-file <filename>"
+ Store the pid of background process in a file
+
+.IP "\-\-local-port <0-65535>"
+  Local ISAKMP port number to use (0 == use random port, 500 is default)
+
+.IP "\-\-non-inter"
+ Don't ask anything, exit on missing options
+
 .IP "\-\-print\-config"
-prints your configuration; output can be used as vpnc.conf
+ Prints your configuration; output can be used as vpnc.conf
 
 .SH FILES
 .I /etc/vpnc.conf
 .RS
-The default configuration file. See
+The default configuration file. You can specify the same config
+directives as with command line options and additionaly
+.B IPSec secret
+and
+.B Xauth password
+both supplying a cleartext password. Scrambled passwords from the Cisco
+configuration profiles are not supported.
+
+See
 .BR EXAMPLES
 for further details.
 .RE
@@ -126,10 +187,6 @@ This is an example vpnc.conf:
 
 .RS
 .PD 0
-IKE DH Group dh2
-.P
-Perfect Forward Secrecy nopfs
-.P
 IPSec gateway vpn.rwth\-aachen.de
 .P
 IPSec ID MoPS
@@ -157,7 +214,13 @@ Advanced features like manual setting of multiple target routes is
 documented in the example files of the vpnc package.
 
 .SH TODO
+.PD 0
 Re-keying is no implemented yet (default rekey-intervall is 8 hours).
+.P
+certificate support (Pre-Shared-Key + XAUTH is known to be insecure).
+.P
+IPSec over UDP
+.PD
 
 .SH AUTHOR
 This man-page has been written by Eduard Bloch <blade(at)debian.org> and
@@ -175,3 +238,4 @@ License can be found in /usr/share/common\-licenses/GPL.
 .BR ifconfig (8),
 .BR route (1),
 .BR http://www.unix\-ag.uni\-kl.de/~massar/vpnc/
+

@@ -50,8 +50,6 @@ TODO list
 
 * DONE accept (== ignore) lifetime update in phase1
 
-****
-
 * DONE send lifetime in phase1 and phase2
 
 * DONE send version string
@@ -64,19 +62,17 @@ TODO list
 
 * DONE check /dev/net/tun, reject /dev/tun* on linux
 
+***
+
+* DONE XAUTH Domain: (empty)
+
+* svn-Repository
+
+* implement udp transport NAT-T
+
+* implement certificate support
+
+* implement rekeying / DPD / frozen connections?
+
 * optional drop root
-
-* implement rekeying
-
-* frozen connections?
-
-* implement udp transport
-
-****
-
-* check config-file mode??
-
-* retry login??
-
-* getopt()? libpopt?
 

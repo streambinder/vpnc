@@ -21,6 +21,8 @@
 
 extern int opt_debug;
 extern int opt_nd;
+extern int tun_fd;
+extern char tun_name[];
 extern void hex_dump (const char *str, const void *data, size_t len);
 
 #define DEBUG(lvl, a) do {if (opt_debug >= (lvl)) {a;}} while (0)

@@ -64,7 +64,10 @@
 #include <time.h>
 #include <poll.h>
 #include <signal.h>
+
+#ifndef __sun__
 #include <err.h>
+#endif
 
 #include <gcrypt.h>
 #include "sysdep.h"
@@ -805,6 +808,7 @@ killit(int signum)
 	      kill_dest, sizeof (struct sockaddr_in));
       close (sock);
     }
+  tun_close(tun_fd, tun_name);
   syslog(LOG_NOTICE, "terminated");
   _exit (0);
 }
@@ -823,7 +827,7 @@ write_pidfile(const char *pidfile)
 		return;
 	}
 	
-	fprintf(pf, "%d\n", getpid());
+	fprintf(pf, "%d\n", (int)getpid());
 	fclose(pf);
 }
 
@@ -930,7 +934,7 @@ hex_dump("tothem.auth_secret", tothem_sa.auth_secret, tothem_sa.auth_secret_size
             vpnc_main_loop (&vpnpeer, &meth, tun_fd); /* never returns */
             exit(0);
          } else {
-            printf("VPNC started in background (pid: %d)...\n", pid);
+            printf("VPNC started in background (pid: %d)...\n", (int)pid);
             exit(0);
          }
       }

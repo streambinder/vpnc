@@ -170,6 +170,34 @@ const char *sysdep_config_script(void)
 	return "ifconfig $TUNDEV inet $INTERNAL_IP4_ADDRESS $INTERNAL_IP4_ADDRESS netmask 255.255.255.255 mtu 1412 up";
 }
 
+int vasprintf(char **strp, const char *fmt, va_list ap)
+{
+	int ret;
+	char *strbuf;
+	
+	ret = vsnprintf(NULL, 0, fmt, ap);
+	strbuf = (char *)malloc(ret+1);
+	if (strbuf == NULL) {
+		errno = ENOMEM;
+		ret = -1;
+	}
+	vsnprintf(strbuf, ret+1, fmt, ap);
+	*strp = strbuf;
+	return ret;
+}
+
+int asprintf(char **strp, const char *fmt, ...)
+{
+	int ret;
+	va_list ap;
+	
+	va_start(ap, fmt);
+	ret = vasprintf(strp, fmt, ap);
+	va_end(ap);
+	
+	return ret;
+}
+
 void error(int status, int errornum, const char *fmt, ...)
 {
 	char   *buf2;
@@ -189,10 +217,11 @@ void error(int status, int errornum, const char *fmt, ...)
 
 int getline(char **line, size_t *length, FILE *stream)
 {
-	char *tmpline;
+	char tmpline[512];
 	size_t len;
 
-	tmpline = fgetln(stream, &len);
+	fgets(tmpline, sizeof(tmpline), stream);
+	len = strlen(tmpline);
 	if (feof(stream))
 		return -1;
 	if (*line == NULL) {
@@ -205,7 +234,47 @@ int getline(char **line, size_t *length, FILE *stream)
 	}
 	if (*line == NULL)
 		return -1;
-	memcpy(*line, tmpline, len);
-	(*line)[len] = '\0';
+	memcpy(*line, tmpline, len + 1);
 	return len;
+}
+
+extern char **environ;
+
+void unsetenv(const char *name)
+{
+	int i, len;
+	
+	len = strlen(name);
+	for (i = 0; environ[i]; i++)
+		if (!strncmp(name, environ[i], len))
+			if (environ[i][len] == '=')
+				break;
+	
+	for (; environ[i] && environ[i+1]; i++)
+		environ[i] = environ[i+1];
+}
+
+int setenv(const char *name, const char *value, int overwrite)
+{
+	int ret;
+	char *newenv;
+	
+	if (overwrite == 0)
+		if (getenv(name) != NULL)
+			return 0;
+	
+	newenv = malloc(strlen(name) + 1 + strlen(value) + 1);
+	if (newenv == NULL)
+		return -1;
+	
+	*newenv = '\0';
+	strcat(newenv, name);
+	strcat(newenv, "=");
+	strcat(newenv, value);
+	
+	ret = putenv(newenv);
+	if (ret == -1)
+		free(newenv);
+	
+	return ret;
 }
