@@ -43,15 +43,15 @@
 
 /* We do not want to export these definitions.  */
 int modp_getlen (struct group *);
-void modp_getraw (struct group *, GcryMPI, unsigned char *);
-int modp_setraw (struct group *, GcryMPI, unsigned char *, int);
-int modp_setrandom (struct group *, GcryMPI);
-int modp_operation (struct group *, GcryMPI, GcryMPI, GcryMPI);
+void modp_getraw (struct group *, gcry_mpi_t, unsigned char *);
+int modp_setraw (struct group *, gcry_mpi_t, unsigned char *, int);
+int modp_setrandom (struct group *, gcry_mpi_t);
+int modp_operation (struct group *, gcry_mpi_t, gcry_mpi_t, gcry_mpi_t);
 
 struct modp_group {
-  GcryMPI gen;			/* Generator */
-  GcryMPI p;				/* Prime */
-  GcryMPI a, b, c, d;
+  gcry_mpi_t gen;			/* Generator */
+  gcry_mpi_t p;				/* Prime */
+  gcry_mpi_t a, b, c, d;
 };
 
 /*
@@ -220,8 +220,8 @@ modp_init (struct group *group)
 
   group->bits = dscr->bits;
 
-  gcry_mpi_scan(&grp->p, GCRYMPI_FMT_HEX, dscr->prime, NULL);
-  gcry_mpi_scan(&grp->gen, GCRYMPI_FMT_HEX, dscr->gen, NULL);
+  gcry_mpi_scan(&grp->p, GCRYMPI_FMT_HEX, dscr->prime, 0, NULL);
+  gcry_mpi_scan(&grp->gen, GCRYMPI_FMT_HEX, dscr->gen, 0, NULL);
 
   grp->a = gcry_mpi_new (group->bits);
   grp->b = gcry_mpi_new (group->bits);
@@ -244,14 +244,14 @@ modp_getlen (struct group *group)
 }
 
 void
-modp_getraw (struct group *grp, GcryMPI v, unsigned char *d)
+modp_getraw (struct group *grp, gcry_mpi_t v, unsigned char *d)
 {
   size_t l, l2;
   unsigned char *tmp;
   int ret;
   
   l = grp->getlen (grp);
-  ret = gcry_mpi_aprint(GCRYMPI_FMT_STD, (void **)&tmp, &l2, v);
+  ret = gcry_mpi_aprint(GCRYMPI_FMT_STD, &tmp, &l2, v);
   memcpy(d, tmp + (l2-l), l);
 #if 0
   {
@@ -263,7 +263,7 @@ modp_getraw (struct group *grp, GcryMPI v, unsigned char *d)
 }
 
 int
-modp_setraw (struct group *grp, GcryMPI d, unsigned char *s, int l)
+modp_setraw (struct group *grp, gcry_mpi_t d, unsigned char *s, int l)
 {
   int i;
   
@@ -286,7 +286,7 @@ modp_setraw (struct group *grp, GcryMPI d, unsigned char *s, int l)
 }
 
 int
-modp_setrandom (struct group *grp, GcryMPI d)
+modp_setrandom (struct group *grp, gcry_mpi_t d)
 {
   int i, l = grp->getlen (grp);
   u_int32_t tmp = 0;
@@ -306,7 +306,7 @@ modp_setrandom (struct group *grp, GcryMPI d)
 }
 
 int
-modp_operation (struct group *group, GcryMPI d, GcryMPI a, GcryMPI e)
+modp_operation (struct group *group, gcry_mpi_t d, gcry_mpi_t a, gcry_mpi_t e)
 {
   struct modp_group *grp = (struct modp_group *)group->group;
 

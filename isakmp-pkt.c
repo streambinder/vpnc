@@ -266,7 +266,8 @@ void flatten_isakmp_packet (struct isakmp_packet *p,
     padding = blksz - (sz % blksz);
     if (padding == blksz)
       padding = 0;
-    DEBUG(3, printf("size = %d, blksz = %d, padding = %d\n", sz, blksz, padding));
+    DEBUG(3, printf("size = %ld, blksz = %ld, padding = %ld\n",
+	(long)sz, (long)blksz, (long)padding));
     flow_reserve (&f, padding);
   }
   f.base[lpos] = (f.end - f.base) >> 24;

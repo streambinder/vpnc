@@ -20,7 +20,33 @@ TODO list
 
 * DONE NetBSD supported
 
-* rekeying?
+--
+
+* DONE FreeBSD supported
+
+* DONE ignore attr 32136! (Cisco extension: XAUTH Vendor)
+
+* DONE ignore "metric10 xx"
+
+* DONE make /var/run/vpnc as needed
+
+* DONE support for new libgcrypt versions
+
+* DONE passcode == password
+
+* post link to http://www.liebchen-online.de/vpn-zaurus.html
+
+* post rfcs and drafts
+
+* fix link at alioth
+
+****
+
+* implement rekeying
+
+* implement ipsec main mode
+
+* implement udp transport
 
 ****
 

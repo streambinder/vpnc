@@ -438,7 +438,7 @@ void
 isakmp_crypt (struct sa_block *s, uint8_t *block, size_t blocklen, int enc)
 {
   unsigned char *new_iv;
-  GcryCipherHd cry_ctx;
+  gcry_cipher_hd_t cry_ctx;
   
   if (blocklen < ISAKMP_PAYLOAD_O 
       || ((blocklen - ISAKMP_PAYLOAD_O) % s->ivlen != 0))
@@ -447,9 +447,9 @@ isakmp_crypt (struct sa_block *s, uint8_t *block, size_t blocklen, int enc)
   if ((memcmp (block + ISAKMP_MESSAGE_ID_O, s->current_iv_msgid, 4) != 0)&&(enc >= 0))
     {
       unsigned char *iv;
-      GcryMDHd md_ctx;
+      gcry_md_hd_t md_ctx;
       
-      md_ctx = gcry_md_open(s->md_algo, 0);
+       gcry_md_open(&md_ctx, s->md_algo, 0);
       gcry_md_write(md_ctx, s->initial_iv, s->ivlen);
       gcry_md_write(md_ctx, block + ISAKMP_MESSAGE_ID_O, 4);
       gcry_md_final(md_ctx);
@@ -460,7 +460,7 @@ isakmp_crypt (struct sa_block *s, uint8_t *block, size_t blocklen, int enc)
     }
 
   new_iv = xallocc (s->ivlen);
-  cry_ctx = gcry_cipher_open(s->cry_algo, GCRY_CIPHER_MODE_CBC, 0);
+  gcry_cipher_open(&cry_ctx, s->cry_algo, GCRY_CIPHER_MODE_CBC, 0);
   gcry_cipher_setkey(cry_ctx, s->key, s->keylen);
   gcry_cipher_setiv(cry_ctx, s->current_iv, s->ivlen);
   if (!enc) {
@@ -559,7 +559,7 @@ DEBUG(2, printf("S4.4\n"));
      struct isakmp_payload *idp = NULL;
      int seen_xauth_vid = 0;
      unsigned char *skeyid;
-     GcryMDHd skeyid_ctx;
+     gcry_md_hd_t skeyid_ctx;
      
      reject = 0;
      r = parse_isakmp_packet (r_packet, r_length, &reject);
@@ -687,8 +687,8 @@ DEBUG(2, printf("S4.4\n"));
 	 }
 
      d->md_len = gcry_md_get_algo_dlen(d->md_algo);
-     d->ivlen = gcry_cipher_algo_info(d->cry_algo, GCRYCTL_GET_BLKLEN, NULL, NULL);
-     d->keylen = gcry_cipher_algo_info(d->cry_algo, GCRYCTL_GET_KEYLEN, NULL, NULL);
+     gcry_cipher_algo_info(d->cry_algo, GCRYCTL_GET_BLKLEN, NULL, &(d->ivlen));
+     gcry_cipher_algo_info(d->cry_algo, GCRYCTL_GET_KEYLEN, NULL, &(d->keylen));
 
      if (reject == 0
 	 && (ke == NULL || ke->u.ke.length != dh_getlen (dh_grp)))
@@ -709,7 +709,7 @@ DEBUG(2, printf("S4.4\n"));
 
      /* Generate SKEYID.  */
      {
-       skeyid_ctx = gcry_md_open(d->md_algo, GCRY_MD_FLAG_HMAC);
+       gcry_md_open(&skeyid_ctx, d->md_algo, GCRY_MD_FLAG_HMAC);
        gcry_md_setkey(skeyid_ctx, shared_key, strlen (shared_key));
        gcry_md_write(skeyid_ctx, i_nonce, sizeof (i_nonce));
        gcry_md_write(skeyid_ctx, nonce->u.nonce.data, nonce->u.nonce.length);
@@ -720,7 +720,7 @@ hex_dump("skeyid", skeyid, d->md_len);
 
      /* Verify the hash.  */
      {
-       GcryMDHd hm;
+       gcry_md_hd_t hm;
        unsigned char *expected_hash;
        uint8_t *sa_f, *idi_f, *idp_f;
        size_t sa_size, idi_size, idp_size;
@@ -736,7 +736,7 @@ hex_dump("skeyid", skeyid, d->md_len);
        flatten_isakmp_payload (idi, &idi_f, &idi_size);
        flatten_isakmp_payload (idp, &idp_f, &idp_size);
 
-       hm = gcry_md_open(d->md_algo, GCRY_MD_FLAG_HMAC);
+       gcry_md_open(&hm, d->md_algo, GCRY_MD_FLAG_HMAC);
        gcry_md_setkey(hm, skeyid, d->md_len);
        gcry_md_write(hm, ke->u.ke.data, ke->u.ke.length);
        gcry_md_write(hm, dh_public, dh_getlen (dh_grp));
@@ -754,7 +754,7 @@ hex_dump("skeyid", skeyid, d->md_len);
 	 }
        gcry_md_close(hm);
 
-       hm = gcry_md_open(d->md_algo, GCRY_MD_FLAG_HMAC);
+       gcry_md_open(&hm, d->md_algo, GCRY_MD_FLAG_HMAC);
        gcry_md_setkey(hm, skeyid, d->md_len);
        gcry_md_write(hm, dh_public, dh_getlen (dh_grp));
        gcry_md_write(hm, ke->u.ke.data, ke->u.ke.length);
@@ -775,7 +775,7 @@ hex_dump("returned_hash", returned_hash, d->md_len);
 
      /* Determine all the SKEYID_x keys.  */
      {
-       GcryMDHd hm;
+       gcry_md_hd_t hm;
        int i;
        static const unsigned char c012[3] = { 0, 1, 2 };
        unsigned char *skeyid_e;
@@ -786,7 +786,7 @@ hex_dump("returned_hash", returned_hash, d->md_len);
        dh_create_shared (dh_grp, dh_shared_secret, ke->u.ke.data);
 hex_dump("dh_shared_secret", dh_shared_secret, dh_getlen (dh_grp));
 
-       hm = gcry_md_open(d->md_algo, GCRY_MD_FLAG_HMAC);
+       gcry_md_open(&hm, d->md_algo, GCRY_MD_FLAG_HMAC);
        gcry_md_setkey(hm, skeyid, d->md_len);
        gcry_md_write(hm, dh_shared_secret, dh_getlen (dh_grp));
        gcry_md_write(hm, d->i_cookie, ISAKMP_COOKIE_LENGTH);
@@ -798,7 +798,7 @@ hex_dump("dh_shared_secret", dh_shared_secret, dh_getlen (dh_grp));
        gcry_md_close(hm);
 hex_dump("skeyid_d", d->skeyid_d, d->md_len);
        
-       hm = gcry_md_open(d->md_algo, GCRY_MD_FLAG_HMAC);
+       gcry_md_open(&hm, d->md_algo, GCRY_MD_FLAG_HMAC);
        gcry_md_setkey(hm, skeyid, d->md_len);
        gcry_md_write(hm, d->skeyid_d, d->md_len);
        gcry_md_write(hm, dh_shared_secret, dh_getlen (dh_grp));
@@ -811,7 +811,7 @@ hex_dump("skeyid_d", d->skeyid_d, d->md_len);
        gcry_md_close(hm);
 hex_dump("skeyid_a", d->skeyid_a, d->md_len);
        
-       hm = gcry_md_open(d->md_algo, GCRY_MD_FLAG_HMAC);
+       gcry_md_open(&hm, d->md_algo, GCRY_MD_FLAG_HMAC);
        gcry_md_setkey(hm, skeyid, d->md_len);
        gcry_md_write(hm, d->skeyid_a, d->md_len);
        gcry_md_write(hm, dh_shared_secret, dh_getlen (dh_grp));
@@ -831,7 +831,7 @@ hex_dump("skeyid_e", skeyid_e, d->md_len);
        
        if (d->keylen > d->md_len) {
          for (i = 0; i * d->md_len < d->keylen; i++) {
-           hm = gcry_md_open(d->md_algo, GCRY_MD_FLAG_HMAC);
+           gcry_md_open(&hm, d->md_algo, GCRY_MD_FLAG_HMAC);
            gcry_md_setkey(hm, skeyid_e, d->md_len);
 	   if (i == 0)
              gcry_md_write(hm, "" /* &'\0' */, 1);
@@ -852,10 +852,10 @@ hex_dump("enc-key", d->key, d->keylen);
 
      /* Determine the initial 3DES IV.  */
      {
-       GcryMDHd hm;
+       gcry_md_hd_t hm;
        
        assert(d->ivlen < d->md_len);
-       hm = gcry_md_open(d->md_algo, 0);
+       gcry_md_open(&hm, d->md_algo, 0);
        gcry_md_write(hm, dh_public, dh_getlen (dh_grp));
        gcry_md_write(hm, ke->u.ke.data, ke->u.ke.length);
        gcry_md_final(hm);
@@ -946,7 +946,7 @@ unpack_verify_phase2 (struct sa_block *s,
   
   {
     size_t sz, spos;
-    GcryMDHd hm;
+    gcry_md_hd_t hm;
     unsigned char *expected_hash;
     struct isakmp_payload *h = r->payload;
     
@@ -966,7 +966,7 @@ unpack_verify_phase2 (struct sa_block *s,
       ;
     sz += r_packet [sz+2] << 8 | r_packet[sz+3];
     
-    hm = gcry_md_open(s->md_algo, GCRY_MD_FLAG_HMAC);
+    gcry_md_open(&hm, s->md_algo, GCRY_MD_FLAG_HMAC);
     gcry_md_setkey(hm, s->skeyid_a, s->md_len);
     gcry_md_write(hm, r_packet + ISAKMP_MESSAGE_ID_O, 4);
     if (nonce)
@@ -1004,7 +1004,7 @@ phase2_authpacket (struct sa_block *s, struct isakmp_payload *pl,
   struct isakmp_packet *p;
   uint8_t *pl_flat;
   size_t pl_size;
-  GcryMDHd hm;
+  gcry_md_hd_t hm;
   uint8_t msgid_sent[4];
 
   /* Build up the packet.  */
@@ -1021,7 +1021,7 @@ phase2_authpacket (struct sa_block *s, struct isakmp_payload *pl,
   p->payload->u.hash.data = xallocc (s->md_len);
   
   /* Set the MAC.  */
-  hm = gcry_md_open(s->md_algo, GCRY_MD_FLAG_HMAC);
+  gcry_md_open(&hm, s->md_algo, GCRY_MD_FLAG_HMAC);
   gcry_md_setkey(hm, s->skeyid_a, s->md_len);
   
   if (pl == NULL) {
@@ -1182,6 +1182,7 @@ DEBUG(2, printf("S5.4\n"));
 	  case ISAKMP_XAUTH_ATTRIB_USER_PASSWORD:
 	  case ISAKMP_XAUTH_ATTRIB_PASSCODE:
 	  case ISAKMP_XAUTH_ATTRIB_ANSWER:
+	  case ISAKMP_XAUTH_ATTRIB_CISCOEXT_VENDOR:
 	    break;
 	  case ISAKMP_XAUTH_ATTRIB_MESSAGE:
 	    if (ap->af == isakmp_attr_16)
@@ -1241,6 +1242,7 @@ DEBUG(2, printf("S5.5\n"));
 	    break;
 	    
 	  case ISAKMP_XAUTH_ATTRIB_USER_PASSWORD:
+	  case ISAKMP_XAUTH_ATTRIB_PASSCODE:
 	    /*if (loopcount == 0)*/
 	      {
 		struct isakmp_attribute *na;
@@ -1251,6 +1253,7 @@ DEBUG(2, printf("S5.5\n"));
 		strcpy (na->u.lots.data, config[CONFIG_XAUTH_PASSWORD]);
 		break;
 	      }
+#if 0
 	  case ISAKMP_XAUTH_ATTRIB_PASSCODE:
 	    {
 	      char prompt[64];
@@ -1271,6 +1274,7 @@ DEBUG(2, printf("S5.5\n"));
 	      memset (pass, 0, na->u.lots.length);
 	    }
 	    break;
+#endif
 	  default:
 	    ;
 	  }
@@ -1455,15 +1459,16 @@ gen_keymat (struct sa_block *s,
 	    const uint8_t *ni_data, size_t ni_size,
 	    const uint8_t *nr_data, size_t nr_size)
 {
-  GcryMDHd hm;
+  gcry_md_hd_t hm;
   uint8_t *block;
   int i;
   int blksz;
   int cnt;
   
   int md_len = gcry_md_get_algo_dlen(md_algo);
-  int cry_len = gcry_cipher_algo_info(crypt_algo, GCRYCTL_GET_KEYLEN, NULL, NULL);
+  int cry_len;
   
+  gcry_cipher_algo_info(crypt_algo, GCRYCTL_GET_KEYLEN, NULL, &cry_len);
   blksz = md_len + cry_len;
   cnt = (blksz + s->md_len - 1) / s->md_len;
   block = xallocc (cnt * s->md_len);
@@ -1473,7 +1478,7 @@ DEBUG(3, printf("generating %d bytes keymat (cnt=%d)\n", blksz, cnt));
 
   for (i = 0; i < cnt; i++)
     {
-      hm = gcry_md_open(s->md_algo, GCRY_MD_FLAG_HMAC);
+      gcry_md_open(&hm, s->md_algo, GCRY_MD_FLAG_HMAC);
       gcry_md_setkey(hm, s->skeyid_d, s->md_len);
       if (i != 0)
 	gcry_md_write(hm, block + (i-1) * s->md_len, s->md_len);
@@ -2009,12 +2014,14 @@ int main(int argc, char **argv)
 
   read_config_file ("/etc/vpnc.conf", config, 1);
 
-  if (!config[CONFIG_IKE_DH])
-    config[CONFIG_IKE_DH] = "dh2";
-  if (!config[CONFIG_IPSEC_PFS])
-    config[CONFIG_IPSEC_PFS] = "nopfs";
-  if (!config[CONFIG_LOCAL_PORT])
-    config[CONFIG_LOCAL_PORT] = "500";
+  if (!print_config) {
+    if (!config[CONFIG_IKE_DH])
+      config[CONFIG_IKE_DH] = "dh2";
+    if (!config[CONFIG_IPSEC_PFS])
+      config[CONFIG_IPSEC_PFS] = "nopfs";
+    if (!config[CONFIG_LOCAL_PORT])
+      config[CONFIG_LOCAL_PORT] = "500";
+  }
 
   opt_debug=(config[CONFIG_DEBUG]) ? atoi(config[CONFIG_DEBUG]) : 0;
   opt_nd=(config[CONFIG_ND]) ? 1 : 0;
@@ -2086,6 +2093,14 @@ int main(int argc, char **argv)
 	config[i] = s;
       }
   
+  if (print_config)
+    {
+      for (i = 0; config_names[i].name != NULL; i++)
+	if (config[config_names[i].nm] != NULL)
+	  printf ("%s%s\n", config_names[i].name, config[config_names[i].nm]);
+      exit (0);
+    }
+
   if (!config[CONFIG_IPSEC_GATEWAY])
 	error (1, 0, "missing IPSec gatway address");
   if (!config[CONFIG_IPSEC_ID])
@@ -2103,13 +2118,6 @@ int main(int argc, char **argv)
   if (get_dh_group_ike()->ike_sa_id == 0)
 	error (1, 0, "IKE DH Group must not be nopfs\n");
   
-  if (print_config)
-    {
-      for (i = 0; config_names[i].name != NULL; i++)
-	printf ("%s%s\n", config_names[i].name, config[config_names[i].nm]);
-      exit (0);
-    }
-
 DEBUG(2, printf("S1\n"));
   dest_addr = init_sockaddr (config[CONFIG_IPSEC_GATEWAY], 500);
 DEBUG(2, printf("S2\n"));

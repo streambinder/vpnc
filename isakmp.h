@@ -328,7 +328,9 @@ enum {
   ISAKMP_XAUTH_ATTRIB_DOMAIN,
   ISAKMP_XAUTH_ATTRIB_STATUS,
   ISAKMP_XAUTH_ATTRIB_NEXT_PIN,
-  ISAKMP_XAUTH_ATTRIB_ANSWER
+  ISAKMP_XAUTH_ATTRIB_ANSWER,
+  /* strange cisco things ... need docs! */
+  ISAKMP_XAUTH_ATTRIB_CISCOEXT_VENDOR = 32136,
 };
 
 /* Support for draft-ietf-ipsec-isakmp-mode-cfg-05.txt (yuk).  */

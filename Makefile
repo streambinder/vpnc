@@ -26,6 +26,10 @@ ifeq ($(shell uname -s), NetBSD)
 CFLAGS += -DSOCKADDR_IN_SIN_LEN
 SYSDEP=sysdep-bsd.o
 endif
+ifeq ($(shell uname -s), FreeBSD)
+CFLAGS += -DSOCKADDR_IN_SIN_LEN
+SYSDEP=sysdep-bsd.o
+endif
 ifeq ($(shell uname -s), SunOS)
 SYSDEP=sysdep-svr4.o
 endif

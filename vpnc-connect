@@ -9,6 +9,10 @@ getvar () {
 	return 0
 }
 
+fix_ip_get_output () {
+	sed 's/cache//;s/metric[0-9]\+ [0-9]\+//g' | xargs echo
+}
+
 defr=/var/run/vpnc/defaultroute
 gateway=/var/run/vpnc/gateway
 pid=/var/run/vpnc/pid
@@ -24,12 +28,16 @@ elif [ -x /usr/local/sbin/vpnc ]; then
 	VPNC=/usr/sbin/vpnc
 elif [ -x /usr/sbin/vpnc ]; then
 	VPNC=/usr/sbin/vpnc
-elif [ -x ./vpnc ]; then
-	VPNC=./vpnc
+elif [ -x $(dirname $0)/vpnc ]; then
+	VPNC=$(dirname $0)/vpnc
 else
 	echo No vpnc daemon found, aborting...
 	exit 1
 fi
+
+for i in "$gateway" "$defr" "$pid"; do
+	mkdir -p $(dirname "$i")
+done
 
 PID="$(cat "$pid" 2> /dev/null)"
 
@@ -55,8 +63,8 @@ if [ ! "`echo "$GW" | grep ^[[:digit:]]`" ] ; then
 fi
 
 "$VPNC" --pid-file "$pid" "$1" || exit 1
-ip route add $(ip route get $GW | sed 's/cache//' | xargs echo)
-ip route | grep '^default' | sed 's/cache//' > "$defr"
+ip route add $(ip route get $GW | fix_ip_get_output)
+ip route | grep '^default' | fix_ip_get_output > "$defr"
 echo "$GW" > "$gateway"
 ip route del default
 ip route add default dev $(getvar "$1" "Interface name")

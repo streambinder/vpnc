@@ -90,7 +90,7 @@ struct sa_desc {
     unsigned int enc_secret_size;
     unsigned int ivlen;
     /* Preprocessed encryption key */
-    GcryCipherHd cry_ctx;
+    gcry_cipher_hd_t cry_ctx;
     int cry_algo;
 
     /* Authentication secret */
@@ -415,13 +415,13 @@ int hmac_compute(int md_algo,
 		 unsigned char *digest, unsigned char do_store,
 		 const unsigned char *secret, unsigned short secret_size)
 {
-    GcryMDHd md_ctx;
+    gcry_md_hd_t md_ctx;
     int ret;
     unsigned char *hmac_digest;
     unsigned int hmac_len;
 
     /* See RFC 2104 */
-    md_ctx = gcry_md_open(md_algo, GCRY_MD_FLAG_HMAC);
+    gcry_md_open(&md_ctx, md_algo, GCRY_MD_FLAG_HMAC);
     assert(md_ctx != 0);
     ret = gcry_md_setkey(md_ctx, secret, secret_size);
     assert(ret == 0);
@@ -471,7 +471,7 @@ void encap_esp_send_peer(struct encap_method *encap,
      *	    obscure on that point.
      * seems fine
      */
-    pad_blksz = gcry_cipher_algo_info(peer->remote_sa->cry_algo, GCRYCTL_GET_BLKLEN, NULL, NULL);
+    gcry_cipher_algo_info(peer->remote_sa->cry_algo, GCRYCTL_GET_BLKLEN, NULL, &pad_blksz);
     while (pad_blksz & 3) /* must be multiple of 4 */
 	    pad_blksz <<= 1;
     padding = pad_blksz - ((encap->buflen+2) % pad_blksz);
@@ -570,7 +570,7 @@ hex_dump("auth_secret", peer->remote_sa->auth_secret, peer->remote_sa->auth_secr
 int encap_esp_recv_peer(struct encap_method *encap,
 			struct peer_desc *peer)
 {
-    int len, i;
+    int len, i, blksz;
     unsigned char padlen, next_header;
     unsigned char *pad;
     unsigned char *iv;
@@ -604,10 +604,11 @@ int encap_esp_recv_peer(struct encap_method *encap,
 	}
     }
 
-    if ((len % gcry_cipher_algo_info(peer->local_sa->cry_algo, GCRYCTL_GET_BLKLEN, NULL, NULL)) != 0) {
+    gcry_cipher_algo_info(peer->local_sa->cry_algo, GCRYCTL_GET_BLKLEN, NULL, &blksz);
+    if ((len % blksz) != 0) {
         syslog(LOG_ALERT,
 	       "payload len %d not a multiple of algorithm block size %d",
-	       len, gcry_cipher_algo_info(peer->local_sa->cry_algo, GCRYCTL_GET_BLKLEN, NULL, NULL));
+	       len, blksz);
 	return -1;
     }
 
@@ -849,7 +850,7 @@ vpnc_doit(unsigned long tous_spi,
   tous_sa.md_algo = md_algo;
   tous_sa.spi = htonl (tous_spi);
   tous_sa.enc_secret = tous_key;
-  tous_sa.enc_secret_size = gcry_cipher_algo_info(cry_algo, GCRYCTL_GET_KEYLEN, NULL, NULL);
+  gcry_cipher_algo_info(cry_algo, GCRYCTL_GET_KEYLEN, NULL, &(tous_sa.enc_secret_size));
 hex_dump("tous.enc_secret", tous_sa.enc_secret, tous_sa.enc_secret_size);
   tous_sa.auth_secret = tous_key + tous_sa.enc_secret_size;
   tous_sa.auth_secret_size = gcry_md_get_algo_dlen(md_algo);
@@ -862,9 +863,9 @@ hex_dump("tous.auth_secret", tous_sa.auth_secret, tous_sa.auth_secret_size);
       tous_sa.use_dest = 1;
     }
   tous_sa.cry_algo = cry_algo;
-  tous_sa.cry_ctx = gcry_cipher_open(tous_sa.cry_algo, GCRY_CIPHER_MODE_CBC, 0);
+  gcry_cipher_open(&tous_sa.cry_ctx, tous_sa.cry_algo, GCRY_CIPHER_MODE_CBC, 0);
   gcry_cipher_setkey(tous_sa.cry_ctx, tous_sa.enc_secret, tous_sa.enc_secret_size);
-  tous_sa.ivlen = gcry_cipher_algo_info(tous_sa.cry_algo, GCRYCTL_GET_BLKLEN, NULL, NULL);
+  gcry_cipher_algo_info(tous_sa.cry_algo, GCRYCTL_GET_BLKLEN, NULL, &(tous_sa.ivlen));
   
   tothem_sa.next = local_sa_list;
   local_sa_list = &tothem_sa;
@@ -875,7 +876,7 @@ hex_dump("tous.auth_secret", tous_sa.auth_secret, tous_sa.auth_secret_size);
   tothem_sa.md_algo = md_algo;
   tothem_sa.spi = htonl (tothem_spi);
   tothem_sa.enc_secret = tothem_key;
-  tothem_sa.enc_secret_size = gcry_cipher_algo_info(cry_algo, GCRYCTL_GET_KEYLEN, NULL, NULL);
+  gcry_cipher_algo_info(cry_algo, GCRYCTL_GET_KEYLEN, NULL, &(tothem_sa.enc_secret_size));
 hex_dump("tothem.enc_secret", tothem_sa.enc_secret, tothem_sa.enc_secret_size);
   tothem_sa.auth_secret = tothem_key + tothem_sa.enc_secret_size;
   tothem_sa.auth_secret_size = gcry_md_get_algo_dlen(md_algo);
@@ -888,9 +889,9 @@ hex_dump("tothem.auth_secret", tothem_sa.auth_secret, tothem_sa.auth_secret_size
       tothem_sa.use_dest = 1;
     }
   tothem_sa.cry_algo = cry_algo;
-  tothem_sa.cry_ctx = gcry_cipher_open(tothem_sa.cry_algo, GCRY_CIPHER_MODE_CBC, 0);
+  gcry_cipher_open(&tothem_sa.cry_ctx, tothem_sa.cry_algo, GCRY_CIPHER_MODE_CBC, 0);
   gcry_cipher_setkey(tothem_sa.cry_ctx, tothem_sa.enc_secret, tothem_sa.enc_secret_size);
-  tothem_sa.ivlen = gcry_cipher_algo_info(tothem_sa.cry_algo, GCRYCTL_GET_BLKLEN, NULL, NULL);
+  gcry_cipher_algo_info(tothem_sa.cry_algo, GCRYCTL_GET_BLKLEN, NULL, &(tothem_sa.ivlen));
   
   vpnpeer.tun_fd = tun_fd;
   vpnpeer.local_sa = &tous_sa;
