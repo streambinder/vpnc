@@ -43,6 +43,9 @@ endif
 vpnc : vpnc.o isakmp-pkt.o tunip.o config.o $(SYSDEP) dh.o math_group.o
 	$(CC) -o $@ $^ $(LDFLAGS)
 
+vpnc.ps : vpnc.c
+	enscript -E -G -T 4 --word-wrap -o- $^ | psnup -2 /dev/stdin $@
+
 vpnc.o : isakmp.h isakmp-pkt.h dh.h sysdep.h math_group.h config.h VERSION
 isakmp-pkt.o : isakmp.h isakmp-pkt.h config.h
 tunip.o : sysdep.h vpnc.h config.h
