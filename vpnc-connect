@@ -17,14 +17,13 @@ gateway=/var/run/vpnc/gateway
 pid=/var/run/vpnc/pid
 
 if [ -z "$VPNGATEWAY" ]; then
-	if [ -x "`which vpnc`" ]; then
-		VPNC="`which vpnc`"
-	elif [ -x /usr/local/sbin/vpnc ]; then
-		VPNC=/usr/sbin/vpnc
-	elif [ -x /usr/sbin/vpnc ]; then
-		VPNC=/usr/sbin/vpnc
-	elif [ -x $(dirname $0)/vpnc ]; then
-		VPNC=$(dirname $0)/vpnc
+	for i in "$(dirname $0)/vpnc" /usr/local/sbin/vpnc /usr/sbin/vpnc ; do
+		if [ -x "$i" ]; then
+			break
+		fi
+	done
+	if [ -x "$i" ]; then
+		VPNC="$i"
 	else
 		echo No vpnc daemon found, aborting...
 		exit 1
