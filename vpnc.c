@@ -321,7 +321,7 @@ sendrecv(void *recvbuf, size_t recvbufsize, void *tosend, size_t sendsize, int s
 	pfd.events = POLLIN;
 	tries = 0;
 
-	if ((tosend != NULL)&&(encap_mode == IPSEC_ENCAP_UDP_TUNNEL)) {
+	if ((tosend != NULL)&&(encap_mode != IPSEC_ENCAP_TUNNEL)) {
 		DEBUG(2, printf("NAT-T mode, adding non-esp marker\n"));
 		realtosend = xallocc(sendsize+4);
 		memcpy(realtosend+4, tosend, sendsize);
@@ -359,13 +359,13 @@ sendrecv(void *recvbuf, size_t recvbufsize, void *tosend, size_t sendsize, int s
 		tries++;
 	}
 
-	if ((tosend != NULL)&&(encap_mode == IPSEC_ENCAP_UDP_TUNNEL))
+	if ((tosend != NULL)&&(encap_mode != IPSEC_ENCAP_TUNNEL))
 		free(realtosend);
 
 	if (sendonly)
 		return 0;
 
-	if (encap_mode == IPSEC_ENCAP_UDP_TUNNEL) {
+	if (encap_mode != IPSEC_ENCAP_TUNNEL) {
 		recvsize -= 4; /* 4 bytes non-esp marker */
 		memcpy(recvbuf, recvbuf+4, recvsize);
 	}
@@ -1226,7 +1226,16 @@ void do_phase_1(const char *key_id, const char *shared_key, struct sa_block *s)
 			if (!seen_natd_us || !seen_natd_them) {
 				DEBUG(1, printf("NAT status: this end behind NAT? %s -- remote end behind NAT? %s\n",
 					seen_natd_us ? "no" : "YES", seen_natd_them ? "no" : "YES"));
-				encap_mode = IPSEC_ENCAP_UDP_TUNNEL;
+				switch (natd_type) {
+					case ISAKMP_PAYLOAD_NAT_D:
+						encap_mode = IPSEC_ENCAP_UDP_TUNNEL;
+						break;
+					case ISAKMP_PAYLOAD_NAT_D_OLD:
+						encap_mode = IPSEC_ENCAP_UDP_TUNNEL_OLD;
+						break;
+					default:
+						abort();
+				}
 				((struct sockaddr_in *)dest_addr)->sin_port = htons(4500);
 				if (local_port == htons(500)) {
 					close(sockfd);
