@@ -35,12 +35,12 @@ struct sa_block {
 	uint8_t i_cookie[ISAKMP_COOKIE_LENGTH];
 	uint8_t r_cookie[ISAKMP_COOKIE_LENGTH];
 	uint8_t *key; /* ike encryption key */
-	int keylen;
+	size_t keylen;
 	uint8_t *initial_iv;
 	uint8_t *skeyid_a;
 	uint8_t *skeyid_d;
-	int cry_algo, ivlen;
-	int md_algo, md_len;
+	int cry_algo, md_algo;
+	size_t ivlen, md_len;
 	uint8_t current_iv_msgid[4];
 	uint8_t *current_iv;
 	uint8_t our_address[4], our_netmask[4];

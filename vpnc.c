@@ -445,7 +445,7 @@ static uint16_t unpack_verify_phase2(struct sa_block *s,
 		expected_hash = gcry_md_read(hm, 0);
 
 		if (opt_debug >= 3) {
-			printf("hashlen: %d\n", s->md_len);
+			printf("hashlen: %lu\n", (unsigned long)s->md_len);
 			printf("u.hash.length: %d\n", h->u.hash.length);
 			hex_dump("expected_hash", expected_hash, s->md_len);
 			hex_dump("h->u.hash.data", h->u.hash.data, s->md_len);
@@ -599,7 +599,7 @@ static uint8_t *gen_keymat(struct sa_block *s,
 	int cnt;
 
 	int md_len = gcry_md_get_algo_dlen(md_algo);
-	int cry_len;
+	size_t cry_len;
 
 	gcry_cipher_algo_info(crypt_algo, GCRYCTL_GET_KEYLEN, NULL, &cry_len);
 	blksz = md_len + cry_len;

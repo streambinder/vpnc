@@ -92,8 +92,8 @@ struct sa_desc {
 
 	/* Encryption key */
 	const unsigned char *enc_secret;
-	unsigned int enc_secret_size;
-	unsigned int ivlen;
+	size_t enc_secret_size;
+	size_t ivlen;
 	/* Preprocessed encryption key */
 	gcry_cipher_hd_t cry_ctx;
 	int cry_algo;
@@ -444,7 +444,7 @@ void encap_esp_send_peer(struct encap_method *encap,
 	esp_encap_header_t *eh;
 	struct ip *tip, *ip;
 	unsigned char *iv, *cleartext;
-	int i, padding, pad_blksz;
+	size_t i, padding, pad_blksz;
 	unsigned int cleartextlen;
 
 	buf += MAX_HEADER;
@@ -466,7 +466,7 @@ void encap_esp_send_peer(struct encap_method *encap,
 	while (pad_blksz & 3) /* must be multiple of 4 */
 		pad_blksz <<= 1;
 	padding = pad_blksz - ((encap->buflen + 2) % pad_blksz);
-	DEBUG(2, printf("sending packet: len = %d, padding = %d\n", encap->buflen, padding));
+	DEBUG(2, printf("sending packet: len = %d, padding = %lu\n", encap->buflen, (unsigned long)padding));
 	if (padding == pad_blksz)
 		padding = 0;
 
@@ -561,7 +561,8 @@ void encap_esp_send_peer(struct encap_method *encap,
 
 int encap_esp_recv_peer(struct encap_method *encap, struct peer_desc *peer)
 {
-	int len, i, blksz;
+	int len, i;
+	size_t blksz;
 	unsigned char padlen, next_header;
 	unsigned char *pad;
 	unsigned char *iv;
@@ -597,7 +598,8 @@ int encap_esp_recv_peer(struct encap_method *encap, struct peer_desc *peer)
 	gcry_cipher_algo_info(peer->local_sa->cry_algo, GCRYCTL_GET_BLKLEN, NULL, &blksz);
 	if ((len % blksz) != 0) {
 		syslog(LOG_ALERT,
-			"payload len %d not a multiple of algorithm block size %d", len, blksz);
+			"payload len %d not a multiple of algorithm block size %lu", len,
+			(unsigned long)blksz);
 		return -1;
 	}
 #if 0
