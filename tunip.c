@@ -915,6 +915,7 @@ vpnc_doit(unsigned long tous_spi,
 				exit(1);
 			break;
 		case IPSEC_ENCAP_UDP_TUNNEL:
+		case IPSEC_ENCAP_UDP_TUNNEL_OLD:
 			if (encap_udp_new(&meth, udp_fd) == -1)
 				exit(1);
 			break;
