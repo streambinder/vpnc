@@ -430,8 +430,11 @@ static uint16_t unpack_verify_phase2(struct sa_block *s,
 
 	*r_p = NULL;
 
-	if (r_length < ISAKMP_PAYLOAD_O || ((r_length - ISAKMP_PAYLOAD_O) % s->ivlen != 0))
+	if (r_length < ISAKMP_PAYLOAD_O || ((r_length - ISAKMP_PAYLOAD_O) % s->ivlen != 0)) {
+		DEBUG(2, printf("payload to short or not padded: len=%d, min=%d (ivlen=%d)\n",
+			r_length, ISAKMP_PAYLOAD_O, s->ivlen));
 		return ISAKMP_N_UNEQUAL_PAYLOAD_LENGTHS;
+	}
 
 	isakmp_crypt(s, r_packet, r_length, 0);
 
@@ -1206,10 +1209,10 @@ void do_phase_1(const char *key_id, const char *shared_key, struct sa_block *s)
 				gcry_md_write(hm, &src_addr.sin_addr, sizeof(struct in_addr));
 				gcry_md_write(hm, &local_port, sizeof(uint16_t));
 				gcry_md_final(hm);
-				if (seen_natd && memcmp(natd_us, gcry_md_read(hm, 0), s->md_len) == 0)
-					seen_natd_us = 1;
 				pl = pl->next = new_isakmp_data_payload(ISAKMP_PAYLOAD_NAT_D,
 					gcry_md_read(hm, 0), s->md_len);
+				if (seen_natd && memcmp(natd_us, pl->u.ke.data, s->md_len) == 0)
+					seen_natd_us = 1;
 				gcry_md_close(hm);
 			}
 			if (seen_natd) {

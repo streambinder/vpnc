@@ -694,8 +694,10 @@ struct isakmp_packet *parse_isakmp_packet(const uint8_t * data, size_t data_len,
 	uint8_t payload;
 	struct isakmp_packet *r = new_isakmp_packet();
 	size_t o_data_len = data_len;
+	size_t isakmp_data_len;
 
 	if (data_len < ISAKMP_PAYLOAD_O) {
+		DEBUG(2, printf("packet to short: len = %d < min = %d\n", data_len, ISAKMP_PAYLOAD_O));
 		reason = ISAKMP_N_UNEQUAL_PAYLOAD_LENGTHS;
 		goto error;
 	}
@@ -725,11 +727,14 @@ struct isakmp_packet *parse_isakmp_packet(const uint8_t * data, size_t data_len,
 	r->message_id = fetch4();
 	hex_dump("message_id", &r->message_id, sizeof(r->message_id));
 
-	if (fetch4() != o_data_len) {
+	isakmp_data_len = fetch4();
+	hex_dump("len", &isakmp_data_len, UINT32);
+	if (o_data_len != isakmp_data_len) {
+		DEBUG(2, printf("isakmp length does not match packet length: isakmp = %d != datalen = %d\n",
+			isakmp_data_len, o_data_len));
 		reason = ISAKMP_N_UNEQUAL_PAYLOAD_LENGTHS;
 		goto error;
 	}
-	hex_dump("len", &o_data_len, UINT32);
 
 	r->payload = parse_isakmp_payload(payload, &data, &data_len, &reason);
 	if (reason != 0)
