@@ -31,8 +31,8 @@
  * This code was written under funding by Ericsson Radio Systems.
  */
 
-#ifndef _DH_H_
-#define _DH_H_
+#ifndef __DH_H__
+#define __DH_H__
 
 #include <sys/types.h>
 
@@ -42,4 +42,4 @@ int dh_getlen(struct group *);
 int dh_create_exchange(struct group *, unsigned char *);
 int dh_create_shared(struct group *, unsigned char *, unsigned char *);
 
-#endif /* _DH_H_ */
+#endif

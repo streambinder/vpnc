@@ -763,7 +763,7 @@ void killit(int signum)
 			kill_dest, sizeof(struct sockaddr_in));
 		close(sock);
 	}
-	tun_close(tun_fd, tun_name);
+	tun_close(oursa->tun_fd, oursa->tun_name);
 	syslog(LOG_NOTICE, "terminated");
 	_exit(0);
 }

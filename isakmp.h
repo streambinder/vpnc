@@ -16,6 +16,9 @@
    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
+#ifndef __ISAKMP_H__
+#define __ISAKMP_H__
+
 /* Flag bits for header.  */
 #define ISAKMP_FLAG_E	0x1
 #define ISAKMP_FLAG_C	0x2
@@ -375,3 +378,5 @@ enum {
 	ISAKMP_MODECFG_ATTRIB_CISCO_BACKUP_SERVER,
 	ISAKMP_MODECFG_ATTRIB_CISCO_DDNS_HOSTNAME,
 };
+
+#endif

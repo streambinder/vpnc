@@ -16,6 +16,8 @@
    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
+#ifndef __ISAKMP_PKT_H__
+#define __ISAKMP_PKT_H__
 #if defined(__linux__)
 #include <stdint.h>
 #endif
@@ -128,3 +130,5 @@ extern struct isakmp_packet *parse_isakmp_packet(const uint8_t * data,
 	size_t data_len, uint16_t * reject);
 extern const char *isakmp_notify_to_error(uint16_t notify);
 extern void test_pack_unpack(void);
+
+#endif

@@ -32,8 +32,8 @@
  * This code was written under funding by Ericsson Radio Systems.
  */
 
-#ifndef _MATH_GROUP_H_
-#define _MATH_GROUP_H_
+#ifndef __MATH_GROUP_H__
+#define __MATH_GROUP_H__
 
 enum groups {
 	MODP, /* F_p, Z modulo a prime */

@@ -43,27 +43,7 @@
 #include "dh.h"
 #include "vpnc.h"
 
-struct sa_block {
-	uint8_t i_cookie[ISAKMP_COOKIE_LENGTH];
-	uint8_t r_cookie[ISAKMP_COOKIE_LENGTH];
-	uint8_t *key;
-	int keylen;
-	uint8_t *initial_iv;
-	uint8_t *skeyid_a;
-	uint8_t *skeyid_d;
-	int cry_algo, ivlen;
-	int md_algo, md_len;
-	uint8_t current_iv_msgid[4];
-	uint8_t *current_iv;
-	uint8_t our_address[4], our_netmask[4];
-	uint32_t tous_esp_spi, tothem_esp_spi;
-	uint8_t *kill_packet;
-	size_t kill_packet_size;
-	int do_pfs;
-};
-
-int tun_fd = -1;
-char tun_name[IFNAMSIZ];
+struct sa_block oursa[1];
 
 static int sockfd = -1;
 static struct sockaddr *dest_addr;
@@ -250,21 +230,21 @@ static struct sockaddr *init_sockaddr(const char *hostname, uint16_t port)
 	return (struct sockaddr *)result;
 }
 
-static void setup_tunnel(void)
+static void setup_tunnel(struct sa_block *s)
 {
 	if (config[CONFIG_IF_NAME])
-		memcpy(tun_name, config[CONFIG_IF_NAME], strlen(config[CONFIG_IF_NAME]));
+		memcpy(s->tun_name, config[CONFIG_IF_NAME], strlen(config[CONFIG_IF_NAME]));
 
-	tun_fd = tun_open(tun_name);
-	DEBUG(2, printf("using interface %s\n", tun_name));
+	s->tun_fd = tun_open(s->tun_name);
+	DEBUG(2, printf("using interface %s\n", s->tun_name));
 
-	if (tun_fd == -1)
+	if (s->tun_fd == -1)
 		error(1, errno, "can't initialise tunnel interface");
 }
 
-void config_tunnel(const char *dev)
+void config_tunnel(struct sa_block *s)
 {
-	setenv("TUNDEV", dev, 1);
+	setenv("TUNDEV", s->tun_name, 1);
 	setenv("VPNGATEWAY", inet_ntoa(((struct sockaddr_in *)dest_addr)->sin_addr), 1);
 
 	system(config[CONFIG_CONFIG_SCRIPT]);
@@ -711,7 +691,7 @@ void do_phase_1(const char *key_id, const char *shared_key, struct sa_block *s)
 	static const uint8_t unity_vid[] = UNITY_VENDOR_ID;
 	static const uint8_t unknown_vid[] = UNKNOWN_VENDOR_ID;
 #if 0
-	static const uint8_t dpd_vid[] = UNITY_VENDOR_ID;
+	static const uint8_t dpd_vid[] = DPD_VENDOR_ID; /* dead peer detection */
 	static const uint8_t my_vid[] = {
 		0x35, 0x53, 0x07, 0x6c, 0x4f, 0x65, 0x12, 0x68, 0x02, 0x82, 0xf2, 0x15,
 		0x8a, 0xa8, 0xa0, 0x9e
@@ -1865,7 +1845,7 @@ static void setup_link(struct sa_block *s)
 
 	/* Set up the interface here so it's ready when our acknowledgement
 	 * arrives.  */
-	config_tunnel(tun_name);
+	config_tunnel(s);
 	DEBUG(2, printf("S7.9\n"));
 	{
 		uint8_t *tous_keys, *tothem_keys;
@@ -1892,14 +1872,13 @@ static void setup_link(struct sa_block *s)
 		DEBUG(2, printf("S7.10\n"));
 		vpnc_doit(s->tous_esp_spi, tous_keys, &tothem_dest,
 			s->tothem_esp_spi, tothem_keys, (struct sockaddr_in *)dest_addr,
-			tun_fd, ipsec_hash_algo, ipsec_cry_algo,
+			s->tun_fd, ipsec_hash_algo, ipsec_cry_algo,
 			s->kill_packet, s->kill_packet_size, dest_addr, config[CONFIG_PID_FILE]);
 	}
 }
 
 int main(int argc, char **argv)
 {
-	struct sa_block oursa;
 	int do_load_balance;
 	const uint8_t hex_test[] = { 0, 1, 2, 3 };
 
@@ -1907,6 +1886,7 @@ int main(int argc, char **argv)
 	gcry_check_version("1.1.90");
 	gcry_control(GCRYCTL_INIT_SECMEM, 16384, 0);
 	group_init();
+	memset(oursa, 0, sizeof(oursa));
 
 	do_config(argc, argv);
 	
@@ -1918,19 +1898,18 @@ int main(int argc, char **argv)
 	DEBUG(2, printf("S2\n"));
 	sockfd = make_socket(atoi(config[CONFIG_LOCAL_PORT]));
 	DEBUG(2, printf("S3\n"));
-	setup_tunnel();
+	setup_tunnel(oursa);
 
 	do {
 		DEBUG(2, printf("S4\n"));
-		memset(&oursa, '\0', sizeof(oursa));
-		do_phase_1(config[CONFIG_IPSEC_ID], config[CONFIG_IPSEC_SECRET], &oursa);
+		do_phase_1(config[CONFIG_IPSEC_ID], config[CONFIG_IPSEC_SECRET], oursa);
 		DEBUG(2, printf("S5\n"));
-		do_load_balance = do_phase_2_xauth(&oursa);
+		do_load_balance = do_phase_2_xauth(oursa);
 	} while (do_load_balance);
 	DEBUG(2, printf("S6\n"));
-	do_phase_2_config(&oursa);
+	do_phase_2_config(oursa);
 	DEBUG(2, printf("S7\n"));
-	setup_link(&oursa);
+	setup_link(oursa);
 
 	return 0;
 }
