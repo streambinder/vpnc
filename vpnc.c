@@ -1497,6 +1497,10 @@ do_phase_2_config (struct sa_block *s)
 	break;
 
       case ISAKMP_MODECFG_ATTRIB_INTERNAL_IP4_NETMASK:
+	if (a->af == isakmp_attr_lots && a->u.lots.length == 0) {
+		DEBUG(2,printf("ignoring zero length netmask\n"));
+		continue;
+	}
 	if (a->af != isakmp_attr_lots || a->u.lots.length != 4)
 	  reject = ISAKMP_N_ATTRIBUTES_NOT_SUPPORTED;
 	else
@@ -1558,7 +1562,7 @@ DEBUG(2, printf("got pfs setting: %d\n", s->do_pfs));
 	break;
 
       default:
-	reject = ISAKMP_N_ATTRIBUTES_NOT_SUPPORTED;
+	DEBUG(2,printf("unknown attriube %d / 0x%X\n", a->type, a->type));
 	break;
       }
   
@@ -1653,7 +1657,7 @@ struct isakmp_payload *
 make_our_sa_ipsec (struct sa_block *s)
 {
   struct isakmp_payload *r = new_isakmp_payload (ISAKMP_PAYLOAD_SA);
-  struct isakmp_payload *t = NULL, *tn;
+  struct isakmp_payload *p = NULL, *pn;
   struct isakmp_attribute *a;
   int dh_grp = get_dh_group_ipsec(s->do_pfs)->ipsec_sa_id;
   unsigned int crypt, hash, keylen;
@@ -1673,17 +1677,23 @@ make_our_sa_ipsec (struct sa_block *s)
       continue;
     keylen = supp_crypt[crypt].keylen;
     for (hash = 0; hash < sizeof(supp_hash) / sizeof(supp_hash[0]); hash++) {
-      tn = t;
-      t = new_isakmp_payload (ISAKMP_PAYLOAD_T);
-      t->u.t.id = supp_crypt[crypt].ipsec_sa_id;
+      pn = p;
+      p = new_isakmp_payload (ISAKMP_PAYLOAD_P);
+      p->u.p.spi_size = 4;
+      p->u.p.spi = xallocc (4);
+      /* The sadb_sa_spi field is already in network order.  */
+      memcpy (p->u.p.spi, &s->tous_esp_spi, 4);
+      p->u.p.prot_id = ISAKMP_IPSEC_PROTO_IPSEC_ESP;
+      p->u.p.transforms = new_isakmp_payload (ISAKMP_PAYLOAD_T);
+      p->u.p.transforms->u.t.id = supp_crypt[crypt].ipsec_sa_id;
       a = make_transform_ipsec(dh_grp, supp_hash[hash].ipsec_sa_id, keylen);
-      t->u.t.attributes = a;
-      t->next = tn;
+      p->u.p.transforms->u.t.attributes = a;
+      p->next = pn;
     }
   }
-  for (i = 0, tn = t; tn; tn = tn->next)
-      tn->u.t.number = i++;
-  r->u.sa.proposals->u.p.transforms = t;
+  for (i = 0, pn = p; pn; pn = pn->next)
+      pn->u.p.number = i++;
+  r->u.sa.proposals = p;
   return r;
 }
 
