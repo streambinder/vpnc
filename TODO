@@ -68,11 +68,23 @@ TODO list
 
 * DONE svn-Repository
 
+* factor out crypto stuff (cipher, hmac, dh)
+  - http://libtomcrypt.org/features.html
+  - http://www.foldr.org/~michaelw/ patch fertig
+  - openssl
+  - libgcrypt (old too?)
+
+* relicense to gpl+ssl?
+
 * fix Makefile (install, DESTDIR, CFLAGS, ...)
+
+* --local-address
 
 * implement udp transport NAT-T
 
 * implement certificate support
+
+* implement hybrid-auth
 
 * implement rekeying / DPD / frozen connections?
 
