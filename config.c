@@ -413,6 +413,11 @@ static void print_version(void)
 	for (i = 0; supp_crypt[i].name != NULL; i++)
 		printf(" %s", supp_crypt[i].name);
 	printf("\n");
+
+	printf("Supported Auth-Methods:");
+	for (i = 0; supp_auth[i].name != NULL; i++)
+		printf(" %s", supp_auth[i].name);
+	printf("\n");
 }
 
 void do_config(int argc, char **argv)

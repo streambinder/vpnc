@@ -40,7 +40,7 @@ struct sa_block {
 	uint8_t *initial_iv;
 	uint8_t *skeyid_a;
 	uint8_t *skeyid_d;
-	int cry_algo, md_algo;
+	int auth_algo, cry_algo, md_algo;
 	size_t ivlen, md_len;
 	uint8_t current_iv_msgid[4];
 	uint8_t *current_iv;
@@ -57,6 +57,7 @@ extern struct sa_block oursa[];
 extern supported_algo_t supp_dh_group[];
 extern supported_algo_t supp_hash[];
 extern supported_algo_t supp_crypt[];
+extern supported_algo_t supp_auth[];
 
 extern const supported_algo_t *get_dh_group_ike(void);
 extern const supported_algo_t *get_dh_group_ipsec(int server_setting);

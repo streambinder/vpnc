@@ -410,7 +410,7 @@ void free_isakmp_packet(struct isakmp_packet *p)
   (memcpy ((d), data, (n)), data += (n), data_len -= (n))
 
 static struct isakmp_attribute *parse_isakmp_attributes(const uint8_t ** data_p,
-	size_t data_len, uint16_t * reject)
+	size_t data_len, int * reject)
 {
 	const uint8_t *data = *data_p;
 	struct isakmp_attribute *r;
@@ -461,7 +461,7 @@ static struct isakmp_attribute *parse_isakmp_attributes(const uint8_t ** data_p,
 }
 
 static struct isakmp_payload *parse_isakmp_payload(uint8_t type,
-	const uint8_t ** data_p, size_t * data_len_p, uint16_t * reject)
+	const uint8_t ** data_p, size_t * data_len_p, int * reject)
 {
 	const uint8_t *data = *data_p;
 	size_t data_len = *data_len_p;
@@ -688,9 +688,9 @@ static struct isakmp_payload *parse_isakmp_payload(uint8_t type,
 	return r;
 }
 
-struct isakmp_packet *parse_isakmp_packet(const uint8_t * data, size_t data_len, uint16_t * reject)
+struct isakmp_packet *parse_isakmp_packet(const uint8_t * data, size_t data_len, int * reject)
 {
-	uint16_t reason = 0;
+	int reason = 0;
 	uint8_t payload;
 	struct isakmp_packet *r = new_isakmp_packet();
 	size_t o_data_len = data_len;
@@ -832,7 +832,7 @@ void test_pack_unpack(void)
 	uint8_t *unpack;
 	size_t unpack_len;
 	struct isakmp_packet *p;
-	uint16_t reject;
+	int reject;
 
 	p = parse_isakmp_packet(pack, sizeof(pack), &reject);
 	flatten_isakmp_packet(p, &unpack, &unpack_len, 8);

@@ -153,7 +153,17 @@ enum {
 	IKE_AUTH_RSA_ENC_2,
 	IKE_AUTH_EL_GAMAL_ENC,
 	IKE_AUTH_EL_GAMAL_ENC_REV,
-	IKE_AUTH_ECDSA_SIG
+	IKE_AUTH_ECDSA_SIG,
+	IKE_AUTH_XAUTHInitPreShared = 65001,
+	IKE_AUTH_XAUTHRespPreShared,
+	IKE_AUTH_XAUTHInitDSS,
+	IKE_AUTH_XAUTHRespDSS,
+	IKE_AUTH_XAUTHInitRSA,
+	IKE_AUTH_XAUTHRespRSA,
+	IKE_AUTH_XAUTHInitRSAEncryption,
+	IKE_AUTH_XAUTHRespRSAEncryption,
+	IKE_AUTH_XAUTHInitRSARevisedEncryption,
+	IKE_AUTH_XAUTHRespRSARevisedEncryption
 };
 
 /* IKE group IDs.  */
@@ -308,6 +318,8 @@ enum {
 #define ISAKMP_COOKIE_LENGTH		8
 #define ISAKMP_VERSION			0x10
 #define ISAKMP_EXCHANGE_TYPE_O		18
+#define ISAKMP_I_COOKIE_O		0
+#define ISAKMP_R_COOKIE_O		8
 #define ISAKMP_MESSAGE_ID_O		20
 #define ISAKMP_PAYLOAD_O		28
 
@@ -323,19 +335,6 @@ enum {
 /* Support for draft-ietf-ipsec-nat-t-ike-02 */
 #define NATT_VENDOR_ID { 0x90, 0xCB, 0x80, 0x91, 0x3E, 0xBB, 0x69, 0x6E, \
 	0x08, 0x63, 0x81, 0xB5, 0xEC, 0x42, 0x7B, 0x1F }
-
-enum {
-	XAUTH_AUTH_XAUTHInitPreShared = 65001,
-	XAUTH_AUTH_XAUTHRespPreShared,
-	XAUTH_AUTH_XAUTHInitDSS,
-	XAUTH_AUTH_XAUTHRespDSS,
-	XAUTH_AUTH_XAUTHInitRSA,
-	XAUTH_AUTH_XAUTHRespRSA,
-	XAUTH_AUTH_XAUTHInitRSAEncryption,
-	XAUTH_AUTH_XAUTHRespRSAEncryption,
-	XAUTH_AUTH_XAUTHInitRSARevisedEncryption,
-	XAUTH_AUTH_XAUTHRespRSARevisedEncryption
-};
 
 enum {
 	ISAKMP_XAUTH_ATTRIB_TYPE = 16520,
