@@ -52,17 +52,25 @@ TODO list
 
 ****
 
+* DONE send lifetime in phase1 and phase2
+
+* DONE send version string
+
+* DONE automatic handling of pfs
+
+* DONE ask for dns/wins servers, default domain, pfs setting, netmask
+
+* DONE spawn post-connect script
+
+* DONE check /dev/net/tun, reject /dev/tun* on linux
+
+* optional drop root
+
 * implement rekeying
 
 * frozen connections?
 
-* implement ipsec main mode
-
 * implement udp transport
-
-* send version string
-
-* ask for dns servers
 
 ****
 

@@ -1,7 +1,9 @@
 A VPN client compatible with Cisco's EasyVPN equipment.
 
 Supports IPSec (ESP) with Mode Configuration and Xauth.  Supports only
-shared-secret IPSec authentication, 3DES, MD5, and IP tunneling.
+shared-secret IPSec authentication with Xauth,
+AES (256, 192, 128), 3DES, 1DES, MD5, SHA1,
+DH1/2/5 and IP tunneling.
 
 It runs entirely in userspace. Only "Universal TUN/TAP device
 driver support" is needed in kernel.
@@ -12,13 +14,13 @@ It reads configuration data from the following places:
 
 - From command-line options
 - From config file(s) specified on the command line
+- From /etc/vpnc/default.conf
 - From /etc/vpnc.conf
 - If a setting is not given in any of those places, it prompts the user.
 
 The configuration information it currently needs is:
 
           Option Config file item
-	--ifname Interface name
        --gateway IPSec gateway 
             --id IPSec ID 
      (no option) IPSec secret 
@@ -28,7 +30,6 @@ The configuration information it currently needs is:
 A sample configuration file is:
 
 # This is a sample configuration file.
-Interface name vpntun0
 IPSec gateway 127.0.0.1
 IPSec ID laughing-vpn
 IPSec secret hahaha
@@ -50,3 +51,23 @@ him/her that the contents of that files is (though scrambled)
 not really protected and can be extracted using tools shipped 
 with any Linux distribution.
 
+Please note that vpnc does NOT setup routing. You need to do this
+yourself, or --script resp. "Config Script" in the config file.
+The default script depends on the platform. For Linux it is currently:
+
+ifconfig $TUNDEV inet $INTERNAL_IP4_ADDRESS \
+                 pointopoint $INTERNAL_IP4_ADDRESS \
+                 netmask 255.255.255.255 mtu 1412 up
+
+This option is passed to system(), so you can use any shell-specials you
+like. Information is passed from vpnc via enviroment variables:
+#* VPNGATEWAY             -- vpn gateway address (always present)
+#* TUNDEV                 -- tunnel device (always present)
+#* INTERNAL_IP4_ADDRESS   -- address (always present)
+#* INTERNAL_IP4_NETMASK   -- netmask (often unset)
+#* INTERNAL_IP4_DNS       -- list of dns serverss
+#* INTERNAL_IP4_NBNS      -- list of wins servers
+#* CISCO_DEF_DOMAIN       -- default domain name
+#* CISCO_BANNER           -- banner from server
+
+An example for a such a script is vpnc-connect.

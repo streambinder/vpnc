@@ -46,6 +46,8 @@ int tun_open(char *dev)
     int i, fd;
 
     if( *dev ) {
+       if (strncmp(dev, "tun", 3))
+         error(1, 0, "error: arbitrary naming tunnel interface only supported on linux\n");
        sprintf(tunname, "/dev/%s", dev);
        return open(tunname, O_RDWR);
     }
@@ -131,6 +133,11 @@ int tun_read(int fd, char *buf, int len)
 
 /***********************************************************************/
 /* other support functions */
+
+const char *sysdep_config_script(void)
+{
+	return "ifconfig $TUNDEV inet $INTERNAL_IP4_ADDRESS $INTERNAL_IP4_ADDRESS netmask 255.255.255.255 mtu 1412 up";
+}
 
 void error(int status, int errornum, const char *fmt, ...)
 {

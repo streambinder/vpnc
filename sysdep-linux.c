@@ -39,35 +39,16 @@
  * Allocate TUN device, returns opened fd. 
  * Stores dev name in the first arg(must be large enough).
  */  
-int tun_open_old(char *dev)
-{
-    char tunname[14];
-    int i, fd;
-
-    if( *dev ) {
-       sprintf(tunname, "/dev/%s", dev);
-       return open(tunname, O_RDWR);
-    }
-
-    for(i=0; i < 255; i++){
-       sprintf(tunname, "/dev/tun%d", i);
-       /* Open device */
-       if( (fd=open(tunname, O_RDWR)) > 0 ){
-          sprintf(dev, "tun%d", i);
-          return fd;
-       }
-    }
-    return -1;
-}
-
 #ifdef IFF_TUN
 int tun_open(char *dev)
 {
     struct ifreq ifr;
     int fd, err;
 
-    if( (fd = open("/dev/net/tun", O_RDWR)) < 0 )
-       return tun_open_old(dev);
+    if( (fd = open("/dev/net/tun", O_RDWR)) < 0 ) {
+       error(0, errno, "can't open /dev/net/tun, check that it is either device char 10 200 or (with DevFS) a symlink to ../misc/net/tun (not misc/net/tun!!!)");
+       return -1;
+    }
 
     memset(&ifr, 0, sizeof(ifr));
     ifr.ifr_flags = IFF_TUN | IFF_NO_PI;
@@ -84,8 +65,27 @@ int tun_open(char *dev)
 #else
 int tun_open(char *dev)
 {
-	return tun_open_old(dev);
+    char tunname[14];
+    int i, fd;
+
+    if( *dev ) {
+       if (strncmp(dev, "tun", 3))
+         error(1, 0, "error: arbitrary naming tunnel interface is not supported in this version\n");
+       sprintf(tunname, "/dev/%s", dev);
+       return open(tunname, O_RDWR);
+    }
+
+    for(i=0; i < 255; i++){
+       sprintf(tunname, "/dev/tun%d", i);
+       /* Open device */
+       if( (fd=open(tunname, O_RDWR)) > 0 ){
+          sprintf(dev, "tun%d", i);
+          return fd;
+       }
+    }
+    return -1;
 }
+
 #endif /* New driver support */
 
 int tun_close(int fd, char *dev)
@@ -107,4 +107,9 @@ int tun_read(int fd, char *buf, int len)
 
 /***********************************************************************/
 /* other support functions */
+
+const char *sysdep_config_script(void)
+{
+	return "ifconfig $TUNDEV inet $INTERNAL_IP4_ADDRESS pointopoint $INTERNAL_IP4_ADDRESS netmask 255.255.255.255 mtu 1412 up";
+}
 

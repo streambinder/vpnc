@@ -161,3 +161,51 @@ int tun_read(int fd, char *buf, int len)
     sbuf.buf = buf;      
     return getmsg(fd, NULL, &sbuf, &f) >=0 ? sbuf.len : -1;
 }
+
+/***********************************************************************/
+/* other support functions */
+
+const char *sysdep_config_script(void)
+{
+	return "ifconfig $TUNDEV inet $INTERNAL_IP4_ADDRESS $INTERNAL_IP4_ADDRESS netmask 255.255.255.255 mtu 1412 up";
+}
+
+void error(int status, int errornum, const char *fmt, ...)
+{
+	char   *buf2;
+	va_list        ap;
+
+	va_start(ap, fmt);
+	vasprintf(&buf2, fmt, ap);
+	va_end(ap);
+	fprintf(stderr, "%s", buf2);
+	if (errornum)
+		fprintf(stderr, ": %s\n", strerror(errornum));
+	free(buf2);
+	
+	if (status)
+		exit(status);
+}
+
+int getline(char **line, size_t *length, FILE *stream)
+{
+	char *tmpline;
+	size_t len;
+
+	tmpline = fgetln(stream, &len);
+	if (feof(stream))
+		return -1;
+	if (*line == NULL) {
+		*line = malloc(len + 1);
+		*length = len + 1;
+	}
+	if (*length < len + 1) {
+		*line = realloc(*line, len + 1);
+		*length = len + 1;
+	}
+	if (*line == NULL)
+		return -1;
+	memcpy(*line, tmpline, len);
+	(*line)[len] = '\0';
+	return len;
+}
