@@ -72,6 +72,7 @@ enum config_enum {
   CONFIG_IPSEC_SECRET,
   CONFIG_XAUTH_USERNAME,
   CONFIG_XAUTH_PASSWORD,
+  CONFIG_XAUTH_INTERACTIVE,
   LAST_CONFIG
 };
 
@@ -1260,13 +1261,15 @@ DEBUG(2, printf("S5.4\n"));
 	  case ISAKMP_XAUTH_ATTRIB_CISCOEXT_VENDOR:
 	    break;
 	  case ISAKMP_XAUTH_ATTRIB_MESSAGE:
-	    if (ap->af == isakmp_attr_16)
-	      DEBUG(seen_answer ? 0 : 1, printf ("%c%c\n", ap->u.attr_16 >> 8, ap->u.attr_16));
-	    else
-	      DEBUG(seen_answer ? 0 : 1, printf ("%.*s%s", ap->u.lots.length, ap->u.lots.data,
+	    if (opt_debug || seen_answer || config[CONFIG_XAUTH_INTERACTIVE]) {
+	      if (ap->af == isakmp_attr_16)
+	        printf ("%c%c\n", ap->u.attr_16 >> 8, ap->u.attr_16);
+	      else
+	        printf ("%.*s%s", ap->u.lots.length, ap->u.lots.data,
 		      ((ap->u.lots.data
 			&& ap->u.lots.data[ap->u.lots.length - 1] != '\n')
-		       ? "\n" : "")));
+		       ? "\n" : ""));
+	    }
 	    break;
 	  default:
 	    reject = ISAKMP_N_ATTRIBUTES_NOT_SUPPORTED;
@@ -2066,6 +2069,18 @@ static const struct config_names_s {
     "<ASCII string>",
     "your password (cleartext, no support for obfuscated strings)",
     NULL },
+  { CONFIG_DOMAIN, 1,
+    "--domain",
+    "Domain ",
+    "<ASCII string>",
+    "(NT-) Domain name for authentication",
+    NULL },
+  { CONFIG_XAUTH_INTERACTIVE, 0,
+    "--xauth-inter",
+    "Xauth interactive",
+    NULL,
+    "enable interactive extended authentication (for challange response auth)",
+    NULL },
   { CONFIG_CONFIG_SCRIPT, 1,
     "--script",
     "Config Script ",
@@ -2075,12 +2090,6 @@ static const struct config_names_s {
     "      variables, see README. This script is executed right after ISAKMP is\n"
     "      done, but befor tunneling is enabled.",
     sysdep_config_script },
-  { CONFIG_DOMAIN, 1,
-    "--domain",
-    "Domain ",
-    "<ASCII string>",
-    "(NT-) Domain name for authentication",
-    NULL },
   { CONFIG_IKE_DH, 1,
     "--dh",
     "IKE DH Group ",
