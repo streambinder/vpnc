@@ -729,7 +729,7 @@ void do_phase_1(const char *key_id, const char *shared_key, struct sa_block *s)
 #endif
 
 	struct isakmp_packet *p1;
-	int seen_natt_vid = 0, seen_natd = 0, seen_natd_them = 0, seen_natd_us = 0;
+	int seen_natt_vid = 0, seen_natd = 0, seen_natd_them = 0, seen_natd_us = 0, natd_type = 0;
 	unsigned char *natd_us = NULL, *natd_them = NULL;
 
 	DEBUG(2, printf("S4.1\n"));
@@ -953,6 +953,8 @@ void do_phase_1(const char *key_id, const char *shared_key, struct sa_block *s)
 				break;
 			case ISAKMP_PAYLOAD_NAT_D_OLD:
 			case ISAKMP_PAYLOAD_NAT_D:
+				natd_type = rp->type;
+				DEBUG(2, printf("peer is using type %d for NAT-Discovery payloads\n", natd_type));
 				if (!seen_sa || !seen_natt_vid) {
 					reject = ISAKMP_N_INVALID_PAYLOAD_TYPE;
 				} else if (config[CONFIG_DISABLE_NATT]) {
@@ -1195,7 +1197,8 @@ void do_phase_1(const char *key_id, const char *shared_key, struct sa_block *s)
 
 		/* include NAT traversal discovery payloads */
 		if (seen_natt_vid) {
-			pl = pl->next = new_isakmp_data_payload(ISAKMP_PAYLOAD_NAT_D,
+			assert(natd_type != 0);
+			pl = pl->next = new_isakmp_data_payload(natd_type,
 				natd_them, s->md_len);
 			/* this could be repeated fo any known outbound interfaces */
 			{
@@ -1209,7 +1212,7 @@ void do_phase_1(const char *key_id, const char *shared_key, struct sa_block *s)
 				gcry_md_write(hm, &src_addr.sin_addr, sizeof(struct in_addr));
 				gcry_md_write(hm, &local_port, sizeof(uint16_t));
 				gcry_md_final(hm);
-				pl = pl->next = new_isakmp_data_payload(ISAKMP_PAYLOAD_NAT_D,
+				pl = pl->next = new_isakmp_data_payload(natd_type,
 					gcry_md_read(hm, 0), s->md_len);
 				if (seen_natd && memcmp(natd_us, pl->u.ke.data, s->md_len) == 0)
 					seen_natd_us = 1;
