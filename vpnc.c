@@ -1311,14 +1311,13 @@ void do_phase_1(const char *key_id, const char *shared_key, struct sa_block *s)
 
 static int do_phase2_notice_check(struct sa_block *s, struct isakmp_packet **r_p)
 {
-	int reject = 0, old_connection = 0;
+	int reject = 0;
 	struct isakmp_packet *r;
 	
 	while (1) {
 		reject = unpack_verify_phase2(s, r_packet, r_length, r_p, NULL, 0);
 		if (reject == ISAKMP_N_INVALID_COOKIE) {
 			r_length = sendrecv(r_packet, sizeof(r_packet), NULL, 0, 0);
-			old_connection = 1;
 			continue;
 		}
 		r = *r_p;
@@ -1351,7 +1350,7 @@ static int do_phase2_notice_check(struct sa_block *s, struct isakmp_packet **r_p
 					continue;
 				}
 			}
-			if (r->payload->next->type == ISAKMP_PAYLOAD_D && old_connection) {
+			if (r->payload->next->type == ISAKMP_PAYLOAD_D) {
 				/* responder liftime notice ==> ignore */
 				DEBUG(2, printf("got delete for old connection, ignoring..\n"));
 				r_length = sendrecv(r_packet, sizeof(r_packet), NULL, 0, 0);
