@@ -37,7 +37,7 @@ Xauth username geoffk
 
 Note that all strings start exactly one space after the keyword
 string, and run to the end of the line.  This lets you put any kind of
-weird character (except EOL and NUL) in your strings, but it does mean
+weird character (except CR, LF and NUL) in your strings, but it does mean
 you can't add comments after a string, or spaces before them.
 
 It may be easier to use the --print-config option to generate the
