@@ -1,0 +1,42 @@
+A VPN client compatible with Cisco's EasyVPN equipment.
+
+Supports IPSec (ESP) with Mode Configuration and Xauth.  Supports only
+shared-secret IPSec authentication, 3DES, MD5, and IP tunneling.
+
+It runs entirely in userspace
+
+It reads configuration data from the following places:
+
+- From command-line options
+- From config file(s) specified on the command line
+- From /etc/vpnc.conf
+- If a setting is not given in any of those places, it prompts the user.
+
+The configuration information it currently needs is:
+
+          Option Config file item
+	--ifname Interface name
+       --gateway IPSec gateway 
+            --id IPSec ID 
+     (no option) IPSec secret 
+      --username Xauth username 
+     (no option) Xauth password 
+
+A sample configuration file is:
+
+# This is a sample configuration file.
+Interface name vpntun0
+IPSec gateway 127.0.0.1
+IPSec ID laughing-vpn
+IPSec secret hahaha
+Xauth username geoffk
+
+Note that all strings start exactly one space after the keyword
+string, and run to the end of the line.  This lets you put any kind of
+weird character (except EOL and NUL) in your strings, but it does mean
+you can't add comments after a string, or spaces before them.
+
+It may be easier to use the --print-config option to generate the
+config file, and then delete any lines (like a password) that you want
+to be prompted for.
+
