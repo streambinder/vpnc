@@ -67,6 +67,7 @@
 
 #include <gcrypt.h>
 #include "tun_dev.h"
+#include "vpnc.h"
 
 #define max(a,b)	((a)>(b)?(a):(b))
 
@@ -173,21 +174,6 @@ struct sa_desc *remote_sa_list = NULL;
 	((e)->send_peer((e),(p),(b),(bs)))
 #define encap_recv_peer(e,p) \
 	((e)->recv_peer((e),(p)))
-
-static void hex_dump (const char *str, const uint8_t *data, size_t len)
-{
-	size_t i;
-	
-	printf("%s:%c", str, (len <= 32)? ' ':'\n');
-	for (i = 0; i < len; i++) {
-		if (i && !(i%32))
-			printf("\n");
-		else if (i && !(i%4))
-			printf(" ");
-		printf("%02x", data[i]);
-	}
-	printf("\n");
-}
 
 /*
  * in_cksum --
@@ -488,7 +474,7 @@ void encap_esp_send_peer(struct encap_method *encap,
     while (pad_blksz & 3) /* must be multiple of 4 */
 	    pad_blksz <<= 1;
     padding = pad_blksz - ((encap->buflen+2) % pad_blksz);
-printf("sending packet: len = %d, padding = %d\n", encap->buflen, padding);
+opt_debug&&printf("sending packet: len = %d, padding = %d\n", encap->buflen, padding);
     if (padding == pad_blksz)
         padding = 0;
 
@@ -890,9 +876,6 @@ hex_dump("tothem.auth_secret", tothem_sa.auth_secret, tothem_sa.auth_secret_size
   vpnpeer.remote_sa = &tothem_sa;
 
   openlog ("vpnc", LOG_PID, LOG_DAEMON);
-#if 0
-  if (fork() == 0)
-#endif
     {
       kill_packet = kill_packet_p;
       kill_packet_size = kill_packet_size_p;
@@ -906,11 +889,21 @@ hex_dump("tothem.auth_secret", tothem_sa.auth_secret, tothem_sa.auth_secret_size
       signal (SIGPWR, killit);
 
       chdir ("/");
-#if 0
-      close (0); close (1); close (2);
-#endif
+      
       setsid ();
-
+      if(opt_bg) {
+         pid_t pid;
+         if((pid=fork()) < 0) {
+            fprintf(stderr, "Warning, could not fork the child process!\n");
+         } else if (pid==0) {
+            close (0); close (1); close (2);
+            vpnc_main_loop (&vpnpeer, &meth, tun_fd); /* never returns */
+            exit(0);
+         } else {
+            printf("VPNC started in background...\n");
+            exit(0);
+         }
+      }
       vpnc_main_loop (&vpnpeer, &meth, tun_fd);
-    }
+  }
 }

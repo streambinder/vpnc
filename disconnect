@@ -1,0 +1,12 @@
+#!/bin/sh
+
+if [ $# -ne 1 ]; then
+	echo "Usage: $0 <parameter file>" 1>&2
+	exit 1
+fi
+
+for i in $(ps axh | grep 'v\pnc' | fgrep "$1"  | awk '{print $1}') ; do
+	kill $i
+done
+
+exit 0

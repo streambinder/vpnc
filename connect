@@ -1,0 +1,31 @@
+#!/bin/sh
+
+getvar () {
+	if [ $# -ne 2 ]; then
+		echo "Usage: $0 <parameter file> <variable name>" 1>&2
+		return 1
+	fi
+	sed -n 's/^'"$2"' //;T;p' "$1"
+	return 0
+}
+
+if [ $# -ne 1 ]; then
+	echo "Usage: $0 <parameter file>" 1>&2
+	exit 1
+fi
+
+if [ -x ./vpnc ]; then
+	VPNC=./vpnc
+elif [ -x "`which vpnc`" ]; then
+	VPNC="`which vpnc`"
+else
+	echo No vpnc daemon found, aborting...
+	exit 1
+fi
+
+"$VPNC" "$1" || exit 1
+ip route add $(ip route get $(getvar "$1" "IPSec gateway") | sed 's/cache//' | xargs echo)
+ip route del default
+ip route add default dev $(getvar "$1" "Interface name")
+ip route flush cache
+exit 0

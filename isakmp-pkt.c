@@ -22,22 +22,7 @@
 #include <errno.h>
 #include <stdio.h>
 #include "isakmp-pkt.h"
-
-static void hex_dump (const char *str, const void *data, size_t len)
-{
-	size_t i;
-	const uint8_t *p = data;
-	
-       	printf("%s:%c", str, (len <= 32)? ' ':'\n');
-       	for (i = 0; i < len; i++) {
-       		if (i && !(i%32))
-       			printf("\n");
-       		else if (i && !(i%4))
-       			printf(" ");
-       		printf("%02x", p[i]);
-       	}
-       	printf("\n");
-}
+#include "vpnc.h"
 
 void *
 xallocc (size_t x)
@@ -282,8 +267,10 @@ void flatten_isakmp_packet (struct isakmp_packet *p,
   *result = f.base;
   *size = f.end - f.base;
 /*DUMP*/
-printf("\n sending: ========================>\n");
-free_isakmp_packet(parse_isakmp_packet(f.base, f.end - f.base, NULL));
+  if (opt_debug) {
+    printf("\n sending: ========================>\n");
+    free_isakmp_packet(parse_isakmp_packet(f.base, f.end - f.base, NULL));
+  }
 }
 
 struct isakmp_attribute * 
@@ -733,7 +720,7 @@ parse_isakmp_packet (const uint8_t *data, size_t data_len, uint16_t *reject)
       goto error;
     }
   
-printf("\nBEGIN_PARSE\n");
+opt_debug&&printf("\nBEGIN_PARSE\n");
   fetchn (r->i_cookie, ISAKMP_COOKIE_LENGTH);
 hex_dump("i_cookie", r->i_cookie, ISAKMP_COOKIE_LENGTH);
   fetchn (r->r_cookie, ISAKMP_COOKIE_LENGTH);
@@ -770,7 +757,7 @@ hex_dump("len", &o_data_len, sizeof(o_data_len));
   if (reason != 0)
     goto error;
   
-printf("PARSE_OK\n\n");
+opt_debug && printf("PARSE_OK\n\n");
   return r;
 
  error:

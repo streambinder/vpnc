@@ -41,6 +41,7 @@
 #include "tun_dev.h"
 #include "math_group.h"
 #include "dh.h"
+#include "vpnc.h"
 
 extern void vpnc_doit(unsigned long tous_spi,
 		      const unsigned char *tous_key, 
@@ -52,24 +53,9 @@ extern void vpnc_doit(unsigned long tous_spi,
 		      uint8_t *kill_packet_p, size_t kill_packet_size_p,
 		      struct sockaddr *kill_dest_p);
 
-#undef TEST_VIS
-
-static void hex_dump (const char *str, const uint8_t *data, size_t len)
-{
-	size_t i;
-	
-	printf("%s:%c", str, (len <= 32)? ' ':'\n');
-	for (i = 0; i < len; i++) {
-		if (i && !(i%32))
-			printf("\n");
-		else if (i && !(i%4))
-			printf(" ");
-		printf("%02x", data[i]);
-	}
-	printf("\n");
-}
-
 enum config_enum {
+  CONFIG_DEBUG,
+  CONFIG_BG,
   CONFIG_IF_NAME,
   CONFIG_IPSEC_GATEWAY,
   CONFIG_IPSEC_ID,
@@ -80,6 +66,27 @@ enum config_enum {
 };
 
 static const char *config[LAST_CONFIG];
+
+int opt_debug = 0;
+int opt_bg;
+
+void hex_dump (const char *str, const void *data, size_t len)
+{
+	size_t i;
+	const uint8_t *p = data;
+	
+  if(opt_debug) {
+       	printf("%s:%c", str, (len <= 32)? ' ':'\n');
+       	for (i = 0; i < len; i++) {
+       		if (i && !(i%32))
+       			printf("\n");
+       		else if (i && !(i%4))
+       			printf(" ");
+       		printf("%02x", p[i]);
+       	}
+       	printf("\n");
+  }
+}
 
 static int
 make_socket (uint16_t port)
@@ -176,7 +183,7 @@ recv_ignore_dup (void *recvbuf, size_t recvbufsize, uint8_t reply_extype)
       
 hex_dump("exchange_type", ((uint8_t*)recvbuf) + ISAKMP_EXCHANGE_TYPE_O, 1);
       if (reply_extype && (((uint8_t*)recvbuf)[ISAKMP_EXCHANGE_TYPE_O] != reply_extype)) {
-printf("want extype %d, got %d, ignoring\n", reply_extype, ((uint8_t*)recvbuf)[ISAKMP_EXCHANGE_TYPE_O]);
+opt_debug&&printf("want extype %d, got %d, ignoring\n", reply_extype, ((uint8_t*)recvbuf)[ISAKMP_EXCHANGE_TYPE_O]);
 	return -1;
       }
 
@@ -246,17 +253,6 @@ sendrecv (void *recvbuf, size_t recvbufsize, void *tosend, size_t sendsize, uint
     timeout = 2000;
   else
     timeout = 4000 * (end - start);
-
-#ifdef TEST_VIS
-  {
-    int i;
-    printf ("recv: ");
-    for (i = 0; i < recvsize; i++)
-      printf ("0x%02x,%c", ((uint8_t *)recvbuf)[i],
-	      i % 12 == 11 ? '\n' : ' ');
-    printf ("\n");
-  }
-#endif
 
   return recvsize;
 }
@@ -342,17 +338,6 @@ isakmp_crypt (struct sa_block *s, uint8_t *block, size_t blocklen, int enc)
   }
   gcry_cipher_close(cry_ctx);
   
-#ifdef TEST_VIS
-  if (!enc) 
-    {
-      size_t i;
-      printf ("recvD: ");
-      for (i = 0; i < blocklen; i++)
-	printf ("0x%02x,%c", block[i],
-		i % 12 == 11 ? '\n' : ' ');
-      printf ("\n");
-    }
-#endif
 }
 
 static uint8_t r_packet[2048];
@@ -373,14 +358,14 @@ do_phase_1 (const char *key_id, const char *shared_key,
   
   struct isakmp_packet *p1;
   
-printf("S4.1\n");
+opt_debug&&printf("S4.1\n");
   gcry_randomize(d->i_cookie, ISAKMP_COOKIE_LENGTH, GCRY_STRONG_RANDOM);
   if (d->i_cookie[0] == 0)
     d->i_cookie[0] = 1;
 hex_dump("i_cookie", d->i_cookie, ISAKMP_COOKIE_LENGTH);
   gcry_randomize(i_nonce, sizeof (i_nonce), GCRY_STRONG_RANDOM);
 hex_dump("i_nonce", i_nonce, sizeof (i_nonce));
-printf("S4.2\n");
+opt_debug&&printf("S4.2\n");
   /* Set up the Diffie-Hellman stuff.  */
   {
     group_init();
@@ -390,7 +375,7 @@ printf("S4.2\n");
 hex_dump("dh_public", dh_public, dh_getlen (dh_grp));
   }
   
-printf("S4.3\n");
+opt_debug&&printf("S4.3\n");
   /* Create the first packet.  */
   {
     struct isakmp_payload *l;
@@ -426,7 +411,7 @@ printf("S4.3\n");
 			 pkt, pkt_len, 0);
     free (pkt);
   }
-printf("S4.4\n");
+opt_debug&&printf("S4.4\n");
   /* Decode the recieved packet.  */
   {
      struct isakmp_packet *r;
@@ -724,7 +709,7 @@ hex_dump("current_iv", d->current_iv, d->ivlen);
      gcry_md_close(skeyid_ctx);
   }
 
-printf("S4.5\n");
+opt_debug&&printf("S4.5\n");
   /* Send final phase 1 packet.  */
   {
     struct isakmp_packet *p2;
@@ -766,7 +751,7 @@ hex_dump("initial_iv", d->initial_iv, d->ivlen);
 			 p2kt, p2kt_len, 0);
     free (p2kt);
   }
-printf("S4.6\n");
+opt_debug&&printf("S4.6\n");
   
   free(returned_hash);
 }
@@ -834,14 +819,14 @@ unpack_verify_phase2 (struct sa_block *s,
     gcry_md_final(hm);
     expected_hash = gcry_md_read(hm, 0);
     
-#if 1
+    if(opt_debug)
     {
 	    printf("hashlen: %d\n", s->md_len);
 	    printf("u.hash.length: %d\n", h->u.hash.length);
 	    hex_dump("expected_hash", expected_hash,  s->md_len);
 	    hex_dump("h->u.hash.data", h->u.hash.data, s->md_len);
     }
-#endif
+    
     reject = 0;
     if (memcmp (h->u.hash.data, expected_hash, s->md_len) != 0)
       reject = ISAKMP_N_AUTHENTICATION_FAILED;
@@ -883,7 +868,7 @@ phase2_authpacket (struct sa_block *s, struct isakmp_payload *pl,
   gcry_md_setkey(hm, s->skeyid_a, s->md_len);
   
   if (pl == NULL) {
-    printf("authing NULL package!\n");
+    opt_debug&&printf("authing NULL package!\n");
     gcry_md_write(hm, "" /* \0 */, 1);
   }
   
@@ -945,7 +930,7 @@ phase2_fatal (struct sa_block *s, const char *msg, uint16_t id)
   struct isakmp_payload *pl;
   uint32_t msgid;
 
-printf("\n\n..__--==^^°° entering phase2_fatal °°^^==--__..\n\n\n");
+opt_debug&&printf("\n\n---!!!!!!!!! entering phase2_fatal !!!!!!!!!---\n\n\n");
   gcry_randomize((uint8_t *) &msgid, sizeof (msgid), GCRY_WEAK_RANDOM);
   pl = new_isakmp_payload (ISAKMP_PAYLOAD_N);
   pl->u.n.doi = ISAKMP_DOI_IPSEC;
@@ -969,7 +954,7 @@ do_phase_2_xauth (struct sa_block *s)
   struct isakmp_packet *r;
   int loopcount;
 
-printf("S5.1\n");
+opt_debug&&printf("S5.1\n");
   /* This can go around for a while.  */
   for (loopcount = 0;; loopcount++)
     {
@@ -978,7 +963,7 @@ printf("S5.1\n");
       struct isakmp_attribute *a, *ap, *reply_attr;
       char ntop_buf[32];
       
-printf("S5.2\n");
+opt_debug&&printf("S5.2\n");
       reject = unpack_verify_phase2 (s, r_packet, r_length, &r, NULL, 0);
       if (reject == ISAKMP_N_PAYLOAD_MALFORMED)
 	{
@@ -986,7 +971,7 @@ printf("S5.2\n");
 	  continue;
 	}
       
-printf("S5.3\n");
+opt_debug&&printf("S5.3\n");
       /* Check the transaction type is OK.  */
       if (reject == 0 && 
 	  r->exchange_type != ISAKMP_EXCHANGE_MODECFG_TRANSACTION)
@@ -1009,7 +994,7 @@ printf("S5.3\n");
       if (reject != 0)
 	phase2_fatal (s, "expected xauth packet; rejected", reject);
       
-printf("S5.4\n");
+opt_debug && printf("S5.4\n");
       a = r->payload->next->u.modecfg.attributes;
       /* First, print any messages, and verify that we understand the
 	 conversation.  */
@@ -1037,7 +1022,7 @@ printf("S5.4\n");
 	  default:
 	    reject = ISAKMP_N_ATTRIBUTES_NOT_SUPPORTED;
 	  }
-printf("S5.5\n");
+opt_debug && printf("S5.5\n");
       if (reject != 0)
 	phase2_fatal (s, "xauth packet unsupported", reject);
       
@@ -1128,7 +1113,7 @@ printf("S5.5\n");
       free_isakmp_packet (r);
     }
   
-printf("S5.6\n");
+opt_debug && printf("S5.6\n");
   {
     /* The final SET should have just one attribute.  */
     uint16_t reject = 0;
@@ -1155,7 +1140,7 @@ printf("S5.6\n");
     if (set_result == 0)
       error (2, 0, "authentication unsuccessful");
   }
-printf("S5.7\n");
+opt_debug && printf("S5.7\n");
 }
 
 static void 
@@ -1166,7 +1151,7 @@ do_phase_2_config (struct sa_block *s)
   struct isakmp_packet *r;
   uint32_t msgid;
   uint16_t reject;
-  int seen_address = 0/*, seen_netmask = 0*/;
+  int seen_address = 0;
   
   gcry_randomize((uint8_t *)&msgid, sizeof (msgid), GCRY_WEAK_RANDOM);
   if (msgid == 0)
@@ -1176,7 +1161,6 @@ do_phase_2_config (struct sa_block *s)
   rp->u.modecfg.type = ISAKMP_MODECFG_CFG_REQUEST;
   rp->u.modecfg.id = 20;
   a = NULL;
-  /*a = new_isakmp_attribute(ISAKMP_MODECFG_ATTRIB_INTERNAL_IP4_NETMASK, a);*/
   a = new_isakmp_attribute(ISAKMP_MODECFG_ATTRIB_INTERNAL_IP4_ADDRESS, a);
   rp->u.modecfg.attributes = a;
   sendrecv_phase2 (s, rp, ISAKMP_EXCHANGE_MODECFG_TRANSACTION,
@@ -1209,16 +1193,6 @@ do_phase_2_config (struct sa_block *s)
        a = a->next)
     switch (a->type)
       {
-#if 0
-      case ISAKMP_MODECFG_ATTRIB_INTERNAL_IP4_NETMASK:
-	if (a->af != isakmp_attr_lots || a->u.lots.length != 4)
-	  reject = ISAKMP_N_ATTRIBUTES_NOT_SUPPORTED;
-	else
-	  memcpy (s->our_netmask, a->u.lots.data, 4);
-	seen_netmask = 1;
-	break;
-#endif
-	
       case ISAKMP_MODECFG_ATTRIB_INTERNAL_IP4_ADDRESS:
 	if (a->af != isakmp_attr_lots || a->u.lots.length != 4)
 	  reject = ISAKMP_N_ATTRIBUTES_NOT_SUPPORTED;
@@ -1234,11 +1208,6 @@ do_phase_2_config (struct sa_block *s)
   
   if (reject == 0 && ! seen_address)
     reject = ISAKMP_N_ATTRIBUTES_NOT_SUPPORTED;
-
-#if 0
-  if (reject == 0 && ! seen_netmask)
-    reject = ISAKMP_N_ATTRIBUTES_NOT_SUPPORTED;
-#endif
 
   if (reject != 0)
     phase2_fatal (s, "configuration response rejected", reject);
@@ -1340,7 +1309,7 @@ setup_link (struct sa_block *s)
   uint16_t reject;
   uint8_t nonce[20];
   
-printf("S8.1\n");
+opt_debug && printf("S8.1\n");
   gcry_randomize((uint8_t *)&s->tous_esp_spi, sizeof (s->tous_esp_spi), GCRY_WEAK_RANDOM);
   rp = new_isakmp_payload (ISAKMP_PAYLOAD_SA);
   rp->u.sa.doi = ISAKMP_DOI_IPSEC;
@@ -1373,12 +1342,7 @@ printf("S8.1\n");
   them->u.id.type = ISAKMP_IPSEC_ID_IPV4_ADDR_SUBNET;
   them->u.id.length = 8;
   them->u.id.data = xallocc(8);
-{
-  /*uint8_t them_id[] = { 143, 93, 244, 38, 255, 255, 255, 255};*/
-  uint8_t them_id[] = { 0, 0, 0, 0, 0, 0, 0, 0};
-  memcpy (them->u.id.data, them_id, 8);
-  /*memcpy (them->u.id.data, &((struct sockaddr_in *)dest_addr)->sin_addr, sizeof (struct in_addr));*/
-}
+  memset(them->u.id.data, 0, 8);
   rp->next->next = us;
   us->next = them;
 
@@ -1386,15 +1350,15 @@ printf("S8.1\n");
   if (msgid == 0)
     msgid = 1;
   
-printf("S8.2\n");
+opt_debug && printf("S8.2\n");
   sendrecv_phase2 (s, rp, ISAKMP_EXCHANGE_IKE_QUICK,
 		   msgid, 0, ISAKMP_EXCHANGE_IKE_QUICK, 0,0,0,0);
 
-printf("S8.3\n");
+opt_debug && printf("S8.3\n");
   reject = unpack_verify_phase2 (s, r_packet, r_length, &r, 
 				 nonce, sizeof (nonce));
 
-printf("S8.4\n");
+opt_debug && printf("S8.4\n");
   /* Check the transaction type & message ID are OK.  */
   if (reject == 0 && r->message_id != msgid)
     reject = ISAKMP_N_INVALID_MESSAGE_ID;
@@ -1405,11 +1369,11 @@ printf("S8.4\n");
   if (reject == 0 && r->payload->next->type != ISAKMP_PAYLOAD_SA)
     reject = ISAKMP_N_INVALID_PAYLOAD_TYPE;
 
-printf("S8.5\n");
+opt_debug && printf("S8.5\n");
   if (reject != 0)
     phase2_fatal (s, "quick mode response rejected", reject);
 
-printf("S8.6\n");
+opt_debug && printf("S8.6\n");
   for (rp = r->payload->next; rp && reject == 0; rp = rp->next)
     switch (rp->type)
       {
@@ -1493,7 +1457,7 @@ printf("S8.6\n");
                    msgid, 1, 0, nonce, sizeof (nonce),
 		   nonce_r->u.nonce.data, nonce_r->u.nonce.length);
   
-printf("S8.7\n");
+opt_debug && printf("S8.7\n");
   /* Create the delete payload, now that we have all the information.  */
   {
     struct isakmp_payload *d_isakmp, *d_ipsec;
@@ -1522,7 +1486,7 @@ printf("S8.7\n");
 		       nonce_r->u.nonce.data, nonce_r->u.nonce.length);
     isakmp_crypt (s, s->kill_packet, s->kill_packet_size, -1);
   }
-printf("S8.8\n");
+opt_debug && printf("S8.8\n");
   
   /* Set up the interface here so it's ready when our acknowledgement
      arrives.  */
@@ -1539,7 +1503,8 @@ printf("S8.8\n");
     tothem_keys = gen_keymat (s, ISAKMP_IPSEC_PROTO_IPSEC_ESP,
 			      s->tothem_esp_spi, nonce, sizeof (nonce), 
 			      nonce_r->u.nonce.data, nonce_r->u.nonce.length);
-printf("S8.9\n");
+opt_debug && printf("S8.9\n");
+    printf("tunnel startup done\n");
     vpnc_doit (s->tous_esp_spi, tous_keys, &tothem_dest,
 	       s->tothem_esp_spi, tothem_keys, (struct sockaddr_in *)dest_addr,
 	       tun_fd, s->md_algo, s->cry_algo,
@@ -1552,6 +1517,8 @@ static const struct config_names_s {
   const char *option;
   enum config_enum nm;
 } config_names[] = {
+  { "Debug ", "--debug", CONFIG_DEBUG },
+  { "Background", "-b", CONFIG_BG },
   { "Interface name ", "--ifname", CONFIG_IF_NAME },
   { "IPSec gateway ", "--gateway", CONFIG_IPSEC_GATEWAY },
   { "IPSec ID ", "--id", CONFIG_IPSEC_ID },
@@ -1680,6 +1647,9 @@ int main(int argc, char **argv)
 
   read_config_file ("/etc/vpnc.conf", config, 1);
 
+  opt_debug=(config[CONFIG_DEBUG]) ? 1 : 0;
+  opt_bg=(config[CONFIG_BG]) ? 1 : 0;
+
   for (i = 0; i < LAST_CONFIG; i++)
     if (config[i] == NULL)
       {
@@ -1688,6 +1658,11 @@ int main(int argc, char **argv)
 	
 	switch (i)
 	  {
+	  case CONFIG_DEBUG:
+	  case CONFIG_IF_NAME:
+          case CONFIG_BG:
+             /* no interaction */
+	    break;
 	  case CONFIG_IPSEC_GATEWAY:
 	    printf ("Enter IPSec gateway address: ");
 	    break;
@@ -1709,12 +1684,20 @@ int main(int argc, char **argv)
 	    break;
 	  }
 	fflush (stdout);
-	if (i == CONFIG_IPSEC_SECRET || i == CONFIG_XAUTH_PASSWORD)
-	  {
-	    s = strdup (getpass (""));
-	  }
-	else
-	  getline (&s, &s_len, stdin);
+        switch (i)
+        {
+           case CONFIG_IPSEC_SECRET:
+           case CONFIG_XAUTH_PASSWORD:
+              s = strdup (getpass (""));
+              break;
+           case CONFIG_DEBUG:
+           case CONFIG_IF_NAME:
+           case CONFIG_BG:
+              /* no interaction */
+              break;
+           default:
+              getline (&s, &s_len, stdin);
+        }
 	if (s != NULL && s[strlen (s) - 1] == '\n')
 	  s[strlen (s) - 1] = 0;
 	config[i] = s;
@@ -1727,23 +1710,23 @@ int main(int argc, char **argv)
       exit (0);
     }
 
-printf("S1\n");
+opt_debug && printf("S1\n");
   dest_addr = init_sockaddr (config[CONFIG_IPSEC_GATEWAY], 500);
-printf("S2\n");
+opt_debug && printf("S2\n");
   sockfd = make_socket (500);
-printf("S3\n");
+opt_debug && printf("S3\n");
   setup_tunnel();
-printf("S4\n");
+opt_debug && printf("S4\n");
 
   memset(&oursa, '\0', sizeof(oursa));
   do_phase_1 (config[CONFIG_IPSEC_ID], config[CONFIG_IPSEC_SECRET], &oursa);
-printf("S5\n");
+opt_debug && printf("S5\n");
   do_phase_2_xauth (&oursa);
-printf("S6\n");
+opt_debug && printf("S6\n");
   do_phase_2_config (&oursa);
-printf("S7\n");
+opt_debug && printf("S7\n");
   config_tunnel (&oursa);
-printf("S8\n");
+opt_debug && printf("S8\n");
 
   setup_link (&oursa);
 

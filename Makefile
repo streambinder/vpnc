@@ -28,8 +28,8 @@ tunip.o : tun_dev.h
 dh.o : dh.h math_group.h
 math_group.o : math_group.h
 
-vpnc-%.tar.gz : vpnc.c isakmp-pkt.c tunip.c isakmp-pkt.h isakmp.h \
-  Makefile README CHANGELOG \
+vpnc-%.tar.gz : vpnc.c vpnc.h isakmp-pkt.c isakmp-pkt.h tunip.c isakmp.h \
+  Makefile README CHANGELOG connect disconnect sample-unikl \
   tun_dev.h tun_dev-bsd.c tun_dev-linux.c tun_dev-svr4.c \
   dh.c dh.h math_group.c math_group.h
 	mkdir vpnc-$*
