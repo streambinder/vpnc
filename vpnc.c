@@ -51,11 +51,14 @@ extern void vpnc_doit(unsigned long tous_spi,
 		      struct sockaddr_in *tothem_dest,
 		      int tun_fd, int md_algo, int cry_algo,
 		      uint8_t *kill_packet_p, size_t kill_packet_size_p,
-		      struct sockaddr *kill_dest_p);
+		      struct sockaddr *kill_dest_p,
+		      const char *pidfile);
 
 enum config_enum {
   CONFIG_DEBUG,
   CONFIG_ND,
+  CONFIG_NON_INTERACTIVE,
+  CONFIG_PID_FILE,
   CONFIG_IF_NAME,
   CONFIG_IKE_DH,
   CONFIG_IPSEC_PFS,
@@ -984,8 +987,10 @@ unpack_verify_phase2 (struct sa_block *s,
     if (memcmp (h->u.hash.data, expected_hash, s->md_len) != 0)
       reject = ISAKMP_N_AUTHENTICATION_FAILED;
     gcry_md_close(hm);
+#if 0
     if (reject != 0)
       return reject;
+#endif
   }
   *r_p = r;
   return 0;
@@ -1055,14 +1060,20 @@ phase2_authpacket (struct sa_block *s, struct isakmp_payload *pl,
 static void
 sendrecv_phase2 (struct sa_block *s, struct isakmp_payload *pl,
 		 uint8_t exchange_type, uint32_t msgid, int sendonly, uint8_t reply_extype,
+		 uint8_t **save_p_flat, size_t *save_p_size,
 		 uint8_t *nonce_i, int ni_len, uint8_t *nonce_r, int nr_len)
 {
   uint8_t *p_flat;
   size_t p_size;
 
-  phase2_authpacket (s, pl, exchange_type, msgid, &p_flat, &p_size,
+  if ((save_p_flat == NULL)||(*save_p_flat == NULL)) {
+    phase2_authpacket (s, pl, exchange_type, msgid, &p_flat, &p_size,
 		  nonce_i, ni_len, nonce_r, nr_len);
-  isakmp_crypt (s, p_flat, p_size, 1);
+    isakmp_crypt (s, p_flat, p_size, 1);
+  } else {
+    p_flat = *save_p_flat;
+    p_size = *save_p_size;
+  }
 
   if (! sendonly)
     r_length = sendrecv (r_packet, sizeof (r_packet), 
@@ -1074,7 +1085,12 @@ sendrecv_phase2 (struct sa_block *s, struct isakmp_payload *pl,
 	  && sendonly == 1)
 	error (1, errno, "can't send packet");
     }
-  free (p_flat);
+  if (save_p_flat == NULL) {
+    free (p_flat);
+  } else {
+    *save_p_flat = p_flat;
+    *save_p_size = p_size;
+  }
 }
 
 static void
@@ -1089,7 +1105,7 @@ opt_debug&&printf("\n\n---!!!!!!!!! entering phase2_fatal !!!!!!!!!---\n\n\n");
   pl->u.n.doi = ISAKMP_DOI_IPSEC;
   pl->u.n.protocol = ISAKMP_IPSEC_PROTO_ISAKMP;
   pl->u.n.type = id;
-  sendrecv_phase2 (s, pl, ISAKMP_EXCHANGE_INFORMATIONAL, msgid, 2, 0, 0,0,0,0);
+  sendrecv_phase2 (s, pl, ISAKMP_EXCHANGE_INFORMATIONAL, msgid, 2, 0,0,0,0,0,0,0);
   
   gcry_randomize((uint8_t *) &msgid, sizeof (msgid), GCRY_WEAK_RANDOM);
   pl = new_isakmp_payload (ISAKMP_PAYLOAD_D);
@@ -1101,7 +1117,7 @@ opt_debug&&printf("\n\n---!!!!!!!!! entering phase2_fatal !!!!!!!!!---\n\n\n");
   pl->u.d.spi[0] = xallocc(2*ISAKMP_COOKIE_LENGTH);
   memcpy(pl->u.d.spi[0]+ISAKMP_COOKIE_LENGTH*0, s->i_cookie, ISAKMP_COOKIE_LENGTH);
   memcpy(pl->u.d.spi[0]+ISAKMP_COOKIE_LENGTH*1, s->r_cookie, ISAKMP_COOKIE_LENGTH);
-  sendrecv_phase2 (s, pl, ISAKMP_EXCHANGE_INFORMATIONAL, msgid, 2, 0, 0,0,0,0);
+  sendrecv_phase2 (s, pl, ISAKMP_EXCHANGE_INFORMATIONAL, msgid, 2, 0,0,0,0,0,0,0);
 
   error (1, 0, "%s: %s", msg, isakmp_notify_to_error (id));
 }
@@ -1266,7 +1282,7 @@ opt_debug && printf("S5.5\n");
       rp->u.modecfg.id = r->payload->next->u.modecfg.id;
       rp->u.modecfg.attributes = reply_attr;
       sendrecv_phase2 (s, rp, ISAKMP_EXCHANGE_MODECFG_TRANSACTION,
-		       r->message_id, 0, 0, 0,0,0,0);
+		       r->message_id, 0, 0,0,0,0,0,0,0);
       
       free_isakmp_packet (r);
     }
@@ -1291,7 +1307,7 @@ opt_debug && printf("S5.6\n");
     /* ACK the SET.  */
     r->payload->next->u.modecfg.type = ISAKMP_MODECFG_CFG_ACK;
     sendrecv_phase2 (s, r->payload->next, ISAKMP_EXCHANGE_MODECFG_TRANSACTION,
-		     r->message_id, 1, 0, 0,0,0,0);
+		     r->message_id, 1, 0,0,0,0,0,0,0);
     r->payload->next = NULL;
     free_isakmp_packet (r);
 
@@ -1322,7 +1338,7 @@ do_phase_2_config (struct sa_block *s)
   a = new_isakmp_attribute(ISAKMP_MODECFG_ATTRIB_INTERNAL_IP4_ADDRESS, a);
   rp->u.modecfg.attributes = a;
   sendrecv_phase2 (s, rp, ISAKMP_EXCHANGE_MODECFG_TRANSACTION,
-		   msgid, 0, 0, 0,0,0,0);
+		   msgid, 0, 0,0,0,0,0,0,0);
 
   reject = unpack_verify_phase2 (s, r_packet, r_length, &r, NULL, 0);
 
@@ -1530,8 +1546,10 @@ setup_link (struct sa_block *s)
   struct group *dh_grp = NULL;
   uint32_t msgid;
   uint16_t reject;
+  uint8_t *p_flat = NULL, *realiv = NULL, realiv_msgid[4];;
+  size_t p_size = 0;
   uint8_t nonce[20], *dh_public = NULL;
-  int ipsec_cry_algo = 0, ipsec_hash_algo = 0;
+  int ipsec_cry_algo = 0, ipsec_hash_algo = 0, i;
   
 opt_debug && printf("S8.1\n");
   /* Set up the Diffie-Hellman stuff.  */
@@ -1574,27 +1592,57 @@ hex_dump("dh_public", dh_public, dh_getlen (dh_grp));
     msgid = 1;
   
 opt_debug && printf("S8.2\n");
-  sendrecv_phase2 (s, rp, ISAKMP_EXCHANGE_IKE_QUICK,
-		   msgid, 0, ISAKMP_EXCHANGE_IKE_QUICK, 0,0,0,0);
+  for (i = 0; i < 4; i++) {
+    sendrecv_phase2 (s, rp, ISAKMP_EXCHANGE_IKE_QUICK,
+		     msgid, 0, 0, &p_flat, &p_size, 0,0,0,0);
+    
+    if (realiv == NULL) {
+      realiv = xallocc(s->ivlen);
+      memcpy(realiv, s->current_iv, s->ivlen);
+      memcpy(realiv_msgid, s->current_iv_msgid, 4);
+    }
 
 opt_debug && printf("S8.3\n");
-  reject = unpack_verify_phase2 (s, r_packet, r_length, &r, 
-				 nonce, sizeof (nonce));
+    reject = unpack_verify_phase2 (s, r_packet, r_length, &r, 
+				   nonce, sizeof (nonce));
 
 opt_debug && printf("S8.4\n");
-  /* Check the transaction type & message ID are OK.  */
-  if (reject == 0 && r->message_id != msgid)
-    reject = ISAKMP_N_INVALID_MESSAGE_ID;
-  if (reject == 0 && r->exchange_type != ISAKMP_EXCHANGE_IKE_QUICK)
-    reject = ISAKMP_N_INVALID_EXCHANGE_TYPE;
+    if (((reject == 0)||(reject == ISAKMP_N_AUTHENTICATION_FAILED))
+	&& r->exchange_type == ISAKMP_EXCHANGE_INFORMATIONAL) {
+       /* handle notifie responder-lifetime (ignore)*/
+       /* (broken hash => ignore AUTHENTICATION_FAILED) */
+       if (reject == 0 && r->payload->next->type != ISAKMP_PAYLOAD_N)
+         reject = ISAKMP_N_INVALID_PAYLOAD_TYPE;
+       
+       if (reject == 0 && r->payload->next->u.n.type == ISAKMP_N_IPSEC_RESPONDER_LIFETIME) {
+opt_debug && printf("ignoring responder-lifetime notify\n");
+	 memcpy(s->current_iv, realiv, s->ivlen);
+	 memcpy(s->current_iv_msgid, realiv_msgid, 4);
+	 continue;
+       }
+    }
+    
+    /* Check the transaction type & message ID are OK.  */
+    if (reject == 0 && r->message_id != msgid)
+      reject = ISAKMP_N_INVALID_MESSAGE_ID;
+    
+    if (reject == 0 && r->exchange_type != ISAKMP_EXCHANGE_IKE_QUICK)
+      reject = ISAKMP_N_INVALID_EXCHANGE_TYPE;
   
-  /* The SA payload must be second.  */
-  if (reject == 0 && r->payload->next->type != ISAKMP_PAYLOAD_SA)
-    reject = ISAKMP_N_INVALID_PAYLOAD_TYPE;
+    /* The SA payload must be second.  */
+    if (reject == 0 && r->payload->next->type != ISAKMP_PAYLOAD_SA)
+      reject = ISAKMP_N_INVALID_PAYLOAD_TYPE;
+    
+    if (p_flat)
+      free(p_flat);
+    if (realiv)
+      free(realiv);
+    break;
+  }
 
 opt_debug && printf("S8.5\n");
   if (reject != 0)
-    phase2_fatal (s, "quick mode response rejected", reject);
+    phase2_fatal (s, "quick mode response rejected, try checking pfs setting", reject);
 
 opt_debug && printf("S8.6\n");
   for (rp = r->payload->next; rp && reject == 0; rp = rp->next)
@@ -1711,7 +1759,7 @@ opt_debug && printf("S8.6\n");
   
   /* send final packet */
   sendrecv_phase2 (s, NULL, ISAKMP_EXCHANGE_IKE_QUICK,
-                   msgid, 1, 0, nonce, sizeof (nonce),
+                   msgid, 1, 0,0,0, nonce, sizeof (nonce),
 		   nonce_r->u.nonce.data, nonce_r->u.nonce.length);
   
 opt_debug && printf("S8.7\n");
@@ -1779,11 +1827,12 @@ opt_debug && printf("S8.9\n");
     vpnc_doit (s->tous_esp_spi, tous_keys, &tothem_dest,
 	       s->tothem_esp_spi, tothem_keys, (struct sockaddr_in *)dest_addr,
 	       tun_fd, ipsec_hash_algo, ipsec_cry_algo,
-	       s->kill_packet, s->kill_packet_size, dest_addr);
+	       s->kill_packet, s->kill_packet_size, dest_addr, config[CONFIG_PID_FILE]);
   }
 }
 
 static const struct config_names_s {
+  const char *desc;
   const char *name;
   const char *option;
   enum config_enum nm;
@@ -1791,17 +1840,19 @@ static const struct config_names_s {
 } config_names[] = {
   /* Note: broken config file parser does NOT support option
    * names where one is a prefix of another option */
-  { "Debug", "--debug", CONFIG_DEBUG, 0 },
-  { "No Detach", "--no-detach", CONFIG_ND, 0 },
-  { "Interface name ", "--ifname", CONFIG_IF_NAME, 1 },
-  { "IKE DH Group ", "--dh", CONFIG_IKE_DH, 1 },
-  { "Perfect Forward Secrecy ", "--pfs", CONFIG_IPSEC_PFS, 1 },
-  { "IPSec gateway ", "--gateway", CONFIG_IPSEC_GATEWAY, 1 },
-  { "IPSec ID ", "--id", CONFIG_IPSEC_ID, 1 },
-  { "IPSec secret ", NULL, CONFIG_IPSEC_SECRET, 1 },
-  { "Xauth username ", "--username", CONFIG_XAUTH_USERNAME, 1 },
-  { "Xauth password ", NULL, CONFIG_XAUTH_PASSWORD, 1 },
-  { NULL, NULL, 0, 0 }
+  { "Show extraneous debug messages", "Debug", "--debug", CONFIG_DEBUG, 0 },
+  { "Don't detach from the console after login", "No Detach", "--no-detach", CONFIG_ND, 0 },
+  { "Don't ask anything, exit on missing options", "Noninteractive", "--non-inter", CONFIG_NON_INTERACTIVE, 0 },
+  { "<filename> -- store the pid of background process there", "Pidfile", "--pid-file", CONFIG_PID_FILE, 1 },
+  { "<ascii string> -- visible name of the TUN interface", "Interface name ", "--ifname", CONFIG_IF_NAME, 1 },
+  { "<dh1/dh2/dh5> -- name of the IKE DH Group", "IKE DH Group ", "--dh", CONFIG_IKE_DH, 1 },
+  { "<nopfs/dh1/dh2/dh5>", "Perfect Forward Secrecy ", "--pfs", CONFIG_IPSEC_PFS, 1 },
+  { "<ip/hostname> -- name of your IPSec gateway", "IPSec gateway ", "--gateway", CONFIG_IPSEC_GATEWAY, 1 },
+  { "<ascii string>", "IPSec ID ", "--id", CONFIG_IPSEC_ID, 1 },
+  { "<ascii string>", "IPSec secret ", NULL, CONFIG_IPSEC_SECRET, 1 },
+  { "<ascii string>", "Xauth username ", "--username", CONFIG_XAUTH_USERNAME, 1 },
+  { "<ascii string>", "Xauth password ", NULL, CONFIG_XAUTH_PASSWORD, 1 },
+  { NULL, NULL, NULL, 0, 0 }
 };
 
 void
@@ -1898,8 +1949,8 @@ int main(int argc, char **argv)
 	  {
 	    unsigned int i;
 	    
-	    printf ("vpnc version 0.1\n");
-	    printf ("Copyright (C) 2002 Geoffrey Keating\n");
+	    printf ("vpnc version " VERSION "\n");
+	    printf ("Copyright (C) 2002, 2003 Geoffrey Keating, Maurice Massar\n");
 	    printf ("%s",
 "vpnc comes with NO WARRANTY, to the extent permitted by law.\n"
 "You may redistribute copies of vpnc under the terms of the GNU General\n"
@@ -1932,14 +1983,14 @@ int main(int argc, char **argv)
 	    int c;
 	    
 	    printf ("usage: %s [--version] [--print-config] [options] [config file]\n", argv[0]);
-	    printf ("  %14s %s\n", "Option", "Argument");
+	    printf ("%12s %s\n", "Option", "Config file directive <arguments> -- Description");
 	    for (c = 0; config_names[c].name != NULL; c++)
-	      printf ("  %14s %s\n", 
+	      printf ("%12s %s %s\n", 
 		      (config_names[c].option == NULL
 		       ? "(no option)"
 		       : config_names[c].option),
-		      config_names[c].name);
-	    printf ("Report bugs to geoffk@geoffk.org\n");
+		      config_names[c].name, config_names[c].desc);
+	    printf ("Report bugs to vpnc@unix-ag.uni-kl.de\n");
 	    exit (0);
 	  }
       }
@@ -1948,11 +1999,16 @@ int main(int argc, char **argv)
 
   read_config_file ("/etc/vpnc.conf", config, 1);
 
+  if (!config[CONFIG_IKE_DH])
+    config[CONFIG_IKE_DH] = "dh2";
+  if (!config[CONFIG_IPSEC_PFS])
+    config[CONFIG_IPSEC_PFS] = "nopfs";
+
   opt_debug=(config[CONFIG_DEBUG]) ? 1 : 0;
   opt_nd=(config[CONFIG_ND]) ? 1 : 0;
 
   for (i = 0; i < LAST_CONFIG; i++)
-    if (config[i] == NULL)
+    if ((config[i] == NULL)&&(config[CONFIG_NON_INTERACTIVE] == NULL))
       {
 	char *s = NULL;
 	size_t s_len = 0;
@@ -1962,13 +2018,11 @@ int main(int argc, char **argv)
 	  case CONFIG_DEBUG:
 	  case CONFIG_IF_NAME:
           case CONFIG_ND:
-             /* no interaction */
-	    break;
+          case CONFIG_NON_INTERACTIVE:
+          case CONFIG_PID_FILE:
 	  case CONFIG_IKE_DH:
-	    printf ("Enter IKE SA Diffie-Hellman Group (dh1/dh2/dh5): ");
-	    break;
 	  case CONFIG_IPSEC_PFS:
-	    printf ("Enter Perfect-Forwward-Secrecy Setting (nopfs/dh1/dh2/dh5): ");
+             /* no interaction */
 	    break;
 	  case CONFIG_IPSEC_GATEWAY:
 	    printf ("Enter IPSec gateway address: ");
@@ -2000,6 +2054,10 @@ int main(int argc, char **argv)
            case CONFIG_DEBUG:
            case CONFIG_IF_NAME:
            case CONFIG_ND:
+           case CONFIG_NON_INTERACTIVE:
+           case CONFIG_PID_FILE:
+	   case CONFIG_IKE_DH:
+	   case CONFIG_IPSEC_PFS:
               /* no interaction */
               break;
            default:
@@ -2010,6 +2068,16 @@ int main(int argc, char **argv)
 	config[i] = s;
       }
   
+  if (!config[CONFIG_IPSEC_GATEWAY])
+	error (1, 0, "missing IPSec gatway address");
+  if (!config[CONFIG_IPSEC_ID])
+	error (1, 0, "missing IPSec ID");
+  if (!config[CONFIG_IPSEC_SECRET])
+	error (1, 0, "missing IPSec secret");
+  if (!config[CONFIG_XAUTH_USERNAME])
+	error (1, 0, "missing Xauth username");
+  if (!config[CONFIG_XAUTH_PASSWORD])
+	error (1, 0, "missing Xauth password");
   if (get_dh_group_ike() == NULL)
 	error (1, 0, "IKE DH Group \"%s\" unsupported\n", config[CONFIG_IKE_DH]);
   if (get_dh_group_ipsec() == NULL)

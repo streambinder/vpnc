@@ -9,7 +9,9 @@ getvar () {
 	return 0
 }
 
-defr=/var/run/vpnc.defaultroute
+defr=/var/run/vpnc/defaultroute
+pid=/var/run/vpnc/pid
+
 if [ $# -ne 1 ]; then
 	echo "Usage: $0 <parameter file>" 1>&2
 	exit 1
@@ -40,7 +42,7 @@ if [ ! "`echo "$GW" | grep ^[[:digit:]]`" ] ; then
 	fi
 fi
 
-"$VPNC" "$1" || exit 1
+"$VPNC" --pid-file "$pid" "$1" || exit 1
 ip route add $(ip route get $(getvar "$1" "IPSec gateway") | sed 's/cache//' | xargs echo)
 ip route | grep '^default' | sed 's/cache//' > "$defr"
 ip route del default

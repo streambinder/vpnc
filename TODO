@@ -1,0 +1,20 @@
+TODO list
+
+* DONE: implement ISAKMP and IPSEC SA negotiate support
+
+* DONE: fix delete message
+
+* DONE --non-interactive
+
+* DONE --pid-file
+
+* DONE VERSION
+
+* DONE don't ignore all notifies at ipsec-sa-negotation
+
+* getopt()? libpopt?
+
+......
+
+* rekeying?
+

@@ -40,3 +40,10 @@ It may be easier to use the --print-config option to generate the
 config file, and then delete any lines (like a password) that you want
 to be prompted for.
 
+If you don't know the Group ID and Secret string, ask your 
+administrator. If (s)he declines and refers to the 
+configuration files provided for the vpnclient program, tell 
+him/her that the contents of that files is (though scrambled) 
+not really protected and can be extracted using tools shipped 
+with any Linux distribution.
+

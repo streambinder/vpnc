@@ -801,6 +801,24 @@ killit(int signum)
 }
 
 void
+write_pidfile(const char *pidfile)
+{
+	FILE *pf;
+	
+	if (pidfile == NULL)
+		return;
+	
+	pf = fopen(pidfile, "w");
+	if (pf == NULL) {
+		syslog(LOG_WARNING, "can't open pidfile %s for writing", pidfile);
+		return;
+	}
+	
+	fprintf(pf, "%d\n", getpid());
+	fclose(pf);
+}
+
+void
 vpnc_doit(unsigned long tous_spi,
 	  const unsigned char *tous_key, 
 	  struct sockaddr_in *tous_dest,
@@ -809,7 +827,8 @@ vpnc_doit(unsigned long tous_spi,
 	  struct sockaddr_in *tothem_dest,
 	  int tun_fd, int md_algo, int cry_algo,
 	  uint8_t *kill_packet_p, size_t kill_packet_size_p,
-	  struct sockaddr *kill_dest_p)
+	  struct sockaddr *kill_dest_p,
+	  const char *pidfile)
 {
   struct encap_method meth;
 
@@ -897,6 +916,7 @@ hex_dump("tothem.auth_secret", tothem_sa.auth_secret, tothem_sa.auth_secret_size
             fprintf(stderr, "Warning, could not fork the child process!\n");
          } else if (pid==0) {
             close (0); close (1); close (2);
+	    write_pidfile(pidfile);
             vpnc_main_loop (&vpnpeer, &meth, tun_fd); /* never returns */
             exit(0);
          } else {
