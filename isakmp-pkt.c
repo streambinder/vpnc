@@ -16,6 +16,7 @@
    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
+#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 #include <error.h>
@@ -240,10 +241,10 @@ void flatten_isakmp_payload (struct isakmp_payload *p,
 }
 
 void flatten_isakmp_packet (struct isakmp_packet *p, 
-			    uint8_t **result, size_t *size)
+			    uint8_t **result, size_t *size, size_t blksz)
 {
   struct flow f;
-  size_t lpos;
+  size_t lpos, sz, padding;
   
   init_flow (&f);
   flow_x (&f, p->i_cookie, ISAKMP_COOKIE_LENGTH);
@@ -258,8 +259,15 @@ void flatten_isakmp_packet (struct isakmp_packet *p,
   flow_4 (&f, p->message_id);
   lpos = flow_reserve (&f, 4);
   flow_payload (&f, p->payload);
-  if (p->flags & ISAKMP_FLAG_E)
-    flow_reserve (&f, -(f.end - f.base - ISAKMP_PAYLOAD_O) & 7);
+  if (p->flags & ISAKMP_FLAG_E) {
+    assert(blksz != 0);
+    sz = (f.end - f.base) - ISAKMP_PAYLOAD_O;
+    padding = blksz - (sz % blksz);
+    if (padding == blksz)
+      padding = 0;
+    opt_debug && printf("size = %d, blksz = %d, padding = %d\n", sz, blksz, padding);
+    flow_reserve (&f, padding);
+  }
   f.base[lpos] = (f.end - f.base) >> 24;
   f.base[lpos+1] = (f.end - f.base) >> 16;
   f.base[lpos+2] = (f.end - f.base) >> 8;
@@ -852,7 +860,7 @@ void test_pack_unpack(void)
   uint16_t reject;
   
   p = parse_isakmp_packet (pack, sizeof (pack), &reject);
-  flatten_isakmp_packet (p, &unpack, &unpack_len);
+  flatten_isakmp_packet (p, &unpack, &unpack_len, 8);
   if (unpack_len != sizeof (pack)
       || memcmp (unpack, pack, sizeof (pack)) != 0)
     abort ();

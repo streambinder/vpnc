@@ -124,7 +124,7 @@ extern void free_isakmp_packet(struct isakmp_packet *p);
 extern void flatten_isakmp_payload (struct isakmp_payload *p, 
 				    uint8_t **result, size_t *size);
 extern void flatten_isakmp_packet (struct isakmp_packet *p, 
-				   uint8_t **result, size_t *size);
+				   uint8_t **result, size_t *size, size_t blksz);
 extern struct isakmp_packet * parse_isakmp_packet (const uint8_t *data, 
 						   size_t data_len, 
 						   uint16_t *reject);

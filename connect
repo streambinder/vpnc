@@ -5,26 +5,44 @@ getvar () {
 		echo "Usage: $0 <parameter file> <variable name>" 1>&2
 		return 1
 	fi
-	sed -n 's/^'"$2"' //;T;p' "$1"
+	sed -n 's/^'"$2"' //p' "$1"
 	return 0
 }
 
+defr=/var/run/vpnc.defaultroute
 if [ $# -ne 1 ]; then
 	echo "Usage: $0 <parameter file>" 1>&2
 	exit 1
 fi
 
-if [ -x ./vpnc ]; then
-	VPNC=./vpnc
-elif [ -x "`which vpnc`" ]; then
+if [ -x "`which vpnc`" ]; then
 	VPNC="`which vpnc`"
+elif [ -x /usr/sbin/vpnc ]; then
+	VPNC=/usr/sbin/vpnc
+elif [ -x ./vpnc ]; then
+	VPNC=./vpnc
 else
 	echo No vpnc daemon found, aborting...
 	exit 1
 fi
 
+GW="$(getvar "$1" "IPSec gateway")"
+if [ ! "`echo "$GW" | grep ^[[:digit:]]`" ] ; then
+	if [ "`which getent`" ] ; then
+		GW=`getent hosts "$GW" | sed -e 's/\ .*//'`
+	elif [ "`which dig`" ] ; then
+		GW=`dig "$GW" | grep "^$GW" | sed -e 's/.*\t//g'`
+	elif [ "`which ping`" ] ; then
+		GW=`ping "$GW" -c1 -t1| head -n1 | sed -e 's/.*(//; s/).*//'`
+	else
+		echo "Please enter the Gateway address as IP or install dnsutils"
+		exit 1
+	fi
+fi
+
 "$VPNC" "$1" || exit 1
 ip route add $(ip route get $(getvar "$1" "IPSec gateway") | sed 's/cache//' | xargs echo)
+ip route | grep '^default' | sed 's/cache//' > "$defr"
 ip route del default
 ip route add default dev $(getvar "$1" "Interface name")
 ip route flush cache

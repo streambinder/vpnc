@@ -22,14 +22,14 @@ LDFLAGS=-lgcrypt -g
 vpnc : vpnc.o isakmp-pkt.o tunip.o tun_dev-linux.o dh.o math_group.o
 	$(CC) -o $@ $^ $(LDFLAGS)
 
-vpnc.o : isakmp.h isakmp-pkt.h dh.h tun_dev.h math_group.h
-isakmp-pkt.o : isakmp.h isakmp-pkt.h
-tunip.o : tun_dev.h
+vpnc.o : isakmp.h isakmp-pkt.h dh.h tun_dev.h math_group.h vpnc.h
+isakmp-pkt.o : isakmp.h isakmp-pkt.h vpnc.h
+tunip.o : tun_dev.h vpnc.h
 dh.o : dh.h math_group.h
 math_group.o : math_group.h
 
-vpnc-%.tar.gz : vpnc.c vpnc.h isakmp-pkt.c isakmp-pkt.h tunip.c isakmp.h \
-  Makefile README CHANGELOG connect disconnect sample-unikl \
+vpnc-%.tar.gz : vpnc.c vpnc.h isakmp-pkt.c tunip.c isakmp-pkt.h isakmp.h \
+  Makefile README COPYING ChangeLog connect disconnect sample-unikl \
   tun_dev.h tun_dev-bsd.c tun_dev-linux.c tun_dev-svr4.c \
   dh.c dh.h math_group.c math_group.h
 	mkdir vpnc-$*

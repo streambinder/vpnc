@@ -1,5 +1,7 @@
 Interface name vpnunikl
+IKE DH Group dh2
+Perfect Forward Secrecy nopfs
 IPSec gateway 131.246.118.240
 IPSec ID unikl
 IPSec secret unikl
-Xauth username adsasdr
+Xauth username abcdef

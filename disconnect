@@ -1,12 +1,37 @@
 #!/bin/sh
 
+getvar () {
+	if [ $# -ne 2 ]; then
+		echo "Usage: $0 <parameter file> <variable name>" 1>&2
+		return 1
+	fi
+	sed -n 's/^'"$2"' //p' "$1"
+	return 0
+}
+
+defr=/var/run/vpnc.defaultroute
 if [ $# -ne 1 ]; then
 	echo "Usage: $0 <parameter file>" 1>&2
 	exit 1
 fi
 
-for i in $(ps axh | grep 'v\pnc' | fgrep "$1"  | awk '{print $1}') ; do
-	kill $i
-done
+PID="$(ps ax | grep 'v\pnc' | fgrep "$1"  | awk '{print $1}')"
+
+if [ "`echo $PID | grep " "`" ]; then
+	echo "can't find correct pid (possible targets: $PID)"
+	exit 1
+elif [ -z "$PID" ]; then
+	echo "no vpnc found running for $1"
+	exit 1
+fi
+
+echo "Terminating vpnc daemon (pid: $PID)"
+kill $PID
+
+if [ -r "$defr" ]; then
+	ip route add $(cat "$defr")
+	ip route del $(getvar "$1" "IPSec gateway")
+	ip route flush cache
+fi
 
 exit 0

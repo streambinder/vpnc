@@ -891,7 +891,7 @@ hex_dump("tothem.auth_secret", tothem_sa.auth_secret, tothem_sa.auth_secret_size
       chdir ("/");
       
       setsid ();
-      if(opt_bg) {
+      if (!opt_nd) {
          pid_t pid;
          if((pid=fork()) < 0) {
             fprintf(stderr, "Warning, could not fork the child process!\n");
@@ -904,6 +904,7 @@ hex_dump("tothem.auth_secret", tothem_sa.auth_secret, tothem_sa.auth_secret_size
             exit(0);
          }
       }
+      printf("VPNC started in foreground...\n");
       vpnc_main_loop (&vpnpeer, &meth, tun_fd);
   }
 }
