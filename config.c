@@ -482,17 +482,18 @@ void do_config(int argc, char **argv)
 	read_config_file("/etc/vpnc/default.conf", config, 1);
 	read_config_file("/etc/vpnc.conf", config, 1);
 
-	if (!print_config)
+	if (!print_config) {
 		for (i = 0; config_names[i].name != NULL; i++)
 			if (!config[config_names[i].nm] && i != CONFIG_NONE
 				&& config_names[i].get_def != NULL)
 				config[config_names[i].nm] = config_names[i].get_def();
 
-	opt_debug = (config[CONFIG_DEBUG]) ? atoi(config[CONFIG_DEBUG]) : 0;
-	opt_nd = (config[CONFIG_ND]) ? 1 : 0;
-	opt_1des = (config[CONFIG_ENABLE_1DES]) ? 1 : 0;
-	opt_udpencap=(config[CONFIG_UDP_ENCAP]) ? 1 : 0;
-	opt_udpencapport=atoi(config[CONFIG_UDP_ENCAP_PORT]);
+		opt_debug = (config[CONFIG_DEBUG]) ? atoi(config[CONFIG_DEBUG]) : 0;
+		opt_nd = (config[CONFIG_ND]) ? 1 : 0;
+		opt_1des = (config[CONFIG_ENABLE_1DES]) ? 1 : 0;
+		opt_udpencap=(config[CONFIG_UDP_ENCAP]) ? 1 : 0;
+		opt_udpencapport=atoi(config[CONFIG_UDP_ENCAP_PORT]);
+	}
 
 	if (opt_debug >= 99) {
 		printf("WARNING! active debug level is >= 99, output includes username and password (hex encoded)\n");
