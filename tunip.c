@@ -610,7 +610,7 @@ void encap_esp_send_peer(struct encap_method *encap,
 
 	encap_esp_encapsulate(encap, peer);
 
-	ip->ip_len = encap->buflen + (peer->remote_sa->md_algo? 12 :0);
+	ip->ip_len = encap->buflen;
 #ifdef NEED_IPLEN_FIX
 	ip->ip_len = htons(ip->ip_len);
 #endif
