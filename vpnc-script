@@ -1,0 +1,102 @@
+#!/bin/sh
+#* reason                       -- why this script was called, one of: pre-init connect disconnect
+#* VPNGATEWAY                   -- vpn gateway address (always present)
+#* TUNDEV                       -- tunnel device (always present)
+#* INTERNAL_IP4_ADDRESS         -- address (always present)
+#* INTERNAL_IP4_NETMASK         -- netmask (often unset)
+#* INTERNAL_IP4_DNS             -- list of dns serverss
+#* INTERNAL_IP4_NBNS            -- list of wins servers
+#* CISCO_DEF_DOMAIN             -- default domain name
+#* CISCO_BANNER                 -- banner from server
+#* CISCO_SPLIT_INC              -- number of networks in split-network-list
+#* CISCO_SPLIT_INC_%d_ADDR      -- network address
+#* CISCO_SPLIT_INC_%d_MASK      -- subnet mask (for example: 255.255.255.0)
+#* CISCO_SPLIT_INC_%d_PROTOCOL  -- protocol (often just 0)
+#* CISCO_SPLIT_INC_%d_SPORT     -- source port (often just 0)
+#* CISCO_SPLIT_INC_%d_DPORT     -- destination port (often just 0)
+
+os="`uname -s`"
+defr=/var/run/vpnc/defaultroute
+pid=/var/run/vpnc/pid
+
+####
+
+fix_ip_get_output () {
+	sed 's/cache//;s/metric[0-9]\+ [0-9]\+//g' | xargs echo
+}
+
+do_pre_init() {
+	if [ "$os" = "Linux" ]; then
+		exec 6<> /dev/net/tun || { # can't open /dev/net/tun
+			test -e /proc/sys/kernel/modprobe && `cat /proc/sys/kernel/modprobe` tun 2>/dev/null
+			# fix for broken devfs in kernel 2.6.x
+			if [ "`readlink /dev/net/tun`" = misc/net/tun \
+				-a ! -e /dev/net/misc/net/tun -a -e /dev/misc/net/tun ] ; then
+				ln -sf /dev/misc/net/tun /dev/net/tun
+			fi
+			# make sure tun device exists
+			if [ ! -e /dev/net/tun ]; then
+				mkdir -p /dev/net
+				mknod -m 0640 /dev/net/tun c 10 200
+			fi
+		} && exec 6<>&-
+	fi
+}
+
+do_connect() {
+	if [ -n "$CISCO_BANNER" ]; then
+		echo "Connect Banner:"
+		echo "$CISCO_BANNER" | while read LINE ; do echo "|" "$LINE" ; done
+		echo
+	fi
+	
+	if [ "$os" = "Linux" ]; then
+		ifconfig "$TUNDEV" inet "$INTERNAL_IP4_ADDRESS" pointopoint "$INTERNAL_IP4_ADDRESS" netmask 255.255.255.255 mtu 1412 up
+		ip route add $(ip route get $VPNGATEWAY | fix_ip_get_output)
+		ip route | grep '^default' | fix_ip_get_output > "$defr"
+		ip route del default
+		ip route add default dev $TUNDEV
+		ip route flush cache
+	else
+		ifconfig "$TUNDEV" inet "$INTERNAL_IP4_ADDRESS" "$INTERNAL_IP4_ADDRESS" netmask 255.255.255.255 mtu 1412 up
+	fi
+}
+
+do_disconnect() {
+	if [ "$os" = "Linux" ]; then
+		if [ -s "$defr" ]; then
+			ip route del default > /dev/null 2>&1
+			ip route add $(cat "$defr")
+			ip route del "$VPNGATEWAY"
+			ip route flush cache
+		fi
+		
+		rm -f -- "$defr" "$pid"
+	else
+	fi
+}
+
+####
+
+if [ -z "$reason" ]; then
+	echo "this script must be called from vpnc" 1>&2
+	exit 1
+fi
+
+case "$reason" in
+	pre-init)
+		do_pre_init
+		;;
+	connect)
+		do_connect
+		;;
+	disconnect)
+		do_disconnect
+		;;
+	*)
+		echo "unknown reason '$reason'. vpnc-script out of date" 1>&2
+		exit 1
+		;;
+esac
+
+exit 0

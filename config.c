@@ -1,5 +1,5 @@
 /* IPSec VPN client compatible with Cisco equipment.
-   Copyright (C) 2004 Maurice Massar
+   Copyright (C) 2004-2005 Maurice Massar
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -123,6 +123,16 @@ static const char *config_def_app_version(void)
 	return version;
 }
 
+static const char *config_def_script(void)
+{
+	return "/etc/vpnc/vpnc-script";
+}
+
+static const char *config_def_pid_file(void)
+{
+	return "/var/run/vpnc/pid";
+}
+
 static const struct config_names_s {
 	enum config_enum nm;
 	const int needsArgument;
@@ -201,15 +211,16 @@ static const struct config_names_s {
 		"enable interactive extended authentication (for challange response auth)",
 		NULL
 	}, {
-		CONFIG_CONFIG_SCRIPT, 1, 1,
+		CONFIG_SCRIPT, 1, 1,
 		"--script",
-		"Config Script ",
+		"Script ",
 		"<command>",
 		"command is executed using system() to configure the interface,\n"
 		"routing and so on. Device name, IP, etc. are passed using enviroment\n"
 		"variables, see README. This script is executed right after ISAKMP is\n"
-		"done, but befor tunneling is enabled.\n",
-		sysdep_config_script
+		"done, but befor tunneling is enabled. It is called when vpnc\n"
+		"terminates too\n",
+		config_def_script
 	}, {
 		CONFIG_IKE_DH, 1, 1,
 		"--dh",
@@ -265,7 +276,7 @@ static const struct config_names_s {
 		"Pidfile ",
 		"<filename>",
 		"store the pid of background process in <filename>",
-		NULL
+		config_def_pid_file
 	}, {
 		CONFIG_LOCAL_PORT, 1, 1,
 		"--local-port",
@@ -299,18 +310,30 @@ static const struct config_names_s {
 	}
 };
 
-static void read_config_file(char *name, const char **configs, int missingok)
+static void read_config_file(const char *name, const char **configs, int missingok)
 {
 	FILE *f;
 	char *line = NULL;
 	ssize_t line_length = 0;
 	int linenum = 0;
+	char *realname;
 
-	f = fopen(name, "r");
-	if (missingok && f == NULL && errno == ENOENT)
-		return;
-	if (f == NULL)
-		error(1, errno, "couldn't open `%s'", name);
+	if (!strcmp(name, "-")) {
+		f = stdin;
+		realname = strdup("stdin");
+	} else {
+		if (index(name, '/'))
+			realname = strdup(name);
+		else
+			asprintf(&realname, "/etc/vpnc/%s", name);
+		f = fopen(realname, "r");
+		if (missingok && f == NULL && errno == ENOENT) {
+			free(realname);
+			return;
+		}
+		if (f == NULL)
+			error(1, errno, "couldn't open `%s'", realname);
+	}
 	for (;;) {
 		ssize_t llen;
 		int i;
@@ -319,7 +342,7 @@ static void read_config_file(char *name, const char **configs, int missingok)
 		if (llen == -1 && feof(f))
 			break;
 		if (llen == -1)
-			error(1, errno, "reading `%s'", name);
+			error(1, errno, "reading `%s'", realname);
 		if (line[llen - 1] == '\n')
 			line[--llen] = 0;
 		if (line[llen - 1] == '\r')
@@ -345,8 +368,12 @@ static void read_config_file(char *name, const char **configs, int missingok)
 		}
 		if (config_names[i].name == NULL && line[0] != '#' && line[0] != 0)
 			error(0, 0, "warning: unknown configuration directive in %s at line %d",
-				name, linenum);
+				realname, linenum);
 	}
+	free(line);
+	free(realname);
+	if (strcmp(name, "-"))
+		fclose(f);
 }
 
 static void print_desc(const char *pre, const char *text)
@@ -386,6 +413,10 @@ static void print_usage(char *argv0, int long_help)
 
 		printf("\n");
 	}
+	
+	if (!long_help)
+		printf("Use --long-help to see all options\n\n");
+	
 	printf("Report bugs to vpnc@unix-ag.uni-kl.de\n");
 }
 
@@ -426,12 +457,13 @@ void do_config(int argc, char **argv)
 {
 	char *s;
 	int i, c, known;
-	int print_config = 0;
+	int got_conffile = 0, print_config = 0;
 	size_t s_len;
 
 	for (i = 1; i < argc; i++) {
-		if (argv[i][0] != '-') {
+		if (argv[i][0] && (argv[i][0] != '-' || argv[i][1] == '\0')) {
 			read_config_file(argv[i], config, 0);
+			got_conffile = 1;
 			continue;
 		}
 
@@ -487,8 +519,10 @@ void do_config(int argc, char **argv)
 		}
 	}
 
-	read_config_file("/etc/vpnc/default.conf", config, 1);
-	read_config_file("/etc/vpnc.conf", config, 1);
+	if (!got_conffile) {
+		read_config_file("/etc/vpnc/default.conf", config, 1);
+		read_config_file("/etc/vpnc.conf", config, 1);
+	}
 
 	if (!print_config) {
 		for (i = 0; config_names[i].name != NULL; i++)

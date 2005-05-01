@@ -1,6 +1,6 @@
 /* IPSec VPN client compatible with Cisco equipment.
    Copyright (C) 2002      Geoffrey Keating
-   Copyright (C) 2003-2004 Maurice Massar
+   Copyright (C) 2003-2005 Maurice Massar
    Copyright (C) 2004      Tomas Mraz
    Copyright (C) 2004      Martin von Gagern
 
@@ -255,22 +255,25 @@ static struct sockaddr *init_sockaddr(const char *hostname, uint16_t port)
 
 static void setup_tunnel(struct sa_block *s)
 {
+	setenv("reason", "pre-init", 1);
+	system(config[CONFIG_SCRIPT]);
+	
 	if (config[CONFIG_IF_NAME])
 		memcpy(s->tun_name, config[CONFIG_IF_NAME], strlen(config[CONFIG_IF_NAME]));
 
 	s->tun_fd = tun_open(s->tun_name);
 	DEBUG(2, printf("using interface %s\n", s->tun_name));
+	setenv("TUNDEV", s->tun_name, 1);
 
 	if (s->tun_fd == -1)
 		error(1, errno, "can't initialise tunnel interface");
 }
 
-void config_tunnel(struct sa_block *s)
+void config_tunnel()
 {
-	setenv("TUNDEV", s->tun_name, 1);
 	setenv("VPNGATEWAY", inet_ntoa(((struct sockaddr_in *)dest_addr)->sin_addr), 1);
-
-	system(config[CONFIG_CONFIG_SCRIPT]);
+	setenv("reason", "connect", 1);
+	system(config[CONFIG_SCRIPT]);
 }
 
 static int recv_ignore_dup(void *recvbuf, size_t recvbufsize)
@@ -998,7 +1001,7 @@ void do_phase_1(const char *key_id, const char *shared_key, struct sa_block *s)
 			case ISAKMP_PAYLOAD_NAT_D:
 				natd_type = rp->type;
 				DEBUG(2, printf("peer is using type %d for NAT-Discovery payloads\n", natd_type));
-				if (!seen_sa || !seen_natt_vid) {
+				if (!seen_sa /*|| !seen_natt_vid*/) {
 					reject = ISAKMP_N_INVALID_PAYLOAD_TYPE;
 				} else if (config[CONFIG_DISABLE_NATT]) {
 					;
@@ -1306,7 +1309,10 @@ void do_phase_1(const char *key_id, const char *shared_key, struct sa_block *s)
 	}
 	DEBUG(2, printf("S4.6\n"));
 
+	free_isakmp_packet(p1);
 	free(returned_hash);
+	free(dh_public);
+	group_free(dh_grp);
 }
 
 static int do_phase2_notice_check(struct sa_block *s, struct isakmp_packet **r_p)
@@ -1467,10 +1473,10 @@ static int do_phase_2_xauth(struct sa_block *s)
 					struct isakmp_attribute *na;
 					na = new_isakmp_attribute(ap->type, reply_attr);
 					reply_attr = na;
-					na->u.lots.length = strlen(config[CONFIG_DOMAIN]);
-					if (na->u.lots.length == 0)
+					if (!config[CONFIG_DOMAIN] || strlen(config[CONFIG_DOMAIN]) == 0)
 						error(1, 0,
 							"server requested domain, but none set (use \"Domain ...\" in config or --domain");
+					na->u.lots.length = strlen(config[CONFIG_DOMAIN]);
 					na->u.lots.data = xallocc(na->u.lots.length);
 					memcpy(na->u.lots.data, config[CONFIG_DOMAIN],
 						na->u.lots.length);
@@ -1570,9 +1576,10 @@ static int do_phase_2_config(struct sa_block *s)
 	struct isakmp_packet *r;
 	struct utsname uts;
 	uint32_t msgid;
+	int i;
 	int reject;
 	int seen_address = 0;
-	char *strbuf;
+	char *strbuf, *strbuf2;
 
 	uname(&uts);
 
@@ -1595,6 +1602,9 @@ static int do_phase_2_config(struct sa_block *s)
 	a->u.lots.data = xallocc(a->u.lots.length);
 	memcpy(a->u.lots.data, uts.nodename, a->u.lots.length);
 
+	a = new_isakmp_attribute(ISAKMP_MODECFG_ATTRIB_CISCO_SPLIT_INC, a);
+	a = new_isakmp_attribute(ISAKMP_MODECFG_ATTRIB_CISCO_SAVE_PW, a);
+	
 	a = new_isakmp_attribute(ISAKMP_MODECFG_ATTRIB_CISCO_BANNER, a);
 	a = new_isakmp_attribute(ISAKMP_MODECFG_ATTRIB_CISCO_DO_PFS, a);
 	if (opt_udpencap)
@@ -1635,6 +1645,7 @@ static int do_phase_2_config(struct sa_block *s)
 
 	unsetenv("CISCO_BANNER");
 	unsetenv("CISCO_DEF_DOMAIN");
+	unsetenv("CISCO_SPLIT_INC");
 	unsetenv("INTERNAL_IP4_NBNS");
 	unsetenv("INTERNAL_IP4_DNS");
 	unsetenv("INTERNAL_IP4_NETMASK");
@@ -1726,6 +1737,57 @@ static int do_phase_2_config(struct sa_block *s)
 			}
 			break;
 
+		case ISAKMP_MODECFG_ATTRIB_CISCO_SPLIT_INC:
+			if (a->af != isakmp_attr_acl) {
+				reject = ISAKMP_N_ATTRIBUTES_NOT_SUPPORTED;
+				break;
+			}
+			
+			DEBUG(2, printf("got %d acls for split include\n", a->u.acl.count));
+			asprintf(&strbuf, "%d", a->u.acl.count);
+			setenv("CISCO_SPLIT_INC", strbuf, 1);
+			free(strbuf);
+			
+			for (i = 0; i < a->u.acl.count; i++) {
+				DEBUG(2, printf("acl %d: ", i));
+				/* NOTE: inet_ntoa returns one static buffer */
+				
+				asprintf(&strbuf, "CISCO_SPLIT_INC_%d_ADDR", i);
+				asprintf(&strbuf2, "%s", inet_ntoa(a->u.acl.acl_ent[i].addr));
+				DEBUG(2, printf("addr: %s/", strbuf2));
+				setenv(strbuf, strbuf2, 1);
+				free(strbuf); free(strbuf2);
+				
+				asprintf(&strbuf, "CISCO_SPLIT_INC_%d_MASK", i);
+				asprintf(&strbuf2, "%s", inet_ntoa(a->u.acl.acl_ent[i].mask));
+				DEBUG(2, printf("%s, ", strbuf2));
+				setenv(strbuf, strbuf2, 1);
+				free(strbuf); free(strbuf2);
+				
+				asprintf(&strbuf, "CISCO_SPLIT_INC_%d_PROTOCOL", i);
+				asprintf(&strbuf2, "%hu", a->u.acl.acl_ent[i].protocol);
+				DEBUG(2, printf("protocol: %s, ", strbuf2));
+				setenv(strbuf, strbuf2, 1);
+				free(strbuf); free(strbuf2);
+				
+				asprintf(&strbuf, "CISCO_SPLIT_INC_%d_SPORT", i);
+				asprintf(&strbuf2, "%hu", a->u.acl.acl_ent[i].sport);
+				DEBUG(2, printf("sport: %s, ", strbuf2));
+				setenv(strbuf, strbuf2, 1);
+				free(strbuf); free(strbuf2);
+				
+				asprintf(&strbuf, "CISCO_SPLIT_INC_%d_DPORT", i);
+				asprintf(&strbuf2, "%hu", a->u.acl.acl_ent[i].dport);
+				DEBUG(2, printf("dport: %s\n", strbuf2));
+				setenv(strbuf, strbuf2, 1);
+				free(strbuf); free(strbuf2);
+			}
+			break;
+			
+		case ISAKMP_MODECFG_ATTRIB_CISCO_SAVE_PW:
+			DEBUG(2, printf("got save password setting: %d\n", a->u.attr_16));
+			break;
+			
 		default:
 			DEBUG(2, printf("unknown attriube %d / 0x%X\n", a->type, a->type));
 			break;
@@ -1908,7 +1970,18 @@ static void setup_link(struct sa_block *s)
 
 	DEBUG(2, printf("S7.5\n"));
 	if (reject != 0)
-		phase2_fatal(s, "quick mode response rejected: %s\ncheck pfs setting", reject);
+		phase2_fatal(s, "quick mode response rejected: %s\n"
+			"this means the concentrator did not like what we had to offer.\n"
+			"Possible reasons are:\n"
+			"  * concentrator configured to require a firewall\n"
+			"     this locks out even Cisco clients on any platform expect windows\n"
+			"     which is an obvious security improvment. There is no workaround (yet).\n"
+			"  * concentrator configured to require IP compression\n"
+			"     this is not yet supported by vpnc.\n"
+			"     Note: the Cisco Concentrator Documentation recommends against using\n"
+			"     compression, expect on low-bandwith (read: ISDN) links, because it\n"
+			"     uses much CPU-resources on the concentrator\n",
+			reject);
 
 	DEBUG(2, printf("S7.6\n"));
 	for (rp = r->payload->next; rp && reject == 0; rp = rp->next)
@@ -2071,7 +2144,7 @@ static void setup_link(struct sa_block *s)
 
 	/* Set up the interface here so it's ready when our acknowledgement
 	 * arrives.  */
-	config_tunnel(s);
+	config_tunnel();
 	DEBUG(2, printf("S7.9\n"));
 	{
 		uint8_t *tous_keys, *tothem_keys;
@@ -2103,6 +2176,8 @@ static void setup_link(struct sa_block *s)
 			tous_dest.sin_port = htons(s->peer_udpencap_port);
 			encap_mode = IPSEC_ENCAP_UDP_TUNNEL;
 		}
+		if (dh_grp)
+			group_free(dh_grp);
 		DEBUG(2, printf("S7.10\n"));
 		vpnc_doit(s->tous_esp_spi, tous_keys, &tothem_dest,
 			s->tothem_esp_spi, tothem_keys, (struct sockaddr_in *)&tous_dest,
@@ -2150,6 +2225,7 @@ int main(int argc, char **argv)
 	} while (do_load_balance);
 	DEBUG(2, printf("S7\n"));
 	setup_link(oursa);
+	DEBUG(2, printf("S8\n"));
 
 	return 0;
 }

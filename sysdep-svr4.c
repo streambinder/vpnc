@@ -162,11 +162,6 @@ int tun_read(int fd, char *buf, int len)
 /***********************************************************************/
 /* other support functions */
 
-const char *sysdep_config_script(void)
-{
-	return "ifconfig $TUNDEV inet $INTERNAL_IP4_ADDRESS $INTERNAL_IP4_ADDRESS netmask 255.255.255.255 mtu 1412 up";
-}
-
 int vasprintf(char **strp, const char *fmt, va_list ap)
 {
 	int ret;

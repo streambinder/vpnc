@@ -74,9 +74,23 @@ TODO list
 * DONE implement udp transport NAT-T
   - apply patch
 
+* DONE make doing xauth optional
+
+* DONE update "check pfs setting" error message
+
+* clean up scripts
+  - better handling of routing
+  - better handling of resolv.conf
+
+* --local-address
+
+* add support for pcap for packet capture
+
 * links to packages, howtos, etc.
-  - http://localhost.ruhr.de/~stefan/uni-duisburg.ai/vpnc.shtml
-  - link to kvpnc?
+  - kvpnc http://home.gna.org/kvpnc/
+  - vpnc+Zaurus http://users.ox.ac.uk/~oliver/vpnc.html
+  - linux-mipsel (WRT54G) http://openwrt.alphacore.net/vpnc_0.3.2_mipsel.ipk
+  - howto-de http://localhost.ruhr.de/~stefan/uni-duisburg.ai/vpnc.shtml
 
 * add macosx support
   - add pointer to http://chrisp.de/en/projects/tunnel.html
@@ -89,22 +103,8 @@ TODO list
   - openssl??
 * relicense to gpl+ssl?
 
-* --local-address
-
-* clean up scripts
-
-* update "check pfs setting" error message
-
-* better handling of routing
-
-* better handling of resolv.conf?
-
 * use in-kernel-ipsec with pf-key
   - apply patch
-
-* make doing xauth optional
-
-* add support for pcap for packet capture
 
 --
 

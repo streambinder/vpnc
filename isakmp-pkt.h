@@ -1,5 +1,6 @@
 /* ISAKMP packing and unpacking routines.
    Copyright (C) 2002  Geoffrey Keating
+   Copyright (C) 2003-2005 Maurice Massar
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -31,7 +32,8 @@ struct isakmp_attribute {
 	enum {
 		isakmp_attr_lots,
 		isakmp_attr_16,
-		isakmp_attr_2x8
+		isakmp_attr_2x8,
+		isakmp_attr_acl,
 	} af;
 	union {
 		uint16_t attr_16;
@@ -40,6 +42,13 @@ struct isakmp_attribute {
 			uint16_t length;
 			uint8_t *data;
 		} lots;
+		struct {
+			uint16_t count;
+			struct acl_ent_s {
+				struct in_addr addr, mask;
+				uint16_t protocol, sport, dport;
+			} *acl_ent;
+		} acl;
 	} u;
 };
 

@@ -1,7 +1,7 @@
 /* IPSec ESP and AH support.
    Copyright (c) 1999      Pierre Beyssac
    Copyright (C) 2002      Geoffrey Keating
-   Copyright (C) 2003-2004 Maurice Massar
+   Copyright (C) 2003-2005 Maurice Massar
    Copyright (C) 2004      Tomas Mraz
 
    This program is free software; you can redistribute it and/or modify
@@ -763,8 +763,14 @@ int encap_esp_recv_peer(struct encap_method *encap, struct peer_desc *peer)
 	return 0;
 }
 
+static uint8_t volatile do_kill;
+static uint8_t *kill_packet;
+static size_t kill_packet_size;
+static struct sockaddr *kill_dest;
+
 static void vpnc_main_loop(struct peer_desc *peer, struct encap_method *meth, int tun_fd)
 {
+	int sock;
 	struct pollfd pollfds[2];
 
 	pollfds[0].fd = tun_fd;
@@ -772,12 +778,12 @@ static void vpnc_main_loop(struct peer_desc *peer, struct encap_method *meth, in
 	pollfds[1].fd = encap_get_fd(meth);
 	pollfds[1].events = POLLIN;
 
-	for (;;) {
+	while (!do_kill) {
 		int presult;
 
 		do {
 			presult = poll(pollfds, sizeof(pollfds) / sizeof(pollfds[0]), -1);
-		} while (presult == -1 && errno == EINTR);
+		} while (presult == -1 && errno == EINTR && !do_kill);
 		if (presult == -1) {
 			syslog(LOG_ERR, "poll: %m");
 			continue;
@@ -854,15 +860,7 @@ static void vpnc_main_loop(struct peer_desc *peer, struct encap_method *meth, in
 				tun_send_ip(meth, peer->tun_fd);
 		}
 	}
-}
-
-static uint8_t *volatile kill_packet;
-static size_t volatile kill_packet_size;
-static struct sockaddr *volatile kill_dest;
-
-void killit(int signum)
-{
-	int sock = signum; /* unused */
+	
 	sock = socket(AF_INET, SOCK_DGRAM, 0);
 	if (sock >= 0) {
 		sendto(sock, kill_packet, kill_packet_size, 0,
@@ -871,14 +869,19 @@ void killit(int signum)
 	}
 	tun_close(oursa->tun_fd, oursa->tun_name);
 	syslog(LOG_NOTICE, "terminated");
-	_exit(0);
+}
+
+void killit(int signum)
+{
+	do_kill = signum; /* unused */
+	do_kill = 1;
 }
 
 void write_pidfile(const char *pidfile)
 {
 	FILE *pf;
 
-	if (pidfile == NULL)
+	if (pidfile == NULL || pidfile[0] == '\0')
 		return;
 
 	pf = fopen(pidfile, "w");
@@ -977,6 +980,7 @@ vpnc_doit(unsigned long tous_spi,
 	vpnpeer.local_sa = &tous_sa;
 	vpnpeer.remote_sa = &tothem_sa;
 
+	do_kill = 0;
 	kill_packet = kill_packet_p;
 	kill_packet_size = kill_packet_size_p;
 	kill_dest = kill_dest_p;
@@ -997,9 +1001,9 @@ vpnc_doit(unsigned long tous_spi,
 		if ((pid = fork()) < 0) {
 			fprintf(stderr, "Warning, could not fork the child process!\n");
 		} else if (pid == 0) {
-			close(0);
-			close(1);
-			close(2);
+			close(0); open("/dev/null", 0666, O_RDONLY);
+			close(1); open("/dev/null", 0666, O_WRONLY);
+			close(2); open("/dev/null", 0666, O_WRONLY);
 			openlog("vpnc", LOG_PID, LOG_DAEMON);
 			write_pidfile(pidfile);
 		} else {
@@ -1011,6 +1015,5 @@ vpnc_doit(unsigned long tous_spi,
 		openlog("vpnc", LOG_PID, LOG_DAEMON);
 	}
 
-	vpnc_main_loop(&vpnpeer, &meth, tun_fd); /* never returns */
-	exit(0);
+	vpnc_main_loop(&vpnpeer, &meth, tun_fd);
 }

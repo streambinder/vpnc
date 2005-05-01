@@ -9,8 +9,6 @@ int tun_close(int fd, char *dev);
 int tun_write(int fd, char *buf, int len);
 int tun_read(int fd, char *buf, int len);
 
-const char *sysdep_config_script(void);
-
 #if defined(__linux__)
 #include <error.h>
 #else

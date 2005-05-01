@@ -1,5 +1,6 @@
 /* ISAKMP packing and unpacking routines.
    Copyright (C) 2002  Geoffrey Keating
+   Copyright (C) 2003-2005 Maurice Massar
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -329,6 +330,7 @@ void free_isakmp_payload(struct isakmp_payload *p)
 		free_isakmp_payload(p->u.sa.proposals);
 		break;
 	case ISAKMP_PAYLOAD_P:
+		free(p->u.p.spi);
 		free_isakmp_payload(p->u.p.transforms);
 		break;
 	case ISAKMP_PAYLOAD_T:
@@ -377,6 +379,8 @@ void free_isakmp_payload(struct isakmp_payload *p)
 				natt = att->next;
 				if (att->af == isakmp_attr_lots)
 					free(att->u.lots.data);
+				if (att->af == isakmp_attr_acl)
+					free(att->u.acl.acl_ent);
 				free(att);
 			}
 		}
@@ -415,6 +419,7 @@ static struct isakmp_attribute *parse_isakmp_attributes(const uint8_t ** data_p,
 	const uint8_t *data = *data_p;
 	struct isakmp_attribute *r;
 	uint16_t type, length;
+	int i;
 
 	if (data_len < 4)
 		return NULL;
@@ -447,13 +452,36 @@ static struct isakmp_attribute *parse_isakmp_attributes(const uint8_t ** data_p,
 			*reject = ISAKMP_N_PAYLOAD_MALFORMED;
 			return r;
 		}
-		r->u.lots.data = xallocc(length);
-		fetchn(r->u.lots.data, length);
-		if ((ISAKMP_XAUTH_ATTRIB_TYPE <= type) && (type <= ISAKMP_XAUTH_ATTRIB_ANSWER)
-			&& (opt_debug < 99))
-			DEBUG(3, printf("(not dumping xauth data)\n"));
-		else
-			hex_dump("t.attributes.u.lots.data", r->u.lots.data, r->u.lots.length);
+		if (r->type == ISAKMP_MODECFG_ATTRIB_CISCO_SPLIT_INC) {
+			r->af = isakmp_attr_acl;
+			r->u.acl.count = length / (4+4+2+2+2);
+			if (r->u.acl.count * (4+4+2+2+2) != length) {
+				*reject = ISAKMP_N_PAYLOAD_MALFORMED;
+				return r;
+			}
+			r->u.acl.acl_ent = xallocc(r->u.acl.count * sizeof(struct acl_ent_s));
+			
+			for (i = 0; i < r->u.acl.count; i++) {
+				fetchn(&r->u.acl.acl_ent[i].addr.s_addr, 4);
+				fetchn(&r->u.acl.acl_ent[i].mask.s_addr, 4);
+				r->u.acl.acl_ent[i].protocol = fetch2();
+				r->u.acl.acl_ent[i].sport = fetch2();
+				r->u.acl.acl_ent[i].dport = fetch2();
+				hex_dump("t.attributes.u.acl.addr", &r->u.acl.acl_ent[i].addr.s_addr, 4);
+				hex_dump("t.attributes.u.acl.mask", &r->u.acl.acl_ent[i].mask.s_addr, 4);
+				hex_dump("t.attributes.u.acl.protocol", &r->u.acl.acl_ent[i].protocol, UINT16);
+				hex_dump("t.attributes.u.acl.sport", &r->u.acl.acl_ent[i].sport, UINT16);
+				hex_dump("t.attributes.u.acl.dport", &r->u.acl.acl_ent[i].dport, UINT16);
+			}
+		} else {
+			r->u.lots.data = xallocc(length);
+			fetchn(r->u.lots.data, length);
+			if ((ISAKMP_XAUTH_ATTRIB_TYPE <= type) && (type <= ISAKMP_XAUTH_ATTRIB_ANSWER)
+				&& (opt_debug < 99))
+				DEBUG(3, printf("(not dumping xauth data)\n"));
+			else
+				hex_dump("t.attributes.u.lots.data", r->u.lots.data, r->u.lots.length);
+		}
 	}
 	r->next = parse_isakmp_attributes(&data, data_len, reject);
 	*data_p = data;

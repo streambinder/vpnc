@@ -1,5 +1,5 @@
 /* IPSec VPN client compatible with Cisco equipment.
-   Copyright (C) 2004 Maurice Massar
+   Copyright (C) 2004-2005 Maurice Massar
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
 
 enum config_enum {
 	CONFIG_NONE,
-	CONFIG_CONFIG_SCRIPT,
+	CONFIG_SCRIPT,
 	CONFIG_DEBUG,
 	CONFIG_DOMAIN,
 	CONFIG_ENABLE_1DES,
