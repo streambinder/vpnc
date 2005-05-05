@@ -1760,9 +1760,24 @@ static int do_phase_2_config(struct sa_block *s)
 				
 				asprintf(&strbuf, "CISCO_SPLIT_INC_%d_MASK", i);
 				asprintf(&strbuf2, "%s", inet_ntoa(a->u.acl.acl_ent[i].mask));
-				DEBUG(2, printf("%s, ", strbuf2));
+				DEBUG(2, printf("%s ", strbuf2));
 				setenv(strbuf, strbuf2, 1);
 				free(strbuf); free(strbuf2);
+				
+				{ /* this is just here because ip route does not accept netmasks */
+					int len;
+					uint32_t addr;
+					
+					for (len = 0, addr = ntohl(a->u.acl.acl_ent[i].mask.s_addr);
+						addr; addr <<= 1, len++)
+						; /* do nothing */
+					
+					asprintf(&strbuf, "CISCO_SPLIT_INC_%d_MASKLEN", i);
+					asprintf(&strbuf2, "%d", len);
+					DEBUG(2, printf("(%s), ", strbuf2));
+					setenv(strbuf, strbuf2, 1);
+					free(strbuf); free(strbuf2);
+				}
 				
 				asprintf(&strbuf, "CISCO_SPLIT_INC_%d_PROTOCOL", i);
 				asprintf(&strbuf2, "%hu", a->u.acl.acl_ent[i].protocol);
@@ -2226,6 +2241,8 @@ int main(int argc, char **argv)
 	DEBUG(2, printf("S7\n"));
 	setup_link(oursa);
 	DEBUG(2, printf("S8\n"));
+	setenv("reason", "disconnect", 1);
+	system(config[CONFIG_SCRIPT]);
 
 	return 0;
 }

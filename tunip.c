@@ -770,7 +770,7 @@ static uint8_t *kill_packet;
 static size_t kill_packet_size;
 static struct sockaddr *kill_dest;
 
-static void vpnc_main_loop(struct peer_desc *peer, struct encap_method *meth, int tun_fd)
+static void vpnc_main_loop(struct peer_desc *peer, struct encap_method *meth, int tun_fd, const char *pidfile)
 {
 	int sock;
 	struct pollfd pollfds[2];
@@ -870,6 +870,8 @@ static void vpnc_main_loop(struct peer_desc *peer, struct encap_method *meth, in
 		close(sock);
 	}
 	tun_close(oursa->tun_fd, oursa->tun_name);
+	if (pidfile)
+		unlink(pidfile); /* ignore errors */
 	syslog(LOG_NOTICE, "terminated");
 }
 
@@ -1017,5 +1019,5 @@ vpnc_doit(unsigned long tous_spi,
 		openlog("vpnc", LOG_PID, LOG_DAEMON);
 	}
 
-	vpnc_main_loop(&vpnpeer, &meth, tun_fd);
+	vpnc_main_loop(&vpnpeer, &meth, tun_fd, (!opt_nd) ? pidfile : NULL);
 }

@@ -14,8 +14,8 @@ It reads configuration data from the following places:
 
 - From command-line options
 - From config file(s) specified on the command line
-- From /etc/vpnc/default.conf
-- From /etc/vpnc.conf
+- From /etc/vpnc/default.conf  only if no configfile was given on the command line
+- From /etc/vpnc.conf          same as default.conf, ie: both are used, or none
 - If a setting is not given in any of those places, it prompts the user.
 
 The configuration information it currently needs is:
@@ -51,23 +51,39 @@ him/her that the contents of that files is (though scrambled)
 not really protected and can be extracted using tools shipped 
 with any Linux distribution.
 
-Please note that vpnc does NOT setup routing. You need to do this
-yourself, or --script resp. "Config Script" in the config file.
-The default script depends on the platform. For Linux it is currently:
-
-ifconfig $TUNDEV inet $INTERNAL_IP4_ADDRESS \
-                 pointopoint $INTERNAL_IP4_ADDRESS \
-                 netmask 255.255.255.255 mtu 1412 up
+Please note that vpnc itself does NOT setup routing. You need to do this
+yourself, or --script resp. "Script" in the config file.
+The default script is /etc/vpnc/vpnc-script which sets a default route
+to the remote network, or if the Concentrator provided split-network
+settings, these are used to setup routes.
 
 This option is passed to system(), so you can use any shell-specials you
-like. Information is passed from vpnc via enviroment variables:
-#* VPNGATEWAY             -- vpn gateway address (always present)
-#* TUNDEV                 -- tunnel device (always present)
-#* INTERNAL_IP4_ADDRESS   -- address (always present)
-#* INTERNAL_IP4_NETMASK   -- netmask (often unset)
-#* INTERNAL_IP4_DNS       -- list of dns serverss
-#* INTERNAL_IP4_NBNS      -- list of wins servers
-#* CISCO_DEF_DOMAIN       -- default domain name
-#* CISCO_BANNER           -- banner from server
+like. This script gets called three times:
+$reason == pre-init: this is befor vpnc opens the tun device
+   so you can do what is neccessary to ensure that it is available.
+   Note that none of the variables mentioned below is available
+$reason == connect: this is what used to be "Config Script".
+   The connection is established, but vpnc will not begin forwarding
+   pakets until the script finishs.
+$reason == disconnect: This is called just after vpnc received a signal.
+   Note that vpnc will not forward packets anymore while the script is
+   running or therafter.
 
-An example for a such a script is vpnc-connect.
+Information is passed from vpnc via enviroment variables:
+
+#* reason                       -- why this script was called, one of: pre-init connect disconnect
+#* VPNGATEWAY                   -- vpn gateway address (always present)
+#* TUNDEV                       -- tunnel device (always present)
+#* INTERNAL_IP4_ADDRESS         -- address (always present)
+#* INTERNAL_IP4_NETMASK         -- netmask (often unset)
+#* INTERNAL_IP4_DNS             -- list of dns serverss
+#* INTERNAL_IP4_NBNS            -- list of wins servers
+#* CISCO_DEF_DOMAIN             -- default domain name
+#* CISCO_BANNER                 -- banner from server
+#* CISCO_SPLIT_INC              -- number of networks in split-network-list
+#* CISCO_SPLIT_INC_%d_ADDR      -- network address
+#* CISCO_SPLIT_INC_%d_MASK      -- subnet mask (for example: 255.255.255.0)
+#* CISCO_SPLIT_INC_%d_MASKLEN   -- subnet masklen (for example: 24)
+#* CISCO_SPLIT_INC_%d_PROTOCOL  -- protocol (often just 0)
+#* CISCO_SPLIT_INC_%d_SPORT     -- source port (often just 0)
+#* CISCO_SPLIT_INC_%d_DPORT     -- destination port (often just 0)
