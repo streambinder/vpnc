@@ -18,6 +18,7 @@
 
 DESTDIR=
 PREFIX=/usr/local
+ETCDIR=/etc/vpnc
 SBINDIR=$(PREFIX)/sbin
 MANDIR=$(PREFIX)/share/man
 
@@ -82,20 +83,23 @@ clean :
 all : vpnc
 
 install :
-	install -d $(DESTDIR)$(SBINDIR) $(DESTDIR)$(MANDIR)/man8
-	install vpnc vpnc-connect vpnc-disconnect $(DESTDIR)$(SBINDIR)
+	install -d $(DESTDIR)$(ETCDIR) $(DESTDIR)$(SBINDIR) $(DESTDIR)$(MANDIR)/man8
+	install vpnc.conf vpnc-script $(DESTDIR)$(ETCDIR)
+	install vpnc vpnc-disconnect $(DESTDIR)$(SBINDIR)
 	install vpnc.8 $(DESTDIR)$(MANDIR)/man8
 
 install-strip :
-	install -d $(DESTDIR)$(SBINDIR) $(DESTDIR)$(MANDIR)/man8
+	install -d $(DESTDIR)$(ETCDIR) $(DESTDIR)$(SBINDIR) $(DESTDIR)$(MANDIR)/man8
+	install vpnc.conf vpnc-script $(DESTDIR)$(ETCDIR)
 	install -s vpnc $(DESTDIR)$(SBINDIR)
-	install vpnc-connect vpnc-disconnect $(DESTDIR)$(SBINDIR)
+	install vpnc-disconnect $(DESTDIR)$(SBINDIR)
 	install vpnc.8 $(DESTDIR)$(MANDIR)/man8
 
 uninstall :
-	rm -f $(DESTDIR)$(SBINDIR)/vpnc $(DESTDIR)$(SBINDIR)/vpnc-connect \
+	rm -f $(DESTDIR)$(SBINDIR)/vpnc \
 		$(DESTDIR)$(SBINDIR)/vpnc-disconnect \
 		$(DESTDIR)$(MANDIR)/man8/vpnc.8
+	@echo NOTE: remove $(DESTDIR)$(ETCDIR) manually
 
 .PHONY : clean dist all install install-strip uninstall
 

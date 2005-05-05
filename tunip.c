@@ -686,6 +686,7 @@ int encap_esp_recv_peer(struct encap_method *encap, struct peer_desc *peer)
 	/* Handle optional authentication field */
 	if (peer->local_sa->md_algo) {
 		len -= 12; /*gcry_md_get_algo_dlen(peer->local_sa->md_algo); */
+		encap->buflen -= 12;
 		if (hmac_compute(peer->local_sa->md_algo,
 				encap->buf + encap->bufpayload,
 				encap->fixed_header_size + encap->var_header_size + len,
@@ -748,6 +749,7 @@ int encap_esp_recv_peer(struct encap_method *encap, struct peer_desc *peer)
 	printf("pad len: %d, next_header: %d\n", padlen, next_header);
 #endif
 	len -= padlen + 2;
+	encap->buflen -= padlen + 2;
 
 	/* Check padding */
 	pad = encap->buf + encap->bufpayload

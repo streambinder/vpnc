@@ -25,6 +25,27 @@ fix_ip_get_output () {
 	sed 's/cache//;s/metric[0-9]\+ [0-9]\+//g' | xargs echo
 }
 
+do_ifconfig() {
+	if [ "$os" = "Linux" ]; then
+		ifconfig "$TUNDEV" inet "$INTERNAL_IP4_ADDRESS" pointopoint "$INTERNAL_IP4_ADDRESS" netmask 255.255.255.255 mtu 1412 up
+	else
+		ifconfig "$TUNDEV" inet "$INTERNAL_IP4_ADDRESS" "$INTERNAL_IP4_ADDRESS" netmask 255.255.255.255 mtu 1412 up
+	fi
+}
+
+set_default_route() {
+	if [ -n "$IPROUTE" ]; then
+		ip route add $(ip route get $VPNGATEWAY | fix_ip_get_output)
+		ip route | grep '^default' | fix_ip_get_output > "$defr"
+		ip route del default
+		ip route add default dev $TUNDEV
+		ip route flush cache
+	else
+		route add -host "$VPNGATEWAY" "$(netstat -r -n | grep '^0.0.0.0' | awk '{print $2}')"
+		
+	fi
+}
+
 do_pre_init() {
 	if [ "$os" = "Linux" ]; then
 		exec 6<> /dev/net/tun || { # can't open /dev/net/tun
