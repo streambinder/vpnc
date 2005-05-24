@@ -810,7 +810,7 @@ void do_phase_1(const char *key_id, const char *shared_key, struct sa_block *s)
 		l = l->next;
 		l->u.id.type = ISAKMP_IPSEC_ID_KEY_ID;
 		l->u.id.protocol = IPPROTO_UDP;
-		l->u.id.port = ntohs(local_port);
+		l->u.id.port = 500; /* this must be 500, not local_port */
 		l->u.id.length = strlen(key_id);
 		l->u.id.data = xallocc(l->u.id.length);
 		memcpy(l->u.id.data, key_id, strlen(key_id));
