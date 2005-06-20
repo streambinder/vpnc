@@ -28,7 +28,12 @@
 
 #include <sys/socket.h>
 #include <net/if.h>
+
+#ifdef DRAGONFLY_BSD
+#include <net/tun/if_tun.h>
+#else
 #include <net/if_tun.h>
+#endif
 
 #include "sysdep.h"
 

@@ -37,6 +37,10 @@ ifeq ($(shell uname -s), NetBSD)
 CFLAGS += -DSOCKADDR_IN_SIN_LEN -DHAVE_SA_LEN
 SYSDEP=sysdep-bsd.o
 endif
+ifeq ($(shell uname -s), DragonFly)
+CFLAGS += -DSOCKADDR_IN_SIN_LEN -DHAVE_SA_LEN -DDRAGONFLY_BSD
+SYSDEP=sysdep-bsd.o
+endif
 ifeq ($(shell uname -s), OpenBSD)
 CFLAGS += -DSOCKADDR_IN_SIN_LEN -DHAVE_SA_LEN -DNEED_IPLEN_FIX -DNEW_TUN
 SYSDEP=sysdep-bsd.o
