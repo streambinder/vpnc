@@ -23,10 +23,14 @@ extern int getline(char **line, size_t * length, FILE * stream);
 #define IPPROTO_ESP 50
 #endif
 
+#if defined(__SVR4)
+#define getpass(prompt) getpassphrase(prompt)
+#endif
+
 extern int vasprintf(char **strp, const char *fmt, va_list ap);
 extern int asprintf(char **strp, const char *fmt, ...);
 extern int setenv(const char *name, const char *value, int overwrite);
-extern void unsetenv(const char *name);
+extern int unsetenv(const char *name);
 
 /* where is this defined? */
 #include <sys/socket.h>

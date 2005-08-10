@@ -85,7 +85,7 @@ int tun_open(char *dev)
 	}
 
 	/* Assign ppa according to the unit number returned by tun device */
-	if (ioctl(if_fd, IF_UNITSEL, (char *)&ppa) < 0) {
+	if (ioctl(if_fd, IF_UNITSEL, (char *)&ppa) < 0 && errno != EEXIST) {
 		syslog(LOG_ERR, "Can't set PPA %d", ppa);
 		return -1;
 	}
@@ -232,7 +232,7 @@ int getline(char **line, size_t * length, FILE * stream)
 
 extern char **environ;
 
-void unsetenv(const char *name)
+int unsetenv(const char *name)
 {
 	int i, len;
 
@@ -244,6 +244,8 @@ void unsetenv(const char *name)
 
 	for (; environ[i] && environ[i + 1]; i++)
 		environ[i] = environ[i + 1];
+	
+	return 0;
 }
 
 int setenv(const char *name, const char *value, int overwrite)

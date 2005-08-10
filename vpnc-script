@@ -22,7 +22,8 @@ OS="`uname -s`"
 DEFAULT_ROUTE_FILE=/var/run/vpnc/defaultroute
 RESOLV_CONF_BACKUP=/var/run/vpnc/resolv.conf-backup
 
-IPROUTE="`which ip 2> /dev/null`"
+# stupid SunOS: no blubber in /usr/local/bin ... (on stdout)
+IPROUTE="`which ip | grep '^/' 2> /dev/null`"
 
 if [ "$OS" = "Linux" ]; then
 	ifconfig_syntax_ptp="pointopoint"
@@ -117,7 +118,8 @@ if [ -n "$IPROUTE" ]; then
 	}
 else
 	get_default_gw() {
-		netstat -r -n | grep '^0.0.0.0' | awk '{print $2}'
+		# solaris again ...
+		netstat -r -n | sed 's/default/0.0.0.0/' | grep '^0.0.0.0' | awk '{print $2}'
 	}
 	
 	set_vpngateway_route() {
@@ -131,7 +133,7 @@ else
 	set_default_route() {
 		DEFAULTGW="`get_default_gw`"
 		echo "$DEFAULTGW" > "$DEFAULT_ROUTE_FILE"
-		route $route_syntax_del default
+		route $route_syntax_del default "$DEFAULTGW"
 		route add default $route_syntax_gw "$INTERNAL_IP4_ADDRESS"
 	}
 	
