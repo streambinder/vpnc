@@ -76,6 +76,8 @@
 #include "config.h"
 #include "vpnc.h"
 
+#include "tunip.h"
+
 #define max(a,b)	((a)>(b)?(a):(b))
 
 struct sa_desc {
@@ -127,7 +129,7 @@ typedef struct esp_encap_header {
 
 struct encap_method {
 	int fd; /* file descriptor for relevant socket */
-	unsigned char *name;
+	const char *name;
 
 	int fixed_header_size;
 
@@ -182,7 +184,7 @@ struct sa_desc *remote_sa_list = NULL;
  * in_cksum --
  *	Checksum routine for Internet Protocol family headers (C Version)
  */
-u_short in_cksum(addr, len)
+static u_short in_cksum(addr, len)
 	u_short *addr;
 	int len;
 {
@@ -217,7 +219,7 @@ u_short in_cksum(addr, len)
 /*
  * Decapsulate from a raw IP packet
  */
-int encap_rawip_recv(struct encap_method *encap,
+static int encap_rawip_recv(struct encap_method *encap,
 	unsigned char *buf, unsigned int bufsize, struct sockaddr_in *from)
 {
 	ssize_t r;
@@ -264,7 +266,7 @@ int encap_rawip_recv(struct encap_method *encap,
 /*
  * Decapsulate from an UDP packet
  */
-int encap_udp_recv(struct encap_method *encap,
+static int encap_udp_recv(struct encap_method *encap,
 	unsigned char *buf, unsigned int bufsize,
 	struct sockaddr_in *from)
 {
@@ -301,7 +303,7 @@ int encap_udp_recv(struct encap_method *encap,
 	return r;
 }
 
-struct peer_desc *encap_esp_peer_find(struct encap_method *encap)
+static struct peer_desc *encap_esp_peer_find(struct encap_method *encap)
 {
 	esp_encap_header_t *eh;
 	eh = (esp_encap_header_t *) (encap->buf + encap->bufpayload);
@@ -311,7 +313,7 @@ struct peer_desc *encap_esp_peer_find(struct encap_method *encap)
 /*
  * Decapsulate packet
  */
-int encap_any_decap(struct encap_method *encap)
+static int encap_any_decap(struct encap_method *encap)
 {
 	encap->buflen -= encap->bufpayload + encap->fixed_header_size + encap->var_header_size;
 	encap->buf += encap->bufpayload + encap->fixed_header_size + encap->var_header_size;
@@ -323,7 +325,7 @@ int encap_any_decap(struct encap_method *encap)
 /*
  * Send decapsulated packet to tunnel device
  */
-int tun_send_ip(struct encap_method *encap, int fd)
+static int tun_send_ip(struct encap_method *encap, int fd)
 {
 	int sent;
 
@@ -333,7 +335,7 @@ int tun_send_ip(struct encap_method *encap, int fd)
 	return 1;
 }
 
-int encap_esp_new(struct encap_method *encap, unsigned char proto)
+static int encap_esp_new(struct encap_method *encap, unsigned char proto)
 {
 #ifdef IP_HDRINCL
 	int hincl = 1;
@@ -363,7 +365,7 @@ int encap_esp_new(struct encap_method *encap, unsigned char proto)
 	return 0;
 }
 
-int encap_udp_new(struct encap_method *encap, int udp_fd)
+static int encap_udp_new(struct encap_method *encap, int udp_fd)
 {
 	encap->fd = udp_fd;
 
@@ -383,7 +385,7 @@ int encap_udp_new(struct encap_method *encap, int udp_fd)
  */
 int find_local_addr(struct sockaddr_in *dest, struct sockaddr_in *source)
 {
-	int addrlen;
+	socklen_t addrlen;
 	struct sockaddr_in dest_socket;
 	int fd;
 
@@ -423,7 +425,7 @@ int find_local_addr(struct sockaddr_in *dest, struct sockaddr_in *source)
  * Retrieve and possibly update our local address to a given remote SA.
  * Return 1 if changed, 0 if not, -1 if error.
  */
-int update_sa_addr(struct sa_desc *p)
+static int update_sa_addr(struct sa_desc *p)
 {
 	struct sockaddr_in new_addr;
 
@@ -458,7 +460,7 @@ struct peer_desc *peer_find(uint32_t spi, struct encap_method *encap)
 /*
  * Compute HMAC for an arbitrary stream of bytes
  */
-int hmac_compute(int md_algo,
+static int hmac_compute(int md_algo,
 	const unsigned char *data, unsigned int data_size,
 	unsigned char *digest, unsigned char do_store,
 	const unsigned char *secret, unsigned short secret_size)
@@ -491,7 +493,7 @@ int hmac_compute(int md_algo,
 /*
  * Encapsulate a packet in ESP
  */
-void encap_esp_encapsulate(struct encap_method *encap,
+static void encap_esp_encapsulate(struct encap_method *encap,
 	struct peer_desc *peer)
 {
 	esp_encap_header_t *eh;
@@ -875,13 +877,13 @@ static void vpnc_main_loop(struct peer_desc *peer, struct encap_method *meth, in
 	syslog(LOG_NOTICE, "terminated");
 }
 
-void killit(int signum)
+static void killit(int signum)
 {
 	do_kill = signum; /* unused */
 	do_kill = 1;
 }
 
-void write_pidfile(const char *pidfile)
+static void write_pidfile(const char *pidfile)
 {
 	FILE *pf;
 

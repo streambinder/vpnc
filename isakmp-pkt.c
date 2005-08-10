@@ -318,7 +318,7 @@ struct isakmp_payload *new_isakmp_data_payload(uint8_t type, const void *data, s
 	return result;
 }
 
-void free_isakmp_payload(struct isakmp_payload *p)
+static void free_isakmp_payload(struct isakmp_payload *p)
 {
 	struct isakmp_payload *nxt;
 

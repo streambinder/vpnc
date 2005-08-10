@@ -141,7 +141,7 @@ int tun_close(int fd, char *dev)
 	return 0;
 }
 
-int tun_write(int fd, char *buf, int len)
+int tun_write(int fd, unsigned char *buf, int len)
 {
 	struct strbuf sbuf;
 	sbuf.len = len;
@@ -149,7 +149,7 @@ int tun_write(int fd, char *buf, int len)
 	return putmsg(fd, NULL, &sbuf, 0) >= 0 ? sbuf.len : -1;
 }
 
-int tun_read(int fd, char *buf, int len)
+int tun_read(int fd, unsigned char *buf, int len)
 {
 	struct strbuf sbuf;
 	int f = 0;

@@ -23,7 +23,7 @@ SBINDIR=$(PREFIX)/sbin
 MANDIR=$(PREFIX)/share/man
 
 CC=gcc
-CFLAGS=-W -Wall -O -g '-DVERSION="$(shell cat VERSION)"' $(shell libgcrypt-config --cflags)
+CFLAGS=-W -Wall -O3 -Wmissing-declarations -Wwrite-strings -g '-DVERSION="$(shell cat VERSION)"' $(shell libgcrypt-config --cflags)
 LDFLAGS=-g $(shell libgcrypt-config --libs)
 
 ifeq ($(shell uname -s), Linux)

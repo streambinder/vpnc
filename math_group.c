@@ -216,8 +216,8 @@ void modp_init(struct group *group)
 
 	group->bits = dscr->bits;
 
-	gcry_mpi_scan(&grp->p, GCRYMPI_FMT_HEX, dscr->prime, 0, NULL);
-	gcry_mpi_scan(&grp->gen, GCRYMPI_FMT_HEX, dscr->gen, 0, NULL);
+	gcry_mpi_scan(&grp->p, GCRYMPI_FMT_HEX, (const unsigned char*)dscr->prime, 0, NULL);
+	gcry_mpi_scan(&grp->gen, GCRYMPI_FMT_HEX, (const unsigned char *)dscr->gen, 0, NULL);
 
 	grp->a = gcry_mpi_new(group->bits);
 	grp->b = gcry_mpi_new(group->bits);

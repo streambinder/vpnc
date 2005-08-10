@@ -93,12 +93,12 @@ int tun_close(int fd, char *dev)
 }
 
 /* Read/write frames from TUN device */
-int tun_write(int fd, char *buf, int len)
+int tun_write(int fd, unsigned char *buf, int len)
 {
 	return write(fd, buf, len);
 }
 
-int tun_read(int fd, char *buf, int len)
+int tun_read(int fd, unsigned char *buf, int len)
 {
 	return read(fd, buf, len);
 }

@@ -45,6 +45,7 @@
 #include "math_group.h"
 #include "dh.h"
 #include "vpnc.h"
+#include "tunip.h"
 
 #define ISAKMP_PORT (500)
 
@@ -59,21 +60,6 @@ static uint8_t *resend_hash = NULL;
 
 static uint8_t r_packet[2048];
 static ssize_t r_length;
-
-extern void vpnc_doit(unsigned long tous_spi,
-	const unsigned char *tous_key,
-	struct sockaddr_in *tous_dest,
-	unsigned long tothem_spi,
-	const unsigned char *tothem_key,
-	struct sockaddr_in *tothem_dest,
-	int tun_fd, int md_algo, int cry_algo,
-	uint8_t * kill_packet_p, size_t kill_packet_size_p,
-	struct sockaddr *kill_dest_p,
-	uint16_t encap_mode, int isakmp_fd,
-	const char *pidfile);
-
-extern int find_local_addr(struct sockaddr_in *dest,
-	struct sockaddr_in *source);
 
 enum supp_algo_key {
 	SUPP_ALGO_NAME,
@@ -120,7 +106,7 @@ supported_algo_t supp_auth[] = {
 	{NULL, 0, 0, 0, 0}
 };
 
-const supported_algo_t *get_algo(enum algo_group what, enum supp_algo_key key, int id,
+static const supported_algo_t *get_algo(enum algo_group what, enum supp_algo_key key, int id,
 	const char *name, int keylen)
 {
 	supported_algo_t *sa = NULL;
@@ -269,7 +255,7 @@ static void setup_tunnel(struct sa_block *s)
 		error(1, errno, "can't initialise tunnel interface");
 }
 
-void config_tunnel()
+static void config_tunnel()
 {
 	setenv("VPNGATEWAY", inet_ntoa(((struct sockaddr_in *)dest_addr)->sin_addr), 1);
 	setenv("reason", "connect", 1);
@@ -396,7 +382,7 @@ sendrecv(void *recvbuf, size_t recvbufsize, void *tosend, size_t sendsize, int s
 	return recvsize;
 }
 
-int isakmp_crypt(struct sa_block *s, uint8_t * block, size_t blocklen, int enc)
+static int isakmp_crypt(struct sa_block *s, uint8_t * block, size_t blocklen, int enc)
 {
 	unsigned char *new_iv, *iv = NULL;
 	int info_ex;
@@ -697,7 +683,7 @@ static uint8_t *gen_keymat(struct sa_block *s,
 
 /* * */
 
-struct isakmp_attribute *make_transform_ike(int dh_group, int crypt, int hash, int keylen, int auth)
+static struct isakmp_attribute *make_transform_ike(int dh_group, int crypt, int hash, int keylen, int auth)
 {
 	struct isakmp_attribute *a = NULL;
 
@@ -716,7 +702,7 @@ struct isakmp_attribute *make_transform_ike(int dh_group, int crypt, int hash, i
 	return a;
 }
 
-struct isakmp_payload *make_our_sa_ike(void)
+static struct isakmp_payload *make_our_sa_ike(void)
 {
 	struct isakmp_payload *r = new_isakmp_payload(ISAKMP_PAYLOAD_SA);
 	struct isakmp_payload *t = NULL, *tn;
@@ -751,7 +737,7 @@ struct isakmp_payload *make_our_sa_ike(void)
 	return r;
 }
 
-void do_phase_1(const char *key_id, const char *shared_key, struct sa_block *s)
+static void do_phase_1(const char *key_id, const char *shared_key, struct sa_block *s)
 {
 	unsigned char i_nonce[20];
 	struct group *dh_grp;
@@ -1818,7 +1804,7 @@ static int do_phase_2_config(struct sa_block *s)
 	return 0;
 }
 
-struct isakmp_attribute *make_transform_ipsec(int dh_group, int hash, int keylen)
+static struct isakmp_attribute *make_transform_ipsec(int dh_group, int hash, int keylen)
 {
 	struct isakmp_attribute *a = NULL;
 
@@ -1839,7 +1825,7 @@ struct isakmp_attribute *make_transform_ipsec(int dh_group, int hash, int keylen
 	return a;
 }
 
-struct isakmp_payload *make_our_sa_ipsec(struct sa_block *s)
+static struct isakmp_payload *make_our_sa_ipsec(struct sa_block *s)
 {
 	struct isakmp_payload *r = new_isakmp_payload(ISAKMP_PAYLOAD_SA);
 	struct isakmp_payload *p = NULL, *pn;

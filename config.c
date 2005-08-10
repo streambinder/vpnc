@@ -314,7 +314,7 @@ static void read_config_file(const char *name, const char **configs, int missing
 {
 	FILE *f;
 	char *line = NULL;
-	ssize_t line_length = 0;
+	size_t line_length = 0;
 	int linenum = 0;
 	char *realname;
 
@@ -353,7 +353,7 @@ static void read_config_file(const char *name, const char **configs, int missing
 				continue;
 			if (strncasecmp(config_names[i].name, line,
 					strlen(config_names[i].name)) == 0) {
-				// boolean implementation, using harmles pointer targets as true
+				/* boolean implementation, using harmles pointer targets as true */
 				if (!config_names[i].needsArgument) {
 					configs[config_names[i].nm] = config_names[i].name;
 					break;

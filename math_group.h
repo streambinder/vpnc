@@ -36,7 +36,7 @@
 #define __MATH_GROUP_H__
 
 enum groups {
-	MODP, /* F_p, Z modulo a prime */
+	MODP  /* F_p, Z modulo a prime */
 };
 
 #define OAKLEY_GRP_1	1
@@ -66,8 +66,8 @@ struct group {
 struct modp_dscr {
 	int id;
 	int bits; /* Key Bits provided by this group */
-	char *prime; /* Prime */
-	char *gen; /* Generator */
+	const char *prime; /* Prime */
+	const char *gen; /* Generator */
 };
 
 /* Prototypes */

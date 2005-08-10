@@ -33,7 +33,7 @@ struct isakmp_attribute {
 		isakmp_attr_lots,
 		isakmp_attr_16,
 		isakmp_attr_2x8,
-		isakmp_attr_acl,
+		isakmp_attr_acl
 	} af;
 	union {
 		uint16_t attr_16;

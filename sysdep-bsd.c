@@ -82,7 +82,7 @@ struct tun_data {
 };
 
 /* Read/write frames from TUN device */
-int tun_write(int fd, char *buf, int len)
+int tun_write(int fd, unsigned char *buf, int len)
 {
 	char *data;
 	struct tun_data tun;
@@ -98,7 +98,7 @@ int tun_write(int fd, char *buf, int len)
 	return write(fd, data, len) - (sizeof(tun) - sizeof(tun.data));
 }
 
-int tun_read(int fd, char *buf, int len)
+int tun_read(int fd, unsigned char *buf, int len)
 {
 	struct tun_data tun;
 	char *data;
