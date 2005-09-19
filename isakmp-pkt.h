@@ -54,7 +54,7 @@ struct isakmp_attribute {
 
 struct isakmp_payload {
 	struct isakmp_payload *next;
-	enum isakmp_payload type;
+	enum isakmp_payload_enum type;
 	union {
 		struct {
 			uint32_t doi;

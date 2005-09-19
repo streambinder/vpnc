@@ -134,7 +134,7 @@ static const char *config_def_pid_file(void)
 }
 
 static const struct config_names_s {
-	enum config nm;
+	enum config_enum nm;
 	const int needsArgument;
 	const int lvl;
 	const char *option;

@@ -25,7 +25,7 @@
 #define ISAKMP_FLAG_A	0x4
 
 /* Payload types */
-enum isakmp_payload {
+enum isakmp_payload_enum {
 	ISAKMP_PAYLOAD_NONE = 0,
 	ISAKMP_PAYLOAD_SA,
 	ISAKMP_PAYLOAD_P,
@@ -47,7 +47,7 @@ enum isakmp_payload {
 };
 
 /* Exchange types.  */
-enum isakmp_exchange {
+enum isakmp_exchange_enum {
 	ISAKMP_EXCHANGE_NONE = 0,
 	ISAKMP_EXCHANGE_BASE,
 	ISAKMP_EXCHANGE_IDENTITY,
@@ -60,13 +60,13 @@ enum isakmp_exchange {
 };
 
 /* DOI types.  */
-enum isakmp_doi {
+enum isakmp_doi_enum {
 	ISAKMP_DOI_GENERIC = 0,
 	ISAKMP_DOI_IPSEC
 };
 
 /* Notify message types.  */
-enum isakmp_notify {
+enum isakmp_notify_enum {
 	ISAKMP_N_INVALID_PAYLOAD_TYPE = 1,
 	ISAKMP_N_DOI_NOT_SUPPORTED,
 	ISAKMP_N_SITUATION_NOT_SUPPORTED,
@@ -105,7 +105,7 @@ enum isakmp_notify {
 };
 
 /* IKE attribute types.  */
-enum ike_attr {
+enum ike_attr_enum {
 	IKE_ATTRIB_ENC = 1,
 	IKE_ATTRIB_HASH,
 	IKE_ATTRIB_AUTH_METHOD,
@@ -126,7 +126,7 @@ enum ike_attr {
 };
 
 /* IKE encryption algorithm IDs.  */
-enum ike_enc {
+enum ike_enc_enum {
 	IKE_ENC_DES_CBC = 1,
 	IKE_ENC_IDEA_CBC,
 	IKE_ENC_BLOWFISH_CBC,
@@ -137,7 +137,7 @@ enum ike_enc {
 };
 
 /* IKE hash algorithm IDs.  */
-enum ike_hash {
+enum ike_hash_enum {
 	IKE_HASH_MD5 = 1,
 	IKE_HASH_SHA,
 	IKE_HASH_TIGER,
@@ -147,7 +147,7 @@ enum ike_hash {
 };
 
 /* IKE authentication method IDs.  */
-enum ike_auth {
+enum ike_auth_enum {
 	IKE_AUTH_PRESHARED = 1,
 	IKE_AUTH_DSS,
 	IKE_AUTH_RSA_SIG,
@@ -169,7 +169,7 @@ enum ike_auth {
 };
 
 /* IKE group IDs.  */
-enum ike_group {
+enum ike_group_enum {
 	IKE_GROUP_MODP_768 = 1,
 	IKE_GROUP_MODP_1024,
 	IKE_GROUP_EC2N_155,
@@ -186,27 +186,27 @@ enum ike_group {
 };
 
 /* IKE group type IDs.  */
-enum ike_group_type {
+enum ike_group_type_enum {
 	IKE_GROUP_TYPE_MODP = 1,
 	IKE_GROUP_TYPE_ECP,
 	IKE_GROUP_TYPE_EC2N
 };
 
 /* IKE life type IDs.  */
-enum ike_life {
+enum ike_life_enum {
 	IKE_LIFE_TYPE_SECONDS = 1,
 	IKE_LIFE_TYPE_K
 };
 
 /* IPSEC situation masks.  */
-enum isakmp_ipsect_sit {
+enum isakmp_ipsect_sit_enum {
 	ISAKMP_IPSEC_SIT_IDENTITY_ONLY = 0x1,
 	ISAKMP_IPSEC_SIT_SECRECY       = 0x2,
 	ISAKMP_IPSEC_SIT_INTEGRITY     = 0x4
 };
 
 /* IPSEC Identification types.  */
-enum isakmp_ipsec_id {
+enum isakmp_ipsec_id_enum {
 	ISAKMP_IPSEC_ID_RESERVED = 0,
 	ISAKMP_IPSEC_ID_IPV4_ADDR,
 	ISAKMP_IPSEC_ID_FQDN,
@@ -222,7 +222,7 @@ enum isakmp_ipsec_id {
 };
 
 /* IPSEC protocol IDs.  */
-enum isakmp_ipsec_proto {
+enum isakmp_ipsec_proto_enum {
 	ISAKMP_IPSEC_PROTO_RESERVED = 0,
 	ISAKMP_IPSEC_PROTO_ISAKMP,
 	ISAKMP_IPSEC_PROTO_IPSEC_AH,
@@ -231,13 +231,13 @@ enum isakmp_ipsec_proto {
 };
 
 /* IPSEC transform IDs.  */
-enum isakmp_ipsec_key {
+enum isakmp_ipsec_key_enum {
 	ISAKMP_IPSEC_KEY_RESERVED = 0,
 	ISAKMP_IPSEC_KEY_IKE
 };
 
 /* IPSEC AH IDs.  */
-enum isakmp_ipsec_ah {
+enum isakmp_ipsec_ah_enum {
 	ISAKMP_IPSEC_AH_RESERVED = 0,
 	ISAKMP_IPSEC_AH_MD5 = 2,
 	ISAKMP_IPSEC_AH_SHA,
@@ -249,7 +249,7 @@ enum isakmp_ipsec_ah {
 };
 
 /* IPSEC ESP IDs.  */
-enum isakmp_ipsec_esp {
+enum isakmp_ipsec_esp_enum {
 	ISAKMP_IPSEC_ESP_RESERVED = 0,
 	ISAKMP_IPSEC_ESP_DES_IV64,
 	ISAKMP_IPSEC_ESP_DES,
@@ -272,7 +272,7 @@ enum isakmp_ipsec_esp {
 };
 
 /* IPSEC attribute types.  */
-enum isakmp_ipsec_attr {
+enum isakmp_ipsec_attr_enum {
 	ISAKMP_IPSEC_ATTRIB_SA_LIFE_TYPE = 1,
 	ISAKMP_IPSEC_ATTRIB_SA_LIFE_DURATION,
 	ISAKMP_IPSEC_ATTRIB_GROUP_DESC,
@@ -286,7 +286,7 @@ enum isakmp_ipsec_attr {
 };
 
 /* IPSEC compression IDs.  */
-enum isakmp_ipsec_ipcomp {
+enum isakmp_ipsec_ipcomp_enum {
 	ISAKMP_IPSEC_IPCOMP_RESERVED = 0,
 	ISAKMP_IPSEC_IPCOMP_OUI,
 	ISAKMP_IPSEC_IPCOMP_DEFLATE,
@@ -295,13 +295,13 @@ enum isakmp_ipsec_ipcomp {
 };
 
 /* IPSEC lifetime attribute values.  */
-enum ipsec_life {
+enum ipsec_life_enum {
 	IPSEC_LIFE_SECONDS = 1,
 	IPSEC_LIFE_K
 };
 
 /* IPSEC encapsulation attribute numbers.  */
-enum ipsec_encap {
+enum ipsec_encap_enum {
 	IPSEC_ENCAP_TUNNEL = 1,
 	IPSEC_ENCAP_TRANSPORT,
 	IPSEC_ENCAP_UDP_TUNNEL,
@@ -311,7 +311,7 @@ enum ipsec_encap {
 };
 
 /* IPSEC authentication attribute numbers.  */
-enum ipsec_auth {
+enum ipsec_auth_enum {
 	IPSEC_AUTH_HMAC_MD5 = 1,
 	IPSEC_AUTH_HMAC_SHA,
 	IPSEC_AUTH_DES_MAC,
@@ -343,14 +343,14 @@ enum ipsec_auth {
 
 /* Support for draft-ietf-ipsec-isakmp-mode-cfg-05.txt (yuk).  */
 
-enum isakmp_modecfg_cfg {
+enum isakmp_modecfg_cfg_enum {
 	ISAKMP_MODECFG_CFG_REQUEST = 1,
 	ISAKMP_MODECFG_CFG_REPLY,
 	ISAKMP_MODECFG_CFG_SET,
 	ISAKMP_MODECFG_CFG_ACK
 };
 
-enum isakmp_modecfg_attrib {
+enum isakmp_modecfg_attrib_enum {
 	ISAKMP_MODECFG_ATTRIB_INTERNAL_IP4_ADDRESS = 1,
 	ISAKMP_MODECFG_ATTRIB_INTERNAL_IP4_NETMASK,
 	ISAKMP_MODECFG_ATTRIB_INTERNAL_IP4_DNS,
