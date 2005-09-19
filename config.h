@@ -21,7 +21,7 @@
 
 #include <unistd.h>
 
-enum config_enum {
+enum config {
 	CONFIG_NONE,
 	CONFIG_SCRIPT,
 	CONFIG_DEBUG,
@@ -47,7 +47,7 @@ enum config_enum {
 	LAST_CONFIG
 };
 
-enum hex_dump_enum {
+enum hex_dump {
 	UINT8 = -1,
 	UINT16 = -2,
 	UINT32 = -4

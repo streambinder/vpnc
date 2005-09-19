@@ -25,7 +25,7 @@
 #define ISAKMP_FLAG_A	0x4
 
 /* Payload types */
-enum isakmp_payload_enum {
+enum isakmp_payload {
 	ISAKMP_PAYLOAD_NONE = 0,
 	ISAKMP_PAYLOAD_SA,
 	ISAKMP_PAYLOAD_P,
@@ -47,7 +47,7 @@ enum isakmp_payload_enum {
 };
 
 /* Exchange types.  */
-enum isakmp_exchange_enum {
+enum isakmp_exchange {
 	ISAKMP_EXCHANGE_NONE = 0,
 	ISAKMP_EXCHANGE_BASE,
 	ISAKMP_EXCHANGE_IDENTITY,
@@ -60,11 +60,13 @@ enum isakmp_exchange_enum {
 };
 
 /* DOI types.  */
-#define ISAKMP_DOI_GENERIC		0
-#define ISAKMP_DOI_IPSEC		1
+enum isakmp_doi {
+	ISAKMP_DOI_GENERIC = 0,
+	ISAKMP_DOI_IPSEC
+};
 
 /* Notify message types.  */
-enum isakmp_notify_enum {
+enum isakmp_notify {
 	ISAKMP_N_INVALID_PAYLOAD_TYPE = 1,
 	ISAKMP_N_DOI_NOT_SUPPORTED,
 	ISAKMP_N_SITUATION_NOT_SUPPORTED,
@@ -103,7 +105,7 @@ enum isakmp_notify_enum {
 };
 
 /* IKE attribute types.  */
-enum {
+enum ike_attr {
 	IKE_ATTRIB_ENC = 1,
 	IKE_ATTRIB_HASH,
 	IKE_ATTRIB_AUTH_METHOD,
@@ -124,7 +126,7 @@ enum {
 };
 
 /* IKE encryption algorithm IDs.  */
-enum {
+enum ike_enc {
 	IKE_ENC_DES_CBC = 1,
 	IKE_ENC_IDEA_CBC,
 	IKE_ENC_BLOWFISH_CBC,
@@ -135,7 +137,7 @@ enum {
 };
 
 /* IKE hash algorithm IDs.  */
-enum {
+enum ike_hash {
 	IKE_HASH_MD5 = 1,
 	IKE_HASH_SHA,
 	IKE_HASH_TIGER,
@@ -145,7 +147,7 @@ enum {
 };
 
 /* IKE authentication method IDs.  */
-enum {
+enum ike_auth {
 	IKE_AUTH_PRESHARED = 1,
 	IKE_AUTH_DSS,
 	IKE_AUTH_RSA_SIG,
@@ -167,7 +169,7 @@ enum {
 };
 
 /* IKE group IDs.  */
-enum {
+enum ike_group {
 	IKE_GROUP_MODP_768 = 1,
 	IKE_GROUP_MODP_1024,
 	IKE_GROUP_EC2N_155,
@@ -184,25 +186,27 @@ enum {
 };
 
 /* IKE group type IDs.  */
-enum {
+enum ike_group_type {
 	IKE_GROUP_TYPE_MODP = 1,
 	IKE_GROUP_TYPE_ECP,
 	IKE_GROUP_TYPE_EC2N
 };
 
 /* IKE life type IDs.  */
-enum {
+enum ike_life {
 	IKE_LIFE_TYPE_SECONDS = 1,
 	IKE_LIFE_TYPE_K
 };
 
 /* IPSEC situation masks.  */
-#define ISAKMP_IPSEC_SIT_IDENTITY_ONLY	0x01
-#define ISAKMP_IPSEC_SIT_SECRECY	0x02
-#define ISAKMP_IPSEC_SIT_INTEGRITY	0x04
+enum isakmp_ipsect_sit {
+	ISAKMP_IPSEC_SIT_IDENTITY_ONLY = 0x1,
+	ISAKMP_IPSEC_SIT_SECRECY       = 0x2,
+	ISAKMP_IPSEC_SIT_INTEGRITY     = 0x4
+};
 
 /* IPSEC Identification types.  */
-enum {
+enum isakmp_ipsec_id {
 	ISAKMP_IPSEC_ID_RESERVED = 0,
 	ISAKMP_IPSEC_ID_IPV4_ADDR,
 	ISAKMP_IPSEC_ID_FQDN,
@@ -218,7 +222,7 @@ enum {
 };
 
 /* IPSEC protocol IDs.  */
-enum {
+enum isakmp_ipsec_proto {
 	ISAKMP_IPSEC_PROTO_RESERVED = 0,
 	ISAKMP_IPSEC_PROTO_ISAKMP,
 	ISAKMP_IPSEC_PROTO_IPSEC_AH,
@@ -227,13 +231,13 @@ enum {
 };
 
 /* IPSEC transform IDs.  */
-enum {
+enum isakmp_ipsec_key {
 	ISAKMP_IPSEC_KEY_RESERVED = 0,
 	ISAKMP_IPSEC_KEY_IKE
 };
 
 /* IPSEC AH IDs.  */
-enum {
+enum isakmp_ipsec_ah {
 	ISAKMP_IPSEC_AH_RESERVED = 0,
 	ISAKMP_IPSEC_AH_MD5 = 2,
 	ISAKMP_IPSEC_AH_SHA,
@@ -245,7 +249,7 @@ enum {
 };
 
 /* IPSEC ESP IDs.  */
-enum {
+enum isakmp_ipsec_esp {
 	ISAKMP_IPSEC_ESP_RESERVED = 0,
 	ISAKMP_IPSEC_ESP_DES_IV64,
 	ISAKMP_IPSEC_ESP_DES,
@@ -268,7 +272,7 @@ enum {
 };
 
 /* IPSEC attribute types.  */
-enum {
+enum isakmp_ipsec_attr {
 	ISAKMP_IPSEC_ATTRIB_SA_LIFE_TYPE = 1,
 	ISAKMP_IPSEC_ATTRIB_SA_LIFE_DURATION,
 	ISAKMP_IPSEC_ATTRIB_GROUP_DESC,
@@ -282,7 +286,7 @@ enum {
 };
 
 /* IPSEC compression IDs.  */
-enum {
+enum isakmp_ipsec_ipcomp {
 	ISAKMP_IPSEC_IPCOMP_RESERVED = 0,
 	ISAKMP_IPSEC_IPCOMP_OUI,
 	ISAKMP_IPSEC_IPCOMP_DEFLATE,
@@ -291,13 +295,13 @@ enum {
 };
 
 /* IPSEC lifetime attribute values.  */
-enum {
+enum ipsec_life {
 	IPSEC_LIFE_SECONDS = 1,
 	IPSEC_LIFE_K
 };
 
 /* IPSEC encapsulation attribute numbers.  */
-enum {
+enum ipsec_encap {
 	IPSEC_ENCAP_TUNNEL = 1,
 	IPSEC_ENCAP_TRANSPORT,
 	IPSEC_ENCAP_UDP_TUNNEL,
@@ -307,7 +311,7 @@ enum {
 };
 
 /* IPSEC authentication attribute numbers.  */
-enum {
+enum ipsec_auth {
 	IPSEC_AUTH_HMAC_MD5 = 1,
 	IPSEC_AUTH_HMAC_SHA,
 	IPSEC_AUTH_DES_MAC,
@@ -317,6 +321,7 @@ enum {
 /* Other numbers.  */
 #define ISAKMP_COOKIE_LENGTH		8
 #define ISAKMP_VERSION			0x10
+/* offsets */
 #define ISAKMP_EXCHANGE_TYPE_O		18
 #define ISAKMP_I_COOKIE_O		0
 #define ISAKMP_R_COOKIE_O		8
@@ -336,31 +341,16 @@ enum {
 #define NATT_VENDOR_ID { 0x90, 0xCB, 0x80, 0x91, 0x3E, 0xBB, 0x69, 0x6E, \
 	0x08, 0x63, 0x81, 0xB5, 0xEC, 0x42, 0x7B, 0x1F }
 
-enum {
-	ISAKMP_XAUTH_ATTRIB_TYPE = 16520,
-	ISAKMP_XAUTH_ATTRIB_USER_NAME,
-	ISAKMP_XAUTH_ATTRIB_USER_PASSWORD,
-	ISAKMP_XAUTH_ATTRIB_PASSCODE,
-	ISAKMP_XAUTH_ATTRIB_MESSAGE,
-	ISAKMP_XAUTH_ATTRIB_CHALLENGE,
-	ISAKMP_XAUTH_ATTRIB_DOMAIN,
-	ISAKMP_XAUTH_ATTRIB_STATUS,
-	ISAKMP_XAUTH_ATTRIB_NEXT_PIN,
-	ISAKMP_XAUTH_ATTRIB_ANSWER, /* TYPE .. ANSWER is excluded from dump */
-	/* strange cisco things ... need docs! */
-	ISAKMP_XAUTH_ATTRIB_CISCOEXT_VENDOR = 32136
-};
-
 /* Support for draft-ietf-ipsec-isakmp-mode-cfg-05.txt (yuk).  */
 
-enum {
+enum isakmp_modecfg_cfg {
 	ISAKMP_MODECFG_CFG_REQUEST = 1,
 	ISAKMP_MODECFG_CFG_REPLY,
 	ISAKMP_MODECFG_CFG_SET,
 	ISAKMP_MODECFG_CFG_ACK
 };
 
-enum {
+enum isakmp_modecfg_attrib {
 	ISAKMP_MODECFG_ATTRIB_INTERNAL_IP4_ADDRESS = 1,
 	ISAKMP_MODECFG_ATTRIB_INTERNAL_IP4_NETMASK,
 	ISAKMP_MODECFG_ATTRIB_INTERNAL_IP4_DNS,
@@ -376,16 +366,29 @@ enum {
 	ISAKMP_MODECFG_ATTRIB_INTERNAL_IP4_SUBNET,
 	ISAKMP_MODECFG_ATTRIB_SUPPORTED_ATTRIBUTES,
 	ISAKMP_MODECFG_ATTRIB_INTERNAL_IP6_SUBNET,
-	ISAKMP_MODECFG_ATTRIB_CISCO_BANNER = 28672,
+	ISAKMP_XAUTH_ATTRIB_TYPE = 0x4088,
+	ISAKMP_XAUTH_ATTRIB_USER_NAME,
+	ISAKMP_XAUTH_ATTRIB_USER_PASSWORD,
+	ISAKMP_XAUTH_ATTRIB_PASSCODE,
+	ISAKMP_XAUTH_ATTRIB_MESSAGE,
+	ISAKMP_XAUTH_ATTRIB_CHALLENGE,
+	ISAKMP_XAUTH_ATTRIB_DOMAIN,
+	ISAKMP_XAUTH_ATTRIB_STATUS,
+	ISAKMP_XAUTH_ATTRIB_NEXT_PIN,
+	ISAKMP_XAUTH_ATTRIB_ANSWER, /* TYPE .. ANSWER is excluded from dump */
+	ISAKMP_MODECFG_ATTRIB_CISCO_BANNER = 0x7000,
 	ISAKMP_MODECFG_ATTRIB_CISCO_SAVE_PW,
 	ISAKMP_MODECFG_ATTRIB_CISCO_DEF_DOMAIN,
 	ISAKMP_MODECFG_ATTRIB_CISCO_SPLIT_DNS,
 	ISAKMP_MODECFG_ATTRIB_CISCO_SPLIT_INC,
 	ISAKMP_MODECFG_ATTRIB_CISCO_UDP_ENCAP_PORT,
-	ISAKMP_MODECFG_ATTRIB_CISCO_DO_PFS = 28679,
+	ISAKMP_MODECFG_ATTRIB_CISCO_UNKNOWN, /* whatever 0x7006 is... */
+	ISAKMP_MODECFG_ATTRIB_CISCO_DO_PFS,
 	ISAKMP_MODECFG_ATTRIB_CISCO_FW_TYPE,
 	ISAKMP_MODECFG_ATTRIB_CISCO_BACKUP_SERVER,
-	ISAKMP_MODECFG_ATTRIB_CISCO_DDNS_HOSTNAME
+	ISAKMP_MODECFG_ATTRIB_CISCO_DDNS_HOSTNAME,
+	/* strange cisco things ... need docs! */
+	ISAKMP_XAUTH_ATTRIB_CISCOEXT_VENDOR = 0x7d88
 };
 
 #endif
