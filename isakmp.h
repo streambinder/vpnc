@@ -387,8 +387,7 @@ enum isakmp_modecfg_attrib_enum {
 	ISAKMP_MODECFG_ATTRIB_CISCO_FW_TYPE,
 	ISAKMP_MODECFG_ATTRIB_CISCO_BACKUP_SERVER,
 	ISAKMP_MODECFG_ATTRIB_CISCO_DDNS_HOSTNAME,
-	/* strange cisco things ... need docs! */
-	ISAKMP_XAUTH_ATTRIB_CISCOEXT_VENDOR = 0x7d88
+	ISAKMP_XAUTH_ATTRIB_CISCOEXT_VENDOR = 0x7d88 /* strange cisco things ... need docs! */
 };
 
 #endif

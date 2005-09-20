@@ -53,15 +53,19 @@ endif
 
 FILELIST := $(shell echo *.c *.h vpnc-*) Makefile README ChangeLog COPYING TODO VERSION vpnc.conf vpnc.8 pcf2vpnc
 
-vpnc : vpnc.o isakmp-pkt.o tunip.o config.o $(SYSDEP) dh.o math_group.o
+vpnc : vpnc.o vpnc-debug.o isakmp-pkt.o tunip.o config.o $(SYSDEP) dh.o math_group.o
 	$(CC) -o $@ $^ $(LDFLAGS)
 
-vpnc.o : isakmp.h isakmp-pkt.h dh.h sysdep.h math_group.h config.h VERSION
-isakmp-pkt.o : isakmp.h isakmp-pkt.h config.h
-tunip.o : sysdep.h vpnc.h config.h
-config.o : vpnc.h config.h VERSION
+vpnc.o : vpnc-debug.h isakmp.h isakmp-pkt.h dh.h sysdep.h math_group.h config.h VERSION
+isakmp-pkt.o : vpnc-debug.h isakmp.h isakmp-pkt.h config.h
+tunip.o : vpnc-debug.h sysdep.h vpnc.h config.h
+config.o : vpnc-debug.h vpnc.h config.h VERSION
 dh.o : dh.h math_group.h
 math_group.o : math_group.h
+debug.o : vpnc-debug.c vpnc-debug.h
+
+vpnc-debug.c vpnc-debug.h : isakmp.h enum2debug.pl
+	./enum2debug.pl isakmp.h >vpnc-debug.c 2>vpnc-debug.h
 
 vpnc.ps : vpnc.c
 	enscript -E -G -T 4 --word-wrap -o- $^ | psnup -2 /dev/stdin $@
@@ -83,6 +87,9 @@ dist : VERSION vpnc-$(shell cat VERSION).tar.gz
 
 clean :
 	-rm -f vpnc *.o tags
+
+realclean :
+	-rm -f vpnc *.o tags vpnc-debug.c vpnc-debug.h
 
 all : vpnc
 

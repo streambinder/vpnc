@@ -137,7 +137,6 @@ extern void flatten_isakmp_packet(struct isakmp_packet *p,
 	uint8_t ** result, size_t * size, size_t blksz);
 extern struct isakmp_packet *parse_isakmp_packet(const uint8_t * data,
 	size_t data_len, int * reject);
-extern const char *isakmp_notify_to_error(uint16_t notify);
 extern void test_pack_unpack(void);
 
 #endif

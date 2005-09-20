@@ -41,6 +41,7 @@
 
 #include "sysdep.h"
 #include "config.h"
+#include "vpnc-debug.h"
 #include "isakmp-pkt.h"
 #include "math_group.h"
 #include "dh.h"
@@ -637,7 +638,7 @@ static void phase2_fatal(struct sa_block *s, const char *msg, int id)
 	memcpy(pl->u.d.spi[0] + ISAKMP_COOKIE_LENGTH * 1, s->r_cookie, ISAKMP_COOKIE_LENGTH);
 	sendrecv_phase2(s, pl, ISAKMP_EXCHANGE_INFORMATIONAL, msgid, 1, 0, 0, 0, 0, 0, 0);
 
-	error(1, 0, msg, isakmp_notify_to_error(id));
+	error(1, 0, msg, val_to_string(id, isakmp_notify_enum_array), id);
 }
 
 static uint8_t *gen_keymat(struct sa_block *s,
@@ -846,7 +847,7 @@ static void do_phase_1(const char *key_id, const char *shared_key, struct sa_blo
 		if (reject == 0 && r->message_id != 0)
 			reject = ISAKMP_N_INVALID_MESSAGE_ID;
 		if (reject != 0)
-			error(1, 0, "response was invalid [1]: %s", isakmp_notify_to_error(reject));
+			error(1, 0, "response was invalid [1]: %s(%d)", val_to_string(reject, isakmp_notify_enum_array), reject);
 		for (rp = r->payload; rp && reject == 0; rp = rp->next)
 			switch (rp->type) {
 			case ISAKMP_PAYLOAD_SA:
@@ -1029,13 +1030,13 @@ static void do_phase_1(const char *key_id, const char *shared_key, struct sa_blo
 		if (reject == 0 && nonce == NULL)
 			reject = ISAKMP_N_INVALID_HASH_INFORMATION;
 		if (reject != 0)
-			error(1, 0, "response was invalid [2]: %s", isakmp_notify_to_error(reject));
+			error(1, 0, "response was invalid [2]: %s(%d)", val_to_string(reject, isakmp_notify_enum_array), reject);
 		if (reject == 0 && idp == NULL)
 			reject = ISAKMP_N_INVALID_ID_INFORMATION;
 		if (reject == 0 && (hash == NULL || hash->u.hash.length != s->md_len))
 			reject = ISAKMP_N_INVALID_HASH_INFORMATION;
 		if (reject != 0)
-			error(1, 0, "response was invalid [3]: %s", isakmp_notify_to_error(reject));
+			error(1, 0, "response was invalid [3]: %s(%d)", val_to_string(reject, isakmp_notify_enum_array), reject);
 
 		/* Generate SKEYID.  */
 		{
@@ -1077,8 +1078,9 @@ static void do_phase_1(const char *key_id, const char *shared_key, struct sa_blo
 			expected_hash = gcry_md_read(hm, 0);
 
 			if (memcmp(expected_hash, hash->u.hash.data, s->md_len) != 0) {
-				error(1, 0, "hash comparison failed: %s\ncheck group password!",
-					isakmp_notify_to_error(ISAKMP_N_AUTHENTICATION_FAILED));
+				error(1, 0, "hash comparison failed: %s(%d)\ncheck group password!",
+					val_to_string(ISAKMP_N_AUTHENTICATION_FAILED, isakmp_notify_enum_array),
+					ISAKMP_N_AUTHENTICATION_FAILED);
 			}
 			gcry_md_close(hm);
 
@@ -1347,7 +1349,7 @@ static int do_phase2_notice_check(struct sa_block *s, struct isakmp_packet **r_p
 				} else {
 					/* whatever */
 					printf("received notice of type %s(%d), giving up\n",
-						isakmp_notify_to_error(r->payload->next->u.n.type),
+						val_to_string(r->payload->next->u.n.type, isakmp_notify_enum_array),
 						r->payload->next->u.n.type);
 					return reject;
 				}
@@ -1404,7 +1406,7 @@ static int do_phase_2_xauth(struct sa_block *s)
 			reject = ISAKMP_N_INVALID_PAYLOAD_TYPE;
 
 		if (reject != 0)
-			phase2_fatal(s, "expected xauth packet; rejected: %s", reject);
+			phase2_fatal(s, "expected xauth packet; rejected: %s(%d)", reject);
 
 		DEBUG(2, printf("S5.4\n"));
 		a = r->payload->next->u.modecfg.attributes;
@@ -1445,7 +1447,7 @@ static int do_phase_2_xauth(struct sa_block *s)
 			}
 		DEBUG(2, printf("S5.5\n"));
 		if (reject != 0)
-			phase2_fatal(s, "xauth packet unsupported: %s", reject);
+			phase2_fatal(s, "xauth packet unsupported: %s(%d)", reject);
 
 		inet_ntop(dest_addr->sa_family,
 			&((struct sockaddr_in *)dest_addr)->sin_addr, ntop_buf, sizeof(ntop_buf));
@@ -1537,7 +1539,7 @@ static int do_phase_2_xauth(struct sa_block *s)
 			|| a->type != ISAKMP_XAUTH_ATTRIB_STATUS
 			|| a->af != isakmp_attr_16 || a->next != NULL) {
 			reject = ISAKMP_N_INVALID_PAYLOAD_TYPE;
-			phase2_fatal(s, "xauth SET response rejected: %s", reject);
+			phase2_fatal(s, "xauth SET response rejected: %s(%d)", reject);
 		}
 		set_result = a->u.attr_16;
 
@@ -1627,7 +1629,7 @@ static int do_phase_2_config(struct sa_block *s)
 		reject = ISAKMP_N_PAYLOAD_MALFORMED;
 
 	if (reject != 0)
-		phase2_fatal(s, "configuration response rejected: %s", reject);
+		phase2_fatal(s, "configuration response rejected: %s(%d)", reject);
 
 	unsetenv("CISCO_BANNER");
 	unsetenv("CISCO_DEF_DOMAIN");
@@ -1798,7 +1800,7 @@ static int do_phase_2_config(struct sa_block *s)
 		reject = ISAKMP_N_ATTRIBUTES_NOT_SUPPORTED;
 
 	if (reject != 0)
-		phase2_fatal(s, "configuration response rejected: %s", reject);
+		phase2_fatal(s, "configuration response rejected: %s(%d)", reject);
 
 	DEBUG(1, printf("got address %s\n", getenv("INTERNAL_IP4_ADDRESS")));
 	return 0;
@@ -1971,7 +1973,7 @@ static void setup_link(struct sa_block *s)
 
 	DEBUG(2, printf("S7.5\n"));
 	if (reject != 0)
-		phase2_fatal(s, "quick mode response rejected: %s\n"
+		phase2_fatal(s, "quick mode response rejected: %s(%d)\n"
 			"this means the concentrator did not like what we had to offer.\n"
 			"Possible reasons are:\n"
 			"  * concentrator configured to require a firewall\n"
@@ -2100,7 +2102,7 @@ static void setup_link(struct sa_block *s)
 	if (reject == 0 && dh_grp && (ke == NULL || ke->u.ke.length != dh_getlen(dh_grp)))
 		reject = ISAKMP_N_INVALID_KEY_INFORMATION;
 	if (reject != 0)
-		phase2_fatal(s, "quick mode response rejected [2]: %s", reject);
+		phase2_fatal(s, "quick mode response rejected [2]: %s(%d)", reject);
 
 	/* send final packet */
 	sendrecv_phase2(s, NULL, ISAKMP_EXCHANGE_IKE_QUICK,
