@@ -289,7 +289,7 @@ int modp_setrandom(struct group *grp, gcry_mpi_t d)
 
 	for (i = 0; i < l; i++) {
 		if (i % 4)
-			gcry_randomize((unsigned char *)&tmp, sizeof(tmp), GCRY_WEAK_RANDOM);
+			gcry_randomize((unsigned char *)&tmp, sizeof(tmp), GCRY_STRONG_RANDOM);
 
 		gcry_mpi_mul_2exp(d, d, 8);
 		gcry_mpi_add_ui(d, d, tmp & 0xFF);

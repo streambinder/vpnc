@@ -534,7 +534,7 @@ static void encap_esp_encapsulate(struct encap_method *encap,
 
 	/* Copy initialization vector in packet */
 	iv = (unsigned char *)(eh + 1);
-	gcry_randomize(iv, peer->remote_sa->ivlen, GCRY_WEAK_RANDOM);
+	gcry_create_nonce(iv, peer->remote_sa->ivlen);
 	hex_dump("iv", iv, peer->remote_sa->ivlen);
 	hex_dump("auth_secret", peer->remote_sa->auth_secret, peer->remote_sa->auth_secret_size);
 

@@ -619,14 +619,14 @@ static void phase2_fatal(struct sa_block *s, const char *msg, int id)
 	uint32_t msgid;
 
 	DEBUG(1, printf("\n\n---!!!!!!!!! entering phase2_fatal !!!!!!!!!---\n\n\n"));
-	gcry_randomize((uint8_t *) & msgid, sizeof(msgid), GCRY_WEAK_RANDOM);
+	gcry_create_nonce((uint8_t *) & msgid, sizeof(msgid));
 	pl = new_isakmp_payload(ISAKMP_PAYLOAD_N);
 	pl->u.n.doi = ISAKMP_DOI_IPSEC;
 	pl->u.n.protocol = ISAKMP_IPSEC_PROTO_ISAKMP;
 	pl->u.n.type = id;
 	sendrecv_phase2(s, pl, ISAKMP_EXCHANGE_INFORMATIONAL, msgid, 1, 0, 0, 0, 0, 0, 0);
 
-	gcry_randomize((uint8_t *) & msgid, sizeof(msgid), GCRY_WEAK_RANDOM);
+	gcry_create_nonce((uint8_t *) & msgid, sizeof(msgid));
 	pl = new_isakmp_payload(ISAKMP_PAYLOAD_D);
 	pl->u.d.doi = ISAKMP_DOI_IPSEC;
 	pl->u.d.protocol = ISAKMP_IPSEC_PROTO_ISAKMP;
@@ -761,12 +761,12 @@ static void do_phase_1(const char *key_id, const char *shared_key, struct sa_blo
 	unsigned char *natd_us = NULL, *natd_them = NULL;
 
 	DEBUG(2, printf("S4.1\n"));
-	gcry_randomize(s->i_cookie, ISAKMP_COOKIE_LENGTH, GCRY_STRONG_RANDOM);
+	gcry_create_nonce(s->i_cookie, ISAKMP_COOKIE_LENGTH);
 	s->do_pfs = -1;
 	if (s->i_cookie[0] == 0)
 		s->i_cookie[0] = 1;
 	hex_dump("i_cookie", s->i_cookie, ISAKMP_COOKIE_LENGTH);
-	gcry_randomize(i_nonce, sizeof(i_nonce), GCRY_STRONG_RANDOM);
+	gcry_create_nonce(i_nonce, sizeof(i_nonce));
 	hex_dump("i_nonce", i_nonce, sizeof(i_nonce));
 	DEBUG(2, printf("S4.2\n"));
 	/* Set up the Diffie-Hellman stuff.  */
@@ -1571,7 +1571,7 @@ static int do_phase_2_config(struct sa_block *s)
 
 	uname(&uts);
 
-	gcry_randomize((uint8_t *) & msgid, sizeof(msgid), GCRY_WEAK_RANDOM);
+	gcry_create_nonce((uint8_t *) & msgid, sizeof(msgid));
 	if (msgid == 0)
 		msgid = 1;
 
@@ -1892,9 +1892,9 @@ static void setup_link(struct sa_block *s)
 		hex_dump("dh_public", dh_public, dh_getlen(dh_grp));
 	}
 
-	gcry_randomize((uint8_t *) & s->tous_esp_spi, sizeof(s->tous_esp_spi), GCRY_WEAK_RANDOM);
+	gcry_create_nonce((uint8_t *) & s->tous_esp_spi, sizeof(s->tous_esp_spi));
 	rp = make_our_sa_ipsec(s);
-	gcry_randomize((uint8_t *) nonce, sizeof(nonce), GCRY_WEAK_RANDOM);
+	gcry_create_nonce((uint8_t *) nonce, sizeof(nonce));
 	rp->next = new_isakmp_data_payload(ISAKMP_PAYLOAD_NONCE, nonce, sizeof(nonce));
 
 	us = new_isakmp_payload(ISAKMP_PAYLOAD_ID);
@@ -1917,7 +1917,7 @@ static void setup_link(struct sa_block *s)
 		rp->next->next->next = us;
 	}
 
-	gcry_randomize((uint8_t *) & msgid, sizeof(&msgid), GCRY_WEAK_RANDOM);
+	gcry_create_nonce((uint8_t *) & msgid, sizeof(&msgid));
 	if (msgid == 0)
 		msgid = 1;
 
@@ -2115,7 +2115,7 @@ static void setup_link(struct sa_block *s)
 		struct isakmp_payload *d_isakmp, *d_ipsec;
 		uint32_t del_msgid;
 
-		gcry_randomize((uint8_t *) & del_msgid, sizeof(del_msgid), GCRY_WEAK_RANDOM);
+		gcry_create_nonce((uint8_t *) & del_msgid, sizeof(del_msgid));
 		d_isakmp = new_isakmp_payload(ISAKMP_PAYLOAD_D);
 		d_isakmp->u.d.doi = ISAKMP_DOI_IPSEC;
 		d_isakmp->u.d.protocol = ISAKMP_IPSEC_PROTO_ISAKMP;
