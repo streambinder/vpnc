@@ -120,7 +120,8 @@ if [ -n "$IPROUTE" ]; then
 	}
 else
 	get_default_gw() {
-		# solaris again ...
+		# isn't -n supposed to give --numeric output?
+		# apperently not...
 		netstat -r -n | sed 's/default/0.0.0.0/' | grep '^0.0.0.0' | awk '{print $2}'
 	}
 	
