@@ -1007,9 +1007,9 @@ vpnc_doit(unsigned long tous_spi,
 		if ((pid = fork()) < 0) {
 			fprintf(stderr, "Warning, could not fork the child process!\n");
 		} else if (pid == 0) {
-			close(0); open("/dev/null", 0666, O_RDONLY);
-			close(1); open("/dev/null", 0666, O_WRONLY);
-			close(2); open("/dev/null", 0666, O_WRONLY);
+			close(0); open("/dev/null", O_RDONLY, 0666);
+			close(1); open("/dev/null", O_WRONLY, 0666);
+			close(2); open("/dev/null", O_WRONLY, 0666);
 			openlog("vpnc", LOG_PID, LOG_DAEMON);
 			write_pidfile(pidfile);
 		} else {
