@@ -31,7 +31,7 @@
 
 #ifdef DRAGONFLY_BSD
 #include <net/tun/if_tun.h>
-#else
+#elif !defined(DARWIN)
 #include <net/if_tun.h>
 #endif
 

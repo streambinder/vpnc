@@ -50,6 +50,10 @@ CFLAGS += -DNEED_IPLEN_FIX
 LDFLAGS += -lnsl -lresolv -lsocket
 SYSDEP=sysdep-svr4.o
 endif
+ifeq ($(shell uname -s), Darwin)
+CFLAGS += -DSOCKADDR_IN_SIN_LEN -DHAVE_SA_LEN -DNEED_IPLEN_FIX -DDARWIN
+SYSDEP=sysdep-bsd.o
+endif
 
 FILELIST := $(shell echo *.c *.h vpnc-*) Makefile README ChangeLog COPYING TODO VERSION vpnc.conf vpnc.8 pcf2vpnc
 
