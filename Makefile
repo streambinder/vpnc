@@ -53,6 +53,11 @@ endif
 ifeq ($(shell uname -s), Darwin)
 CFLAGS += -DSOCKADDR_IN_SIN_LEN -DHAVE_SA_LEN -DNEED_IPLEN_FIX -DDARWIN
 SYSDEP=sysdep-bsd.o
+
+ifeq ($(shell uname -r | cut -d. -f1), 8)
+CFLAGS += -Ipoll
+SYSDEP += poll/poll.o
+endif
 endif
 
 FILELIST := $(shell echo *.c *.h vpnc-*) Makefile README ChangeLog COPYING TODO VERSION vpnc.conf vpnc.8 pcf2vpnc
@@ -90,7 +95,7 @@ vpnc-%.tar.gz : $(FILELIST)
 dist : VERSION vpnc-$(shell cat VERSION).tar.gz
 
 clean :
-	-rm -f vpnc *.o tags
+	-rm -f vpnc *.o tags poll/poll.o
 
 realclean :
 	-rm -f vpnc *.o tags vpnc-debug.c vpnc-debug.h
