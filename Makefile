@@ -22,56 +22,57 @@ ETCDIR=/etc/vpnc
 SBINDIR=$(PREFIX)/sbin
 MANDIR=$(PREFIX)/share/man
 
+SRCS = vpnc.c vpnc-debug.c isakmp-pkt.c tunip.c config.c dh.c math_group.c
+OBJS = $(addsuffix .o,$(basename $(SRCS)))
+
 CC=gcc
-CFLAGS=-W -Wall -O3 -Wmissing-declarations -Wwrite-strings -g '-DVERSION="$(shell cat VERSION)"' $(shell libgcrypt-config --cflags)
-LDFLAGS=-g $(shell libgcrypt-config --libs)
+CFLAGS += -W -Wall -O3 -Wmissing-declarations -Wwrite-strings -g
+CPPFLAGS = -DVERSION=\"$(shell cat VERSION)\"
+LDFLAGS = -g $(shell libgcrypt-config --libs)
+CFLAGS +=  $(shell libgcrypt-config --cflags)
 
 ifeq ($(shell uname -s), Linux)
-SYSDEP=sysdep-linux.o
+SRCS +=sysdep-linux.c
 endif
 ifeq ($(shell uname -s), FreeBSD)
-CFLAGS += -DSOCKADDR_IN_SIN_LEN -DHAVE_SA_LEN
-SYSDEP=sysdep-bsd.o
+CPPFLAGS += -DSOCKADDR_IN_SIN_LEN -DHAVE_SA_LEN
+SRCS +=sysdep-bsd.c
 endif
 ifeq ($(shell uname -s), NetBSD)
-CFLAGS += -DSOCKADDR_IN_SIN_LEN -DHAVE_SA_LEN
-SYSDEP=sysdep-bsd.o
+CPPFLAGS += -DSOCKADDR_IN_SIN_LEN -DHAVE_SA_LEN
+SRCS +=sysdep-bsd.c
 endif
 ifeq ($(shell uname -s), DragonFly)
-CFLAGS += -DSOCKADDR_IN_SIN_LEN -DHAVE_SA_LEN -DDRAGONFLY_BSD
-SYSDEP=sysdep-bsd.o
+CPPFLAGS += -DSOCKADDR_IN_SIN_LEN -DHAVE_SA_LEN -DDRAGONFLY_BSD
+SRCS +=sysdep-bsd.c
 endif
 ifeq ($(shell uname -s), OpenBSD)
-CFLAGS += -DSOCKADDR_IN_SIN_LEN -DHAVE_SA_LEN -DNEED_IPLEN_FIX -DNEW_TUN
-SYSDEP=sysdep-bsd.o
+CPPFLAGS += -DSOCKADDR_IN_SIN_LEN -DHAVE_SA_LEN -DNEED_IPLEN_FIX -DNEW_TUN
+SRCS +=sysdep-bsd.c
 endif
 ifeq ($(shell uname -s), SunOS)
-CFLAGS += -DNEED_IPLEN_FIX
+CPPFLAGS += -DNEED_IPLEN_FIX
 LDFLAGS += -lnsl -lresolv -lsocket
-SYSDEP=sysdep-svr4.o
+SRCS +=sysdep-svr4.c
 endif
 ifeq ($(shell uname -s), Darwin)
-CFLAGS += -DSOCKADDR_IN_SIN_LEN -DHAVE_SA_LEN -DNEED_IPLEN_FIX -DDARWIN
-SYSDEP=sysdep-bsd.o
+CPPFLAGS += -DSOCKADDR_IN_SIN_LEN -DHAVE_SA_LEN -DNEED_IPLEN_FIX -DDARWIN
+SRCS +=sysdep-bsd.c
 
 ifeq ($(shell uname -r | cut -d. -f1), 8)
-CFLAGS += -Ipoll
-SYSDEP += poll/poll.o
+CPPFLAGS += -Ipoll
+SRCS += poll/poll.c
 endif
 endif
 
 FILELIST := $(shell echo *.c *.h vpnc-*) Makefile README ChangeLog COPYING TODO VERSION vpnc.conf vpnc.8 pcf2vpnc
 
-vpnc : vpnc.o vpnc-debug.o isakmp-pkt.o tunip.o config.o $(SYSDEP) dh.o math_group.o
+vpnc : $(OBJS)
+	@echo $(OBJS)
 	$(CC) -o $@ $^ $(LDFLAGS)
 
-vpnc.o : vpnc-debug.h isakmp.h isakmp-pkt.h dh.h sysdep.h math_group.h config.h VERSION
-isakmp-pkt.o : vpnc-debug.h isakmp.h isakmp-pkt.h config.h
-tunip.o : vpnc-debug.h sysdep.h vpnc.h config.h
-config.o : vpnc-debug.h vpnc.h config.h VERSION
-dh.o : dh.h math_group.h
-math_group.o : math_group.h
-debug.o : vpnc-debug.c vpnc-debug.h
+.depend: $(SRCS)
+	$(CC) -MM $(SRCS) $(CFLAGS) $(CPPFLAGS) > $@
 
 vpnc-debug.c vpnc-debug.h : isakmp.h enum2debug.pl
 	./enum2debug.pl isakmp.h >vpnc-debug.c 2>vpnc-debug.h
@@ -95,10 +96,10 @@ vpnc-%.tar.gz : $(FILELIST)
 dist : VERSION vpnc-$(shell cat VERSION).tar.gz
 
 clean :
-	-rm -f vpnc *.o tags poll/poll.o
+	-rm -f vpnc tags $(OBJS)
 
 realclean :
-	-rm -f vpnc *.o tags vpnc-debug.c vpnc-debug.h
+	-rm -f vpnc $(OBJS) tags vpnc-debug.c vpnc-debug.h
 
 all : vpnc
 
@@ -124,3 +125,4 @@ uninstall :
 .PHONY : clean dist all install install-strip uninstall
 
 #
+-include .depend
