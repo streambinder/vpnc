@@ -1314,6 +1314,10 @@ static int do_phase2_notice_check(struct sa_block *s, struct isakmp_packet **r_p
 			r_length = sendrecv(r_packet, sizeof(r_packet), NULL, 0, 0);
 			continue;
 		}
+		if (*r_p == NULL) {
+			assert(reject != 0);
+			return reject;
+		}
 		r = *r_p;
 		
 		/* check for notices */
