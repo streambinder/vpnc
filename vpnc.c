@@ -718,8 +718,6 @@ static struct isakmp_payload *make_our_sa_ike(void)
 	r->u.sa.proposals->u.p.prot_id = ISAKMP_IPSEC_PROTO_ISAKMP;
 	for (auth = 0; supp_auth[auth].name != NULL; auth++) {
 		for (crypt = 0; supp_crypt[crypt].name != NULL; crypt++) {
-			if ((supp_crypt[crypt].my_id == GCRY_CIPHER_DES) && (opt_1des == 0))
-				continue;
 			keylen = supp_crypt[crypt].keylen;
 			for (hash = 0; supp_hash[hash].name != NULL; hash++) {
 				tn = t;
@@ -958,6 +956,12 @@ static void do_phase_1(const char *key_id, const char *shared_key, struct sa_blo
 								get_algo(SUPP_ALGO_HASH,
 									SUPP_ALGO_IKE_SA, seen_hash,
 									NULL, 0)->name));
+						if (s->cry_algo == GCRY_CIPHER_DES && !opt_1des) {
+							error(1, 0, "peer selected (single) DES as \"encrytion\" method.\n"
+								"This algorithm is considered to weak today\n"
+								"If your vpn concentrator admin still insists on using DES\n"
+								"use the \"--enable-1des\" option.\n");
+						}
 					}
 				}
 				break;
@@ -1850,8 +1854,6 @@ static struct isakmp_payload *make_our_sa_ipsec(struct sa_block *s)
 	memcpy(r->u.sa.proposals->u.p.spi, &s->tous_esp_spi, 4);
 	r->u.sa.proposals->u.p.prot_id = ISAKMP_IPSEC_PROTO_IPSEC_ESP;
 	for (crypt = 0; supp_crypt[crypt].name != NULL; crypt++) {
-		if ((supp_crypt[crypt].my_id == GCRY_CIPHER_DES) && (opt_1des == 0))
-			continue;
 		keylen = supp_crypt[crypt].keylen;
 		for (hash = 0; supp_hash[hash].name != NULL; hash++) {
 			pn = p;
@@ -2081,6 +2083,12 @@ static void setup_link(struct sa_block *s)
 								seen_keylen)->name,
 							get_algo(SUPP_ALGO_HASH, SUPP_ALGO_IPSEC_SA,
 								seen_auth, NULL, 0)->name));
+					if (ipsec_cry_algo == GCRY_CIPHER_DES && !opt_1des) {
+						error(1, 0, "peer selected (single) DES as \"encrytion\" method.\n"
+							"This algorithm is considered to weak today\n"
+							"If your vpn concentrator admin still insists on using DES\n"
+							"use the \"--enable-1des\" option.\n");
+					}
 				}
 			}
 			break;
