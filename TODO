@@ -106,6 +106,8 @@ TODO list
 * use in-kernel-ipsec with pf-key
   - apply patch
 
+* support rsa-SecurID token which sometimes needs 2 IDs
+
 --
 
 * implement compression
