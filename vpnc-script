@@ -24,7 +24,7 @@ RESOLV_CONF_BACKUP=/var/run/vpnc/resolv.conf-backup
 
 # some systems, eg. Darwin & FreeBSD, prune /var/run on boot
 if ! [ -d "/var/run/vpnc" ]; then
-       mkdir /var/run/vpnc/ 
+       mkdir -p /var/run/vpnc
 fi
 
 # stupid SunOS: no blubber in /usr/local/bin ... (on stdout)
@@ -78,6 +78,14 @@ do_pre_init() {
 
 do_ifconfig() {
 	ifconfig "$TUNDEV" inet "$INTERNAL_IP4_ADDRESS" $ifconfig_syntax_ptp "$INTERNAL_IP4_ADDRESS" netmask 255.255.255.255 mtu 1412 up
+}
+
+destroy_tun_device() {
+	case "$OS" in
+	NetBSD) # and probably others...
+		ifconfig "$TUNDEV" destroy
+		;;
+	esac
 }
 
 if [ -n "$IPROUTE" ]; then
@@ -160,10 +168,12 @@ else
 	}
 	
 	del_network_route() {
-		if [ "$OS" = "Linux" ]; then
-			# linux deletes routes automatically if the device is shut down
+		case "$OS" in
+		Linux|NetBSD) # and probably others...
+			# routes are deleted automatically on device shutdown
 			return
-		fi
+			;;
+		esac
 		NETWORK="$1"
 		NETMASK="$2"
 		NETMASKLEN="$3"
@@ -252,6 +262,7 @@ do_connect() {
 }
 
 do_disconnect() {
+	destroy_tun_device
 	if [ -n "$CISCO_SPLIT_INC" ]; then
 		i=0
 		while [ $i -lt $CISCO_SPLIT_INC ] ; do
