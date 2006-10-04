@@ -3,6 +3,7 @@
    Copyright (C) 2002      Geoffrey Keating
    Copyright (C) 2003-2005 Maurice Massar
    Copyright (C) 2004      Tomas Mraz
+   Copyright (C) 2005      Michael Tilstra
    Copyright (C) 2006      Daniel Roethlisberger
 
    This program is free software; you can redistribute it and/or modify
@@ -65,7 +66,7 @@
 #include <string.h>
 #include <syslog.h>
 #include <time.h>
-#include <poll.h>
+#include <sys/select.h>
 #include <signal.h>
 
 #ifndef __sun__
@@ -776,27 +777,34 @@ static struct sockaddr *kill_dest;
 static void vpnc_main_loop(struct peer_desc *peer, struct encap_method *meth, int tun_fd, const char *pidfile)
 {
 	int sock;
-	struct pollfd pollfds[2];
+	fd_set rfds, refds;
+	int nfds=0, encap_fd =-1;
 	int enable_keepalives;
-	int poll_timeout;
+	struct timeval select_timeout = { .tv_sec = 20 };
 
 	/* non-esp marker, nat keepalive payload (0xFF) */
 	char keepalive[5] = { 0x00, 0x00, 0x00, 0x00, 0xFF };
 
 	/* send keepalives if UDP encapsulation is enabled */
 	enable_keepalives = !strcmp(meth->name, "udpesp");
-	poll_timeout = enable_keepalives ? 20000 : -1;
 
-	pollfds[0].fd = tun_fd;
-	pollfds[0].events = POLLIN;
-	pollfds[1].fd = encap_get_fd(meth);
-	pollfds[1].events = POLLIN;
+	FD_ZERO(&rfds);
+	FD_SET(tun_fd, &rfds);
+	nfds = MAX(nfds, tun_fd +1);
+
+	encap_fd = encap_get_fd (meth);
+	FD_SET(encap_fd, &rfds);
+	nfds = MAX(nfds, encap_fd +1);
 
 	while (!do_kill) {
 		int presult;
 
 		do {
-			presult = poll(pollfds, sizeof(pollfds) / sizeof(pollfds[0]), poll_timeout);
+			FD_COPY(&rfds, &refds);
+			struct timeval *tvp = NULL;
+			if (enable_keepalives)
+				tvp = &select_timeout;
+			presult = select(nfds, &refds, NULL, NULL, tvp);
 			if (presult == 0 && enable_keepalives) {
 				/* send nat keepalive packet */
 				if(sendto(meth->fd, keepalive, sizeof(keepalive), 0,
@@ -807,11 +815,11 @@ static void vpnc_main_loop(struct peer_desc *peer, struct encap_method *meth, in
 			}
 		} while ((presult == 0 || (presult == -1 && errno == EINTR)) && !do_kill);
 		if (presult == -1) {
-			syslog(LOG_ERR, "poll: %m");
+			syslog(LOG_ERR, "select: %m");
 			continue;
 		}
 
-		if (pollfds[0].revents & POLLIN) {
+		if (FD_ISSET(tun_fd, &refds)) {
 			int pack;
 
 			/* Receive a packet from the tunnel interface */
@@ -820,6 +828,7 @@ static void vpnc_main_loop(struct peer_desc *peer, struct encap_method *meth, in
 				syslog(LOG_ERR, "read: %m");
 				continue;
 			}
+
 
 			if (peer->remote_sa->use_dest == 0) {
 				syslog(LOG_NOTICE, "peer hasn't a known address yet");
@@ -839,7 +848,7 @@ static void vpnc_main_loop(struct peer_desc *peer, struct encap_method *meth, in
 			/* Update sent packet timeout */
 			peer->remote_sa->last_packet_sent = time(NULL);
 		}
-		if (pollfds[1].revents & POLLIN) {
+		if (FD_ISSET(encap_fd, &refds) ) {
 			/* Receive a packet from a socket */
 			struct peer_desc *peer;
 			int pack;
@@ -950,6 +959,7 @@ vpnc_doit(unsigned long tous_spi,
 			abort();
 	}
 
+	memset(&tous_sa, 0, sizeof(struct sa_desc));
 	tous_sa.next = remote_sa_list;
 	remote_sa_list = &tous_sa;
 	tous_sa.em = &meth;
@@ -975,6 +985,7 @@ vpnc_doit(unsigned long tous_spi,
 	gcry_cipher_setkey(tous_sa.cry_ctx, tous_sa.enc_secret, tous_sa.enc_secret_size);
 	gcry_cipher_algo_info(tous_sa.cry_algo, GCRYCTL_GET_BLKLEN, NULL, &(tous_sa.ivlen));
 
+	memset(&tothem_sa, 0, sizeof(struct sa_desc));
 	tothem_sa.next = local_sa_list;
 	local_sa_list = &tothem_sa;
 	tothem_sa.em = &meth;
@@ -999,6 +1010,19 @@ vpnc_doit(unsigned long tous_spi,
 	gcry_cipher_open(&tothem_sa.cry_ctx, tothem_sa.cry_algo, GCRY_CIPHER_MODE_CBC, 0);
 	gcry_cipher_setkey(tothem_sa.cry_ctx, tothem_sa.enc_secret, tothem_sa.enc_secret_size);
 	gcry_cipher_algo_info(tothem_sa.cry_algo, GCRYCTL_GET_BLKLEN, NULL, &(tothem_sa.ivlen));
+
+	DEBUG(2, printf("local spi: %#08x\n", tous_sa.spi));
+	DEBUG(2, printf("remote spi: %#08x\n", tothem_sa.spi));
+	DEBUG(2, printf("md algo: %d crypt algo: %d\n", md_algo, cry_algo));
+	DEBUG(2, printf("local addr: %#08x port: %d family: %d\n",
+			tothem_sa.source.sin_addr.s_addr,
+			tothem_sa.source.sin_port,
+			tothem_sa.source.sin_family));
+	DEBUG(2, printf("remote addr: %#08x port: %d family: %d\n",
+			tothem_sa.dest.sin_addr.s_addr,
+			tothem_sa.dest.sin_port,
+			tothem_sa.dest.sin_family));
+
 
 	vpnpeer.tun_fd = tun_fd;
 	vpnpeer.local_sa = &tous_sa;

@@ -1,6 +1,7 @@
 # Makefile for an IPSec VPN client compatible with Cisco equipment.
 # Copyright (C) 2002  Geoffrey Keating
 # Copyright (C) 2003-2004  Maurice Massar
+# Copyright (C) 2006 Dan Villiom Podlaski Christiansen
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -58,11 +59,6 @@ endif
 ifeq ($(shell uname -s), Darwin)
 CPPFLAGS += -DSOCKADDR_IN_SIN_LEN -DHAVE_SA_LEN -DNEED_IPLEN_FIX -DDARWIN
 SRCS +=sysdep-bsd.c
-
-ifeq ($(shell uname -r | cut -d. -f1), 8)
-CPPFLAGS += -Ipoll
-SRCS += poll/poll.c
-endif
 endif
 
 FILELIST := $(shell echo *.c *.h vpnc-*) Makefile README ChangeLog COPYING TODO VERSION vpnc.conf vpnc.8 pcf2vpnc
