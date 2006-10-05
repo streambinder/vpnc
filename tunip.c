@@ -84,7 +84,6 @@
 #define MAX(a,b)	((a)>(b)?(a):(b))
 #endif
 
-#undef FD_COPY
 #ifndef FD_COPY
 #define FD_COPY(f, t)	((void)memcpy((t), (f), sizeof(*(f))))
 #endif
