@@ -80,7 +80,14 @@
 
 #include "tunip.h"
 
-#define max(a,b)	((a)>(b)?(a):(b))
+#ifndef MAX
+#define MAX(a,b)	((a)>(b)?(a):(b))
+#endif
+
+#undef FD_COPY
+#ifndef FD_COPY
+#define FD_COPY(f, t)	((void)memcpy((t), (f), sizeof(*(f))))
+#endif
 
 struct sa_desc {
 	struct sa_desc *next;
