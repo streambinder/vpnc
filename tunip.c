@@ -786,7 +786,6 @@ static void vpnc_main_loop(struct peer_desc *peer, struct encap_method *meth, in
 	fd_set rfds, refds;
 	int nfds=0, encap_fd =-1;
 	int enable_keepalives;
-	struct timeval select_timeout = { .tv_sec = 20 };
 
 	/* non-esp marker, nat keepalive payload (0xFF) */
 	char keepalive[5] = { 0x00, 0x00, 0x00, 0x00, 0xFF };
@@ -806,8 +805,9 @@ static void vpnc_main_loop(struct peer_desc *peer, struct encap_method *meth, in
 		int presult;
 
 		do {
-			FD_COPY(&rfds, &refds);
+			struct timeval select_timeout = { .tv_sec = 10 };
 			struct timeval *tvp = NULL;
+			FD_COPY(&rfds, &refds);
 			if (enable_keepalives)
 				tvp = &select_timeout;
 			presult = select(nfds, &refds, NULL, NULL, tvp);
