@@ -25,10 +25,11 @@ MANDIR=$(PREFIX)/share/man
 
 SRCS = vpnc.c vpnc-debug.c isakmp-pkt.c tunip.c config.c dh.c math_group.c
 OBJS = $(addsuffix .o,$(basename $(SRCS)))
+HDRS := $(addsuffix .h,$(basename $(SRCS))) isakmp.h sysdep.h
 
 CC=gcc
 CFLAGS += -W -Wall -O3 -Wmissing-declarations -Wwrite-strings -g
-CPPFLAGS = -DVERSION=\"$(shell cat VERSION)\"
+CPPFLAGS = -DVERSION=\"$(shell cat VERSION | tr -d $$ | sed s/Rev/r/)\"
 LDFLAGS = -g $(shell libgcrypt-config --libs)
 CFLAGS +=  $(shell libgcrypt-config --cflags)
 
@@ -57,11 +58,13 @@ LDFLAGS += -lnsl -lresolv -lsocket
 SRCS +=sysdep-svr4.c
 endif
 ifeq ($(shell uname -s), Darwin)
+CFLAGS += -fstrict-aliasing -freorder-blocks -fsched-interblock
 CPPFLAGS += -DSOCKADDR_IN_SIN_LEN -DHAVE_SA_LEN -DNEED_IPLEN_FIX -DDARWIN
 SRCS +=sysdep-bsd.c
 endif
 
-FILELIST := $(shell echo *.c *.h vpnc-*) Makefile README ChangeLog COPYING TODO VERSION vpnc.conf vpnc.8 pcf2vpnc
+FILELIST := $(SRCS) $(HDRS) vpnc-script vpnc-disconnect enum2debug.pl \
+	Makefile README ChangeLog COPYING TODO VERSION vpnc.conf vpnc.8 pcf2vpnc
 
 vpnc : $(OBJS)
 	@echo $(OBJS)
@@ -76,26 +79,26 @@ vpnc-debug.c vpnc-debug.h : isakmp.h enum2debug.pl
 vpnc.ps : vpnc.c
 	enscript -E -G -T 4 --word-wrap -o- $^ | psnup -2 /dev/stdin $@
 
-../vpnc-%.tar.gz : vpnc-$*.tar.gz
+../vpnc-%.tgz : vpnc-$*.tgz
 
 etags :
 	etags *.[ch]
 ctags :
 	ctags *.[ch]
 
-vpnc-%.tar.gz : $(FILELIST)
+vpnc-%.tgz : $(FILELIST)
 	mkdir vpnc-$*
-	cp -al $(FILELIST) vpnc-$*/
+	tar c $(FILELIST) | tar xC vpnc-$*/
 	tar zcf ../$@ vpnc-$*
 	rm -rf vpnc-$*
 
-dist : VERSION vpnc-$(shell cat VERSION).tar.gz
+dist : VERSION vpnc-$(shell cat VERSION).tgz
 
 clean :
-	-rm -f vpnc tags $(OBJS)
+	-rm -f vpnc tags .depend $(OBJS)
 
 realclean :
-	-rm -f vpnc $(OBJS) tags vpnc-debug.c vpnc-debug.h
+	-rm -f vpnc $(OBJS) tags vpnc-debug.c vpnc-debug.h .depend
 
 all : vpnc
 

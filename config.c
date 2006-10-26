@@ -565,7 +565,7 @@ static void print_version(void)
 	unsigned int i;
 
 	printf("vpnc version " VERSION "\n");
-	printf("Copyright (C) 2002-2004 Geoffrey Keating, Maurice Massar\n");
+	printf("Copyright (C) 2002-2006 Geoffrey Keating, Maurice Massar, others\n");
 	printf("vpnc comes with NO WARRANTY, to the extent permitted by law.\n"
 		"You may redistribute copies of vpnc under the terms of the GNU General\n"
 		"Public License.  For more information about these matters, see the files\n"
