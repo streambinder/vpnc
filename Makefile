@@ -28,10 +28,11 @@ MANDIR=$(PREFIX)/share/man
 SRCS = vpnc.c vpnc-debug.c isakmp-pkt.c tunip.c config.c dh.c math_group.c
 OBJS = $(addsuffix .o,$(basename $(SRCS)))
 HDRS := $(addsuffix .h,$(basename $(SRCS))) isakmp.h sysdep.h
+VERSION := $(shell cat VERSION | tr -Cd '[[:digit:]]-.' | sed s/-/-r/)
 
 CC=gcc
 CFLAGS += -W -Wall -O3 -Wmissing-declarations -Wwrite-strings -g
-CPPFLAGS = -DVERSION=\"$(shell cat VERSION | tr -d $$ | sed s/Rev/r/)\"
+CPPFLAGS = -DVERSION=\"$(VERSION)\"
 LDFLAGS = -g $(shell libgcrypt-config --libs)
 CFLAGS +=  $(shell libgcrypt-config --cflags)
 
@@ -94,7 +95,7 @@ vpnc-%.tgz : $(FILELIST)
 	tar zcf ../$@ vpnc-$*
 	rm -rf vpnc-$*
 
-dist : VERSION vpnc-$(shell cat VERSION).tgz
+dist : VERSION vpnc-$(VERSION).tgz
 
 clean :
 	-rm -f vpnc tags .depend $(OBJS)
