@@ -28,7 +28,7 @@ MANDIR=$(PREFIX)/share/man
 SRCS = vpnc.c vpnc-debug.c isakmp-pkt.c tunip.c config.c dh.c math_group.c
 OBJS = $(addsuffix .o,$(basename $(SRCS)))
 HDRS := $(addsuffix .h,$(basename $(SRCS))) isakmp.h sysdep.h
-VERSION := $(shell cat VERSION | tr -Cd '[[:digit:]]-.' | sed s/-/-r/)
+VERSION := $(shell sed 's/[^0-9.-]//g;s/-/-r/' VERSION)
 
 CC=gcc
 CFLAGS += -W -Wall -O3 -Wmissing-declarations -Wwrite-strings -g
