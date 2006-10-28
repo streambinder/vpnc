@@ -25,9 +25,12 @@ ETCDIR=/etc/vpnc
 SBINDIR=$(PREFIX)/sbin
 MANDIR=$(PREFIX)/share/man
 
-SRCS = vpnc.c vpnc-debug.c isakmp-pkt.c tunip.c config.c dh.c math_group.c
+SRCS = vpnc-debug.c isakmp-pkt.c tunip.c config.c dh.c math_group.c
+BINS = vpnc cisco-decrypt
 OBJS = $(addsuffix .o,$(basename $(SRCS)))
 HDRS := $(addsuffix .h,$(basename $(SRCS))) isakmp.h sysdep.h
+BINOBJS = $(addsuffix .o,$(BINS))
+BINSRCS = $(addsuffix .c,$(BINS))
 VERSION := $(shell sed 's/[^0-9.-]//g;s/-/-r/' VERSION)
 
 CC=gcc
@@ -66,12 +69,14 @@ CPPFLAGS += -DSOCKADDR_IN_SIN_LEN -DHAVE_SA_LEN -DNEED_IPLEN_FIX -DDARWIN
 SRCS +=sysdep-bsd.c
 endif
 
-FILELIST := $(SRCS) $(HDRS) vpnc-script vpnc-disconnect enum2debug.pl \
-	Makefile README ChangeLog COPYING TODO VERSION vpnc.conf vpnc.8 pcf2vpnc
+FILELIST := $(SRCS) $(HDRS) $(BINSRCS) vpnc-script vpnc-disconnect \
+	enum2debug.pl Makefile README ChangeLog COPYING TODO VERSION vpnc.conf \
+	vpnc.8 pcf2vpnc
 
-vpnc : $(OBJS)
-	@echo $(OBJS)
-	$(CC) -o $@ $^ $(LDFLAGS)
+all : $(BINS)
+
+vpnc : $(OBJS) $(BINOBJS)
+	$(CC) -o $@ $(OBJS) $(addsuffix .o,$@) $(LDFLAGS)
 
 .depend: $(SRCS)
 	$(CC) -MM $(SRCS) $(CFLAGS) $(CPPFLAGS) > $@
@@ -98,20 +103,18 @@ vpnc-%.tgz : $(FILELIST)
 dist : VERSION vpnc-$(VERSION).tgz
 
 clean :
-	-rm -f vpnc tags .depend $(OBJS)
+	-rm -f tags $(OBJS) $(BINOBJS) $(BINS)
 
 realclean :
-	-rm -f vpnc $(OBJS) tags vpnc-debug.c vpnc-debug.h .depend
+	-rm -f $(BINS) $(BINOBJS) $(OBJS) tags vpnc-debug.c vpnc-debug.h .depend
 
-all : vpnc
-
-install :
+install : all
 	install -d $(DESTDIR)$(ETCDIR) $(DESTDIR)$(SBINDIR) $(DESTDIR)$(MANDIR)/man8
 	install vpnc.conf vpnc-script $(DESTDIR)$(ETCDIR)
 	install vpnc vpnc-disconnect $(DESTDIR)$(SBINDIR)
 	install vpnc.8 $(DESTDIR)$(MANDIR)/man8
 
-install-strip :
+install-strip : all
 	install -d $(DESTDIR)$(ETCDIR) $(DESTDIR)$(SBINDIR) $(DESTDIR)$(MANDIR)/man8
 	install vpnc.conf vpnc-script $(DESTDIR)$(ETCDIR)
 	install -s vpnc $(DESTDIR)$(SBINDIR)
