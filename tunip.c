@@ -176,6 +176,8 @@ struct peer_desc vpnpeer;
 
 unsigned short ip_id;
 
+struct sa_block oursa[1];
+
 /* Security associations lists */
 struct sa_desc *local_sa_list = NULL;
 struct sa_desc *remote_sa_list = NULL;

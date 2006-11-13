@@ -33,6 +33,7 @@
 #include "sysdep.h"
 #include "config.h"
 #include "vpnc.h"
+#include "supp.h"
 
 /*
 #include <assert.h>
@@ -103,7 +104,7 @@ static int hex2bin_c(unsigned int c)
 	return -1;
 }
 
-static int hex2bin(const char *str, char **bin, int *len)
+int hex2bin(const char *str, char **bin, int *len)
 {
 	char *p;
 	int i, l;
@@ -134,7 +135,7 @@ static int hex2bin(const char *str, char **bin, int *len)
 	return 0;
 }
 
-static int deobfuscate(char *ct, int len, const char **resp, char *reslenp)
+int deobfuscate(char *ct, int len, const char **resp, char *reslenp)
 {
 	const char *h1  = ct;
 	const char *h4  = ct + 20;

@@ -21,6 +21,34 @@
 #ifndef __TUNIP_H__
 #define __TUNIP_H__
 
+#include "isakmp.h"
+
+#include <net/if.h>
+
+struct sa_block {
+	int tun_fd;
+	char tun_name[IFNAMSIZ];
+	uint8_t i_cookie[ISAKMP_COOKIE_LENGTH];
+	uint8_t r_cookie[ISAKMP_COOKIE_LENGTH];
+	uint8_t *key; /* ike encryption key */
+	size_t keylen;
+	uint8_t *initial_iv;
+	uint8_t *skeyid_a;
+	uint8_t *skeyid_d;
+	int auth_algo, cry_algo, md_algo;
+	size_t ivlen, md_len;
+	uint8_t current_iv_msgid[4];
+	uint8_t *current_iv;
+	uint8_t our_address[4], our_netmask[4];
+	uint32_t tous_esp_spi, tothem_esp_spi;
+	uint8_t *kill_packet;
+	size_t kill_packet_size;
+	uint16_t peer_udpencap_port;
+	int do_pfs;
+};
+
+extern struct sa_block oursa[1];
+
 extern void vpnc_doit(unsigned long tous_spi,
         const unsigned char *tous_key,
         struct sockaddr_in *tous_dest,

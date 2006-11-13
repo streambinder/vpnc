@@ -25,7 +25,7 @@ ETCDIR=/etc/vpnc
 SBINDIR=$(PREFIX)/sbin
 MANDIR=$(PREFIX)/share/man
 
-SRCS = vpnc-debug.c isakmp-pkt.c tunip.c config.c dh.c math_group.c
+SRCS = vpnc-debug.c isakmp-pkt.c tunip.c config.c dh.c math_group.c supp.c
 BINS = vpnc cisco-decrypt
 OBJS = $(addsuffix .o,$(basename $(SRCS)))
 HDRS := $(addsuffix .h,$(basename $(SRCS))) isakmp.h sysdep.h
@@ -75,7 +75,7 @@ FILELIST := $(SRCS) $(HDRS) $(BINSRCS) vpnc-script vpnc-disconnect \
 
 all : $(BINS)
 
-vpnc : $(OBJS) $(BINOBJS)
+$(BINS) : $(OBJS) $(BINOBJS)
 	$(CC) -o $@ $(OBJS) $(addsuffix .o,$@) $(LDFLAGS)
 
 .depend: $(SRCS)
