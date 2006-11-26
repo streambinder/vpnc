@@ -902,12 +902,7 @@ static void vpnc_main_loop(struct peer_desc *peer, struct encap_method *meth, in
 		}
 	}
 	
-	sock = socket(AF_INET, SOCK_DGRAM, 0);
-	if (sock >= 0) {
-		sendto(sock, kill_packet, kill_packet_size, 0,
-			kill_dest, sizeof(struct sockaddr_in));
-		close(sock);
-	}
+	sendrecv(NULL, 0, kill_packet, kill_packet_size, 1);
 	tun_close(oursa->tun_fd, oursa->tun_name);
 	if (pidfile)
 		unlink(pidfile); /* ignore errors */

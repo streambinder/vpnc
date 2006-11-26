@@ -21,4 +21,6 @@
 #ifndef __VPNC_H__
 #define __VPNC_H__
 
+ssize_t sendrecv(void *recvbuf, size_t recvbufsize, void *tosend, size_t sendsize, int sendonly);
+
 #endif

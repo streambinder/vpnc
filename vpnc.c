@@ -200,8 +200,7 @@ static int recv_ignore_dup(void *recvbuf, size_t recvbufsize)
    new packet is put in RECVBUF of size RECVBUFSIZE and the actual size
    of the new packet is returned.  */
 
-static ssize_t
-sendrecv(void *recvbuf, size_t recvbufsize, void *tosend, size_t sendsize, int sendonly)
+ssize_t sendrecv(void *recvbuf, size_t recvbufsize, void *tosend, size_t sendsize, int sendonly)
 {
 	struct pollfd pfd;
 	int tries = 0;
@@ -2015,7 +2014,7 @@ static void setup_link(struct sa_block *s)
 	/* Create the delete payload, now that we have all the information.  */
 	{
 		struct isakmp_payload *d_isakmp, *d_ipsec;
-		uint32_t del_msgid;
+		uint8_t del_msgid;
 
 		gcry_create_nonce((uint8_t *) & del_msgid, sizeof(del_msgid));
 		d_isakmp = new_isakmp_payload(ISAKMP_PAYLOAD_D);
@@ -2042,7 +2041,7 @@ static void setup_link(struct sa_block *s)
 		memcpy(d_ipsec->u.d.spi[1], &s->tothem_esp_spi, 4);
 		phase2_authpacket(s, d_ipsec, ISAKMP_EXCHANGE_INFORMATIONAL,
 			del_msgid, &s->kill_packet, &s->kill_packet_size,
-			nonce, sizeof(nonce), nonce_r->u.nonce.data, nonce_r->u.nonce.length);
+			0, 0, 0, 0);
 		isakmp_crypt(s, s->kill_packet, s->kill_packet_size, 1);
 	}
 	DEBUG(2, printf("S7.8\n"));
