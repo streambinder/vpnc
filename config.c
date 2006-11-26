@@ -35,25 +35,6 @@
 #include "vpnc.h"
 #include "supp.h"
 
-/*
-#include <assert.h>
-#include <sys/fcntl.h>
-#include <time.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <netdb.h>
-#include <arpa/inet.h>
-#include <poll.h>
-#include <net/if.h>
-#include <sys/ioctl.h>
-
-#include <gcrypt.h>
-
-#include "isakmp-pkt.h"
-#include "math_group.h"
-#include "dh.h"
-*/
-
 const char *config[LAST_CONFIG];
 
 int opt_debug = 0;

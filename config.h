@@ -22,6 +22,7 @@
 #define __CONFIG_H__
 
 #include <unistd.h>
+#include <inttypes.h>
 
 enum config_enum {
 	CONFIG_NONE,

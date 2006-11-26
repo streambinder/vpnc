@@ -75,8 +75,9 @@ FILELIST := $(SRCS) $(HDRS) $(BINSRCS) vpnc-script vpnc-disconnect \
 
 all : $(BINS)
 
-$(BINS) : $(OBJS) $(BINOBJS)
-	$(CC) -o $@ $(OBJS) $(addsuffix .o,$@) $(LDFLAGS)
+vpnc : $(OBJS) vpnc.o
+
+cisco-decrypt : cisco-decrypt.o config.o supp.o
 
 .depend: $(SRCS)
 	$(CC) -MM $(SRCS) $(CFLAGS) $(CPPFLAGS) > $@

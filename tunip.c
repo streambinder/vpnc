@@ -786,7 +786,6 @@ static struct sockaddr *kill_dest;
 
 static void vpnc_main_loop(struct peer_desc *peer, struct encap_method *meth, int tun_fd, const char *pidfile)
 {
-	int sock;
 	fd_set rfds, refds;
 	int nfds=0, encap_fd =-1;
 	int enable_keepalives;
