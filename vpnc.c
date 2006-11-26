@@ -1141,6 +1141,8 @@ static void do_phase_1(const char *key_id, const char *shared_key, struct sa_blo
 				gcry_md_final(hm);
 				pl = pl->next = new_isakmp_data_payload(natd_type,
 					gcry_md_read(hm, 0), s->md_len);
+				if (config[CONFIG_FORCE_NATT]) /* force detection of "this end behind NAT" */
+					pl->u.ke.data[0] ^= 1; /* by flipping a bit in the nat-detection-hash */
 				if (seen_natd && memcmp(natd_us, pl->u.ke.data, s->md_len) == 0)
 					seen_natd_us = 1;
 				gcry_md_close(hm);

@@ -423,6 +423,13 @@ static const struct config_names_s {
 		"disable use of NAT-T",
 		NULL
 	}, {
+		CONFIG_FORCE_NATT, 0, 1,
+		"--force-natt",
+		"Force NAT Traversal",
+		NULL,
+		"force use of NAT-T",
+		NULL
+	}, {
 		CONFIG_NON_INTERACTIVE, 0, 1,
 		"--non-inter",
 		"Noninteractive",
