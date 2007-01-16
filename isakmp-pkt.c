@@ -669,15 +669,15 @@ static struct isakmp_payload *parse_isakmp_payload(uint8_t type,
 		hex_dump("n.data", r->u.n.data, r->u.n.data_length);
 		break;
 	case ISAKMP_PAYLOAD_D:
-		r->u.n.doi = fetch4(); /*FIXME: huuuh? */
-		hex_dump("n.doi", &r->u.n.doi, UINT32);
-		r->u.n.protocol = fetch1();
-		hex_dump("n.protocol", &r->u.n.protocol, UINT8);
-		r->u.n.spi_length = fetch1();
-		hex_dump("n.spi_length", &r->u.n.spi_length, UINT8);
+		r->u.d.doi = fetch4();
+		hex_dump("n.doi", &r->u.d.doi, UINT32);
+		r->u.d.protocol = fetch1();
+		hex_dump("n.protocol", &r->u.d.protocol, UINT8);
+		r->u.d.spi_length = fetch1();
+		hex_dump("n.spi_length", &r->u.d.spi_length, UINT8);
 		r->u.d.num_spi = fetch2();
 		hex_dump("d.num_spi", &r->u.d.num_spi, UINT16);
-		if (r->u.d.num_spi * r->u.n.spi_length + 12u != length) {
+		if (r->u.d.num_spi * r->u.d.spi_length + 12u != length) {
 			*reject = ISAKMP_N_PAYLOAD_MALFORMED;
 			return r;
 		}
@@ -698,10 +698,10 @@ static struct isakmp_payload *parse_isakmp_payload(uint8_t type,
 			*reject = ISAKMP_N_PAYLOAD_MALFORMED;
 			return r;
 		}
-		r->u.t.id = fetch2();
-		hex_dump("t.id", &r->u.t.id, UINT16);
+		r->u.modecfg.id = fetch2();
+		hex_dump("t.id", &r->u.modecfg.id, UINT16);
 		length -= 8;
-		r->u.t.attributes = parse_isakmp_attributes(&data, length, reject);
+		r->u.modecfg.attributes = parse_isakmp_attributes(&data, length, reject);
 		data_len -= olength - 8;
 		break;
 

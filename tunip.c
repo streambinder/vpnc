@@ -168,7 +168,9 @@ int encap_esp_recv_peer(struct encap_method *encap, struct peer_desc *peer);
 
 /* Yuck! Global variables... */
 
-#define MAX_HEADER 64
+extern int natt_draft;
+
+#define MAX_HEADER 72
 #define MAX_PACKET 4096
 unsigned char buf[MAX_HEADER + MAX_PACKET];
 
@@ -291,6 +293,10 @@ static int encap_udp_recv(struct encap_method *encap,
 	if (r == -1) {
 		syslog(LOG_ERR, "recvfrom: %m");
 		return -1;
+	}
+	if (natt_draft < 2 && r > 8) {
+		r -= 8;
+		memmove(buf, buf + 8, r);
 	}
 	if (r < encap->fixed_header_size) {
 		syslog(LOG_ALERT, "packet too short from %s",
@@ -650,22 +656,28 @@ void encap_udp_send_peer(struct encap_method *encap,
 	unsigned char *buf, unsigned int bufsize)
 {
 	ssize_t sent;
-
+	
 	buf += MAX_HEADER;
-
+	
 	encap->buf = buf;
 	encap->buflen = bufsize;
-
+	
 	/* Prepend our encapsulation header and new IP header */
 	encap->var_header_size = (encap->fixed_header_size + peer->remote_sa->ivlen);
-
+	
 	encap->buf -= encap->var_header_size;
 	encap->buflen += encap->var_header_size;
-
+	
 	encap->bufpayload = 0;
-
+	
 	encap_esp_encapsulate(encap, peer);
-
+	
+	if (natt_draft < 2) {
+		encap->buf -= 8;
+		encap->buflen += 8;
+		memset(encap->buf, 0, 8);
+	}
+	
 	sent = sendto(encap->fd, encap->buf, encap->buflen, 0,
 		(struct sockaddr *)&peer->remote_sa->dest, sizeof(peer->remote_sa->dest));
 	if (sent == -1) {
@@ -791,7 +803,18 @@ static void vpnc_main_loop(struct peer_desc *peer, struct encap_method *meth, in
 	int enable_keepalives;
 
 	/* non-esp marker, nat keepalive payload (0xFF) */
-	char keepalive[5] = { 0x00, 0x00, 0x00, 0x00, 0xFF };
+	char keepalive_v2[5] = { 0x00, 0x00, 0x00, 0x00, 0xFF };
+	char keepalive_v1[1] = { 0xFF };
+	char *keepalive;
+	size_t keepalive_size;
+	
+	if (natt_draft < 2) {
+		keepalive = keepalive_v1;
+		keepalive_size = sizeof(keepalive_v1);
+	} else {
+		keepalive = keepalive_v2;
+		keepalive_size = sizeof(keepalive_v2);
+	}
 
 	/* send keepalives if UDP encapsulation is enabled */
 	enable_keepalives = !strcmp(meth->name, "udpesp");
@@ -816,7 +839,7 @@ static void vpnc_main_loop(struct peer_desc *peer, struct encap_method *meth, in
 			presult = select(nfds, &refds, NULL, NULL, tvp);
 			if (presult == 0 && enable_keepalives) {
 				/* send nat keepalive packet */
-				if(sendto(meth->fd, keepalive, sizeof(keepalive), 0,
+				if(sendto(meth->fd, keepalive, keepalive_size, 0,
 					(struct sockaddr*)&peer->remote_sa->dest,
 					sizeof(peer->remote_sa->dest)) == -1) {
 					syslog(LOG_ERR, "sendto: %m");

@@ -52,6 +52,8 @@
 
 #define ISAKMP_PORT (500)
 
+int natt_draft = -1;
+
 static int sockfd = -1;
 static struct sockaddr *dest_addr;
 static uint16_t local_port; /* in network byte order */
@@ -213,7 +215,7 @@ ssize_t sendrecv(void *recvbuf, size_t recvbufsize, void *tosend, size_t sendsiz
 	pfd.events = POLLIN;
 	tries = 0;
 
-	if ((tosend != NULL)&&(encap_mode != IPSEC_ENCAP_TUNNEL)) {
+	if ((natt_draft > 1)&&(tosend != NULL)&&(encap_mode != IPSEC_ENCAP_TUNNEL)) {
 		DEBUG(2, printf("NAT-T mode, adding non-esp marker\n"));
 		realtosend = xallocc(sendsize+4);
 		memcpy(realtosend+4, tosend, sendsize);
@@ -251,15 +253,15 @@ ssize_t sendrecv(void *recvbuf, size_t recvbufsize, void *tosend, size_t sendsiz
 		tries++;
 	}
 
-	if ((tosend != NULL)&&(encap_mode != IPSEC_ENCAP_TUNNEL))
+	if (realtosend != tosend)
 		free(realtosend);
 
 	if (sendonly)
 		return 0;
 
-	if (encap_mode != IPSEC_ENCAP_TUNNEL) {
+	if ((natt_draft > 1)&&(encap_mode != IPSEC_ENCAP_TUNNEL)&&(recvsize > 4)) {
 		recvsize -= 4; /* 4 bytes non-esp marker */
-		memcpy(recvbuf, recvbuf+4, recvsize);
+		memmove(recvbuf, recvbuf+4, recvsize);
 	}
 
 	/* Wait at least 2s for a response or 4 times the time it took
@@ -343,11 +345,14 @@ static uint16_t unpack_verify_phase2(struct sa_block *s,
 {
 	struct isakmp_packet *r;
 	int reject = 0;
-
+	
+	if ((natt_draft > -1) && (natt_draft < 2) && (r_length == 1) && (r_packet[0] == 0xff))
+		return -2; // Keepalive NAT-T draft 0
+	
 	*r_p = NULL;
 
 	if (r_length < ISAKMP_PAYLOAD_O || ((r_length - ISAKMP_PAYLOAD_O) % s->ivlen != 0)) {
-		DEBUG(2, printf("payload to short or not padded: len=%lld, min=%d (ivlen=%lld)\n",
+		DEBUG(2, printf("payload too short or not padded: len=%lld, min=%d (ivlen=%lld)\n",
 			(long long)r_length, ISAKMP_PAYLOAD_O, (long long)s->ivlen));
 		return ISAKMP_N_UNEQUAL_PAYLOAD_LENGTHS;
 	}
@@ -634,7 +639,11 @@ static void do_phase_1(const char *key_id, const char *shared_key, struct sa_blo
 	static const uint8_t xauth_vid[] = XAUTH_VENDOR_ID;
 	static const uint8_t unity_vid[] = UNITY_VENDOR_ID;
 	static const uint8_t unknown_vid[] = UNKNOWN_VENDOR_ID;
-	static const uint8_t natt_vid[] = NATT_VENDOR_ID; /* NAT traversal */
+	/* NAT traversal */
+	static const uint8_t natt_vid_00[] = NATT_VENDOR_ID_00;
+	static const uint8_t natt_vid_01[] = NATT_VENDOR_ID_01;
+	static const uint8_t natt_vid_02[] = NATT_VENDOR_ID_02;
+	static const uint8_t natt_vid_02n[] = NATT_VENDOR_ID_02n;
 #if 0
 	static const uint8_t dpd_vid[] = DPD_VENDOR_ID; /* dead peer detection */
 	static const uint8_t my_vid[] = {
@@ -646,7 +655,9 @@ static void do_phase_1(const char *key_id, const char *shared_key, struct sa_blo
 	struct isakmp_packet *p1;
 	int seen_natt_vid = 0, seen_natd = 0, seen_natd_them = 0, seen_natd_us = 0, natd_type = 0;
 	unsigned char *natd_us = NULL, *natd_them = NULL;
-
+	
+	natt_draft = -1;
+	
 	DEBUG(2, printf("S4.1\n"));
 	gcry_create_nonce(s->i_cookie, ISAKMP_COOKIE_LENGTH);
 	s->do_pfs = -1;
@@ -692,9 +703,16 @@ static void do_phase_1(const char *key_id, const char *shared_key, struct sa_blo
 			xauth_vid, sizeof(xauth_vid));
 		l = l->next = new_isakmp_data_payload(ISAKMP_PAYLOAD_VID,
 			unity_vid, sizeof(unity_vid));
-		if (!config[CONFIG_DISABLE_NATT])
+		if (!config[CONFIG_DISABLE_NATT]) {
 			l = l->next = new_isakmp_data_payload(ISAKMP_PAYLOAD_VID,
-				natt_vid, sizeof(natt_vid));
+				natt_vid_02n, sizeof(natt_vid_02n));
+			l = l->next = new_isakmp_data_payload(ISAKMP_PAYLOAD_VID,
+				natt_vid_02, sizeof(natt_vid_02));
+			l = l->next = new_isakmp_data_payload(ISAKMP_PAYLOAD_VID,
+				natt_vid_01, sizeof(natt_vid_01));
+			l = l->next = new_isakmp_data_payload(ISAKMP_PAYLOAD_VID,
+				natt_vid_00, sizeof(natt_vid_00));
+		}
 #if 0
 		l = l->next = new_isakmp_data_payload(ISAKMP_PAYLOAD_VID,
 			dpd_vid, sizeof(dpd_vid));
@@ -872,10 +890,32 @@ static void do_phase_1(const char *key_id, const char *shared_key, struct sa_blo
 					&& memcmp(rp->u.vid.data, xauth_vid,
 						sizeof(xauth_vid)) == 0)
 					seen_xauth_vid = 1;
-				else if (rp->u.vid.length == sizeof(natt_vid)
-					&& memcmp(rp->u.vid.data, natt_vid,
-						sizeof(natt_vid)) == 0)
+
+				else if (rp->u.vid.length == sizeof(natt_vid_02n)
+					&& (!memcmp(rp->u.vid.data, natt_vid_02n,
+							sizeof(natt_vid_02n)) ||
+						!memcmp(rp->u.vid.data, natt_vid_02,
+							sizeof(natt_vid_02)))) {
 					seen_natt_vid = 1;
+					if (natt_draft < 2) natt_draft = 2;
+					DEBUG(2, printf("peer is NAT-T capable (draft-02)\\n\n"));
+				} else if (rp->u.vid.length == sizeof(natt_vid_01)
+					&& memcmp(rp->u.vid.data, natt_vid_01,
+						sizeof(natt_vid_01)) == 0) {
+					seen_natt_vid = 1;
+					if (natt_draft < 1) natt_draft = 1;
+					DEBUG(2, printf("peer is NAT-T capable (draft-01)\n"));
+				} else if (rp->u.vid.length == sizeof(natt_vid_00)
+					&& memcmp(rp->u.vid.data, natt_vid_00,
+						sizeof(natt_vid_00)) == 0) {
+					seen_natt_vid = 1;
+					if (natt_draft < 0) natt_draft = 0;
+					DEBUG(2, printf("peer is NAT-T capable (draft-00)\n"));
+				} else {
+					hex_dump("unknown ISAKMP_PAYLOAD_VID: ",
+						rp->u.vid.data, rp->u.vid.length);
+				}
+
 				break;
 			case ISAKMP_PAYLOAD_NAT_D_OLD:
 			case ISAKMP_PAYLOAD_NAT_D:
@@ -909,6 +949,7 @@ static void do_phase_1(const char *key_id, const char *shared_key, struct sa_blo
 				}
 				break;
 			default:
+				DEBUG(1, printf("rejecting invalid payload type %d\n", rp->type));
 				reject = ISAKMP_N_INVALID_PAYLOAD_TYPE;
 				break;
 			}
@@ -1165,10 +1206,12 @@ static void do_phase_1(const char *key_id, const char *shared_key, struct sa_blo
 					default:
 						abort();
 				}
-				((struct sockaddr_in *)dest_addr)->sin_port = htons(4500);
-				if (local_port == htons(500)) {
-					close(sockfd);
-					sockfd = make_socket(local_port = htons(4500));
+				if (natt_draft > 1){
+					((struct sockaddr_in *)dest_addr)->sin_port = htons(4500);
+					if (local_port == htons(500)) {
+						close(sockfd);
+						sockfd = make_socket(local_port = htons(4500));
+					}
 				}
 			} else {
 				DEBUG(1, printf("NAT status: NAT-T VID seen, no NAT device detected\n"));
@@ -1205,6 +1248,8 @@ static int do_phase2_notice_check(struct sa_block *s, struct isakmp_packet **r_p
 	
 	while (1) {
 		reject = unpack_verify_phase2(s, r_packet, r_length, r_p, NULL, 0);
+		if (reject == -2)
+			continue;
 		if (reject == ISAKMP_N_INVALID_COOKIE) {
 			r_length = sendrecv(r_packet, sizeof(r_packet), NULL, 0, 0);
 			continue;
@@ -1691,7 +1736,7 @@ static int do_phase_2_config(struct sa_block *s)
 			break;
 			
 		default:
-			DEBUG(2, printf("unknown attriube %d / 0x%X\n", a->type, a->type));
+			DEBUG(2, printf("unknown attriubte %d / 0x%X\n", a->type, a->type));
 			break;
 		}
 
@@ -1831,6 +1876,8 @@ static void setup_link(struct sa_block *s)
 
 		DEBUG(2, printf("S7.3\n"));
 		reject = unpack_verify_phase2(s, r_packet, r_length, &r, nonce, sizeof(nonce));
+		if (reject == -2)
+			continue;
 
 		DEBUG(2, printf("S7.4\n"));
 		if (((reject == 0) || (reject == ISAKMP_N_AUTHENTICATION_FAILED))
