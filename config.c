@@ -41,6 +41,7 @@ int opt_debug = 0;
 int opt_nd;
 int opt_1des;
 int opt_udpencap;
+enum vendor_enum opt_vendor;
 uint16_t opt_udpencapport;
 
 void hex_dump(const char *str, const void *data, ssize_t len)
@@ -243,6 +244,11 @@ static const char *config_def_pid_file(void)
 	return "/var/run/vpnc/pid";
 }
 
+static const char *config_def_vendor(void)
+{
+	return "cisco";
+}
+
 static const struct config_names_s {
 	enum config_enum nm;
 	const int needsArgument;
@@ -436,6 +442,13 @@ static const struct config_names_s {
 		NULL,
 		"Don't ask anything, exit on missing options",
 		NULL
+	}, {
+		CONFIG_VENDOR, 0, 1,
+		"--vendor",
+		"Vendor",
+		"<Vendor name>",
+		"vendor of your IPSec gateway (cisco, netscreen)",
+		config_def_vendor
 	}, {
 		0, 0, 0, NULL, NULL, NULL, NULL, NULL
 	}
@@ -666,6 +679,15 @@ void do_config(int argc, char **argv)
 		opt_1des = (config[CONFIG_ENABLE_1DES]) ? 1 : 0;
 		opt_udpencap=(config[CONFIG_UDP_ENCAP]) ? 1 : 0;
 		opt_udpencapport=atoi(config[CONFIG_UDP_ENCAP_PORT]);
+		
+		if (!strcmp(config[CONFIG_VENDOR], "cisco")) {
+			opt_vendor = CISCO;
+		} else if (!strcmp(config[CONFIG_VENDOR], "netscreen")) {
+			opt_vendor = NETSCREEN;
+		} else {
+			printf("%s: unknown vendor %s\nknown vendors: cisco netscreen\n", argv[0], config[CONFIG_VENDOR]);
+			exit(1);
+		}
 	}
 
 	if (opt_debug >= 99) {

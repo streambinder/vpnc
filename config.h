@@ -50,6 +50,7 @@ enum config_enum {
 	CONFIG_UDP_ENCAP_PORT,
 	CONFIG_DISABLE_NATT,
 	CONFIG_FORCE_NATT,
+	CONFIG_VENDOR,
 	LAST_CONFIG
 };
 
@@ -59,8 +60,14 @@ enum hex_dump_enum {
 	UINT32 = -4
 };
 
+enum vendor_enum {
+	CISCO,
+	NETSCREEN
+};
+
 extern const char *config[LAST_CONFIG];
 
+extern enum vendor_enum opt_vendor;
 extern int opt_debug;
 extern int opt_nd;
 extern int opt_1des;

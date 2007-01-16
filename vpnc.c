@@ -576,6 +576,184 @@ static uint8_t *gen_keymat(struct sa_block *s,
 	return block;
 }
 
+static int do_config_to_env(struct sa_block *s, struct isakmp_attribute *a)
+{
+	int i;
+	int reject;
+	int seen_address = 0;
+	char *strbuf, *strbuf2;
+	
+	unsetenv("CISCO_BANNER");
+	unsetenv("CISCO_DEF_DOMAIN");
+	unsetenv("CISCO_SPLIT_INC");
+	unsetenv("INTERNAL_IP4_NBNS");
+	unsetenv("INTERNAL_IP4_DNS");
+	unsetenv("INTERNAL_IP4_NETMASK");
+	unsetenv("INTERNAL_IP4_ADDRESS");
+
+	for (; a && reject == 0; a = a->next)
+		switch (a->type) {
+		case ISAKMP_MODECFG_ATTRIB_INTERNAL_IP4_ADDRESS:
+			if (a->af != isakmp_attr_lots || a->u.lots.length != 4)
+				reject = ISAKMP_N_ATTRIBUTES_NOT_SUPPORTED;
+			else {
+				addenv_ipv4("INTERNAL_IP4_ADDRESS", a->u.lots.data);
+				memcpy(s->our_address, a->u.lots.data, 4);
+			}
+			seen_address = 1;
+			break;
+
+		case ISAKMP_MODECFG_ATTRIB_INTERNAL_IP4_NETMASK:
+			if (a->af == isakmp_attr_lots && a->u.lots.length == 0) {
+				DEBUG(2, printf("ignoring zero length netmask\n"));
+				continue;
+			}
+			if (a->af != isakmp_attr_lots || a->u.lots.length != 4)
+				reject = ISAKMP_N_ATTRIBUTES_NOT_SUPPORTED;
+			else
+				addenv_ipv4("INTERNAL_IP4_NETMASK", a->u.lots.data);
+			break;
+
+		case ISAKMP_MODECFG_ATTRIB_INTERNAL_IP4_DNS:
+			if (a->af != isakmp_attr_lots || a->u.lots.length != 4)
+				reject = ISAKMP_N_ATTRIBUTES_NOT_SUPPORTED;
+			else
+				addenv_ipv4("INTERNAL_IP4_DNS", a->u.lots.data);
+			break;
+
+		case ISAKMP_MODECFG_ATTRIB_INTERNAL_IP4_NBNS:
+			if (a->af != isakmp_attr_lots || a->u.lots.length != 4)
+				reject = ISAKMP_N_ATTRIBUTES_NOT_SUPPORTED;
+			else
+				addenv_ipv4("INTERNAL_IP4_NBNS", a->u.lots.data);
+			break;
+
+		case ISAKMP_MODECFG_ATTRIB_CISCO_DEF_DOMAIN:
+			if (a->af != isakmp_attr_lots) {
+				reject = ISAKMP_N_ATTRIBUTES_NOT_SUPPORTED;
+				break;
+			}
+			strbuf = xallocc(a->u.lots.length + 1);
+			memcpy(strbuf, a->u.lots.data, a->u.lots.length);
+			addenv("CISCO_DEF_DOMAIN", strbuf);
+			free(strbuf);
+			break;
+
+		case ISAKMP_MODECFG_ATTRIB_CISCO_BANNER:
+			if (a->af != isakmp_attr_lots) {
+				reject = ISAKMP_N_ATTRIBUTES_NOT_SUPPORTED;
+				break;
+			}
+			strbuf = xallocc(a->u.lots.length + 1);
+			memcpy(strbuf, a->u.lots.data, a->u.lots.length);
+			addenv("CISCO_BANNER", strbuf);
+			free(strbuf);
+			DEBUG(1, printf("Banner: "));
+			DEBUG(1, fwrite(a->u.lots.data, a->u.lots.length, 1, stdout));
+			DEBUG(1, printf("\n"));
+			break;
+
+		case ISAKMP_MODECFG_ATTRIB_APPLICATION_VERSION:
+			DEBUG(2, printf("Remote Application Version: "));
+			DEBUG(2, fwrite(a->u.lots.data, a->u.lots.length, 1, stdout));
+			DEBUG(2, printf("\n"));
+			break;
+
+		case ISAKMP_MODECFG_ATTRIB_CISCO_DO_PFS:
+			if (a->af != isakmp_attr_16)
+				reject = ISAKMP_N_ATTRIBUTES_NOT_SUPPORTED;
+			else {
+				s->do_pfs = a->u.attr_16;
+				DEBUG(2, printf("got pfs setting: %d\n", s->do_pfs));
+			}
+			break;
+
+		case ISAKMP_MODECFG_ATTRIB_CISCO_UDP_ENCAP_PORT:
+			if (a->af != isakmp_attr_16)
+				reject = ISAKMP_N_ATTRIBUTES_NOT_SUPPORTED;
+			else {
+				s->peer_udpencap_port = a->u.attr_16;
+				DEBUG(2, printf("got peer udp encapsulation port: %hu\n", s->peer_udpencap_port));
+			}
+			break;
+
+		case ISAKMP_MODECFG_ATTRIB_CISCO_SPLIT_INC:
+			if (a->af != isakmp_attr_acl) {
+				reject = ISAKMP_N_ATTRIBUTES_NOT_SUPPORTED;
+				break;
+			}
+			
+			DEBUG(2, printf("got %d acls for split include\n", a->u.acl.count));
+			asprintf(&strbuf, "%d", a->u.acl.count);
+			setenv("CISCO_SPLIT_INC", strbuf, 1);
+			free(strbuf);
+			
+			for (i = 0; i < a->u.acl.count; i++) {
+				DEBUG(2, printf("acl %d: ", i));
+				/* NOTE: inet_ntoa returns one static buffer */
+				
+				asprintf(&strbuf, "CISCO_SPLIT_INC_%d_ADDR", i);
+				asprintf(&strbuf2, "%s", inet_ntoa(a->u.acl.acl_ent[i].addr));
+				DEBUG(2, printf("addr: %s/", strbuf2));
+				setenv(strbuf, strbuf2, 1);
+				free(strbuf); free(strbuf2);
+				
+				asprintf(&strbuf, "CISCO_SPLIT_INC_%d_MASK", i);
+				asprintf(&strbuf2, "%s", inet_ntoa(a->u.acl.acl_ent[i].mask));
+				DEBUG(2, printf("%s ", strbuf2));
+				setenv(strbuf, strbuf2, 1);
+				free(strbuf); free(strbuf2);
+				
+				{ /* this is just here because ip route does not accept netmasks */
+					int len;
+					uint32_t addr;
+					
+					for (len = 0, addr = ntohl(a->u.acl.acl_ent[i].mask.s_addr);
+						addr; addr <<= 1, len++)
+						; /* do nothing */
+					
+					asprintf(&strbuf, "CISCO_SPLIT_INC_%d_MASKLEN", i);
+					asprintf(&strbuf2, "%d", len);
+					DEBUG(2, printf("(%s), ", strbuf2));
+					setenv(strbuf, strbuf2, 1);
+					free(strbuf); free(strbuf2);
+				}
+				
+				asprintf(&strbuf, "CISCO_SPLIT_INC_%d_PROTOCOL", i);
+				asprintf(&strbuf2, "%hu", a->u.acl.acl_ent[i].protocol);
+				DEBUG(2, printf("protocol: %s, ", strbuf2));
+				setenv(strbuf, strbuf2, 1);
+				free(strbuf); free(strbuf2);
+				
+				asprintf(&strbuf, "CISCO_SPLIT_INC_%d_SPORT", i);
+				asprintf(&strbuf2, "%hu", a->u.acl.acl_ent[i].sport);
+				DEBUG(2, printf("sport: %s, ", strbuf2));
+				setenv(strbuf, strbuf2, 1);
+				free(strbuf); free(strbuf2);
+				
+				asprintf(&strbuf, "CISCO_SPLIT_INC_%d_DPORT", i);
+				asprintf(&strbuf2, "%hu", a->u.acl.acl_ent[i].dport);
+				DEBUG(2, printf("dport: %s\n", strbuf2));
+				setenv(strbuf, strbuf2, 1);
+				free(strbuf); free(strbuf2);
+			}
+			break;
+			
+		case ISAKMP_MODECFG_ATTRIB_CISCO_SAVE_PW:
+			DEBUG(2, printf("got save password setting: %d\n", a->u.attr_16));
+			break;
+			
+		default:
+			DEBUG(2, printf("unknown attriubte %d / 0x%X\n", a->type, a->type));
+			break;
+		}
+
+	if (reject == 0 && !seen_address)
+		reject = ISAKMP_N_ATTRIBUTES_NOT_SUPPORTED;
+	
+	return 0;
+}
+
 /* * */
 
 static struct isakmp_attribute *make_transform_ike(int dh_group, int crypt, int hash, int keylen, int auth)
@@ -693,7 +871,10 @@ static void do_phase_1(const char *key_id, const char *shared_key, struct sa_blo
 		l = l->next->next;
 		l->next = new_isakmp_payload(ISAKMP_PAYLOAD_ID);
 		l = l->next;
-		l->u.id.type = ISAKMP_IPSEC_ID_KEY_ID;
+		if (opt_vendor == CISCO)
+			l->u.id.type = ISAKMP_IPSEC_ID_KEY_ID;
+		else
+			l->u.id.type = ISAKMP_IPSEC_ID_USER_FQDN;
 		l->u.id.protocol = IPPROTO_UDP;
 		l->u.id.port = 500; /* this must be 500, not local_port */
 		l->u.id.length = strlen(key_id);
@@ -1477,15 +1658,18 @@ static int do_phase_2_xauth(struct sa_block *s)
 		/* The final SET should have just one attribute.  */
 		int reject = 0;
 		struct isakmp_attribute *a = r->payload->next->u.modecfg.attributes;
-		uint16_t set_result;
+		uint16_t set_result = 1;
 
-		if (a == NULL
+		if (opt_vendor == NETSCREEN && a && a->type != ISAKMP_XAUTH_ATTRIB_STATUS) {
+			do_config_to_env(s, r->payload->next->u.modecfg.attributes);
+		} else if (a == NULL
 			|| a->type != ISAKMP_XAUTH_ATTRIB_STATUS
 			|| a->af != isakmp_attr_16 || a->next != NULL) {
 			reject = ISAKMP_N_INVALID_PAYLOAD_TYPE;
 			phase2_fatal(s, "xauth SET response rejected: %s(%d)", reject);
+		} else {
+			set_result = a->u.attr_16;
 		}
-		set_result = a->u.attr_16;
 
 		/* ACK the SET.  */
 		r->payload->next->u.modecfg.type = ISAKMP_MODECFG_CFG_ACK;
@@ -1508,11 +1692,11 @@ static int do_phase_2_config(struct sa_block *s)
 	struct isakmp_packet *r;
 	struct utsname uts;
 	uint32_t msgid;
-	int i;
 	int reject;
-	int seen_address = 0;
-	char *strbuf, *strbuf2;
-
+	
+	if (opt_vendor == NETSCREEN)
+		return 0;
+	
 	uname(&uts);
 
 	gcry_create_nonce((uint8_t *) & msgid, sizeof(msgid));
@@ -1575,174 +1759,9 @@ static int do_phase_2_config(struct sa_block *s)
 	if (reject != 0)
 		phase2_fatal(s, "configuration response rejected: %s(%d)", reject);
 
-	unsetenv("CISCO_BANNER");
-	unsetenv("CISCO_DEF_DOMAIN");
-	unsetenv("CISCO_SPLIT_INC");
-	unsetenv("INTERNAL_IP4_NBNS");
-	unsetenv("INTERNAL_IP4_DNS");
-	unsetenv("INTERNAL_IP4_NETMASK");
-	unsetenv("INTERNAL_IP4_ADDRESS");
-
-	for (a = r->payload->next->u.modecfg.attributes; a && reject == 0; a = a->next)
-		switch (a->type) {
-		case ISAKMP_MODECFG_ATTRIB_INTERNAL_IP4_ADDRESS:
-			if (a->af != isakmp_attr_lots || a->u.lots.length != 4)
-				reject = ISAKMP_N_ATTRIBUTES_NOT_SUPPORTED;
-			else {
-				addenv_ipv4("INTERNAL_IP4_ADDRESS", a->u.lots.data);
-				memcpy(s->our_address, a->u.lots.data, 4);
-			}
-			seen_address = 1;
-			break;
-
-		case ISAKMP_MODECFG_ATTRIB_INTERNAL_IP4_NETMASK:
-			if (a->af == isakmp_attr_lots && a->u.lots.length == 0) {
-				DEBUG(2, printf("ignoring zero length netmask\n"));
-				continue;
-			}
-			if (a->af != isakmp_attr_lots || a->u.lots.length != 4)
-				reject = ISAKMP_N_ATTRIBUTES_NOT_SUPPORTED;
-			else
-				addenv_ipv4("INTERNAL_IP4_NETMASK", a->u.lots.data);
-			break;
-
-		case ISAKMP_MODECFG_ATTRIB_INTERNAL_IP4_DNS:
-			if (a->af != isakmp_attr_lots || a->u.lots.length != 4)
-				reject = ISAKMP_N_ATTRIBUTES_NOT_SUPPORTED;
-			else
-				addenv_ipv4("INTERNAL_IP4_DNS", a->u.lots.data);
-			break;
-
-		case ISAKMP_MODECFG_ATTRIB_INTERNAL_IP4_NBNS:
-			if (a->af != isakmp_attr_lots || a->u.lots.length != 4)
-				reject = ISAKMP_N_ATTRIBUTES_NOT_SUPPORTED;
-			else
-				addenv_ipv4("INTERNAL_IP4_NBNS", a->u.lots.data);
-			break;
-
-		case ISAKMP_MODECFG_ATTRIB_CISCO_DEF_DOMAIN:
-			if (a->af != isakmp_attr_lots) {
-				reject = ISAKMP_N_ATTRIBUTES_NOT_SUPPORTED;
-				break;
-			}
-			strbuf = xallocc(a->u.lots.length + 1);
-			memcpy(strbuf, a->u.lots.data, a->u.lots.length);
-			addenv("CISCO_DEF_DOMAIN", strbuf);
-			free(strbuf);
-			break;
-
-		case ISAKMP_MODECFG_ATTRIB_CISCO_BANNER:
-			if (a->af != isakmp_attr_lots) {
-				reject = ISAKMP_N_ATTRIBUTES_NOT_SUPPORTED;
-				break;
-			}
-			strbuf = xallocc(a->u.lots.length + 1);
-			memcpy(strbuf, a->u.lots.data, a->u.lots.length);
-			addenv("CISCO_BANNER", strbuf);
-			free(strbuf);
-			DEBUG(1, printf("Banner: "));
-			DEBUG(1, fwrite(a->u.lots.data, a->u.lots.length, 1, stdout));
-			DEBUG(1, printf("\n"));
-			break;
-
-		case ISAKMP_MODECFG_ATTRIB_APPLICATION_VERSION:
-			DEBUG(2, printf("Remote Application Version: "));
-			DEBUG(2, fwrite(a->u.lots.data, a->u.lots.length, 1, stdout));
-			DEBUG(2, printf("\n"));
-			break;
-
-		case ISAKMP_MODECFG_ATTRIB_CISCO_DO_PFS:
-			if (a->af != isakmp_attr_16)
-				reject = ISAKMP_N_ATTRIBUTES_NOT_SUPPORTED;
-			else {
-				s->do_pfs = a->u.attr_16;
-				DEBUG(2, printf("got pfs setting: %d\n", s->do_pfs));
-			}
-			break;
-
-		case ISAKMP_MODECFG_ATTRIB_CISCO_UDP_ENCAP_PORT:
-			if (a->af != isakmp_attr_16)
-				reject = ISAKMP_N_ATTRIBUTES_NOT_SUPPORTED;
-			else {
-				s->peer_udpencap_port = a->u.attr_16;
-				DEBUG(2, printf("got peer udp encapsulation port: %hu\n", s->peer_udpencap_port));
-			}
-			break;
-
-		case ISAKMP_MODECFG_ATTRIB_CISCO_SPLIT_INC:
-			if (a->af != isakmp_attr_acl) {
-				reject = ISAKMP_N_ATTRIBUTES_NOT_SUPPORTED;
-				break;
-			}
-			
-			DEBUG(2, printf("got %d acls for split include\n", a->u.acl.count));
-			asprintf(&strbuf, "%d", a->u.acl.count);
-			setenv("CISCO_SPLIT_INC", strbuf, 1);
-			free(strbuf);
-			
-			for (i = 0; i < a->u.acl.count; i++) {
-				DEBUG(2, printf("acl %d: ", i));
-				/* NOTE: inet_ntoa returns one static buffer */
-				
-				asprintf(&strbuf, "CISCO_SPLIT_INC_%d_ADDR", i);
-				asprintf(&strbuf2, "%s", inet_ntoa(a->u.acl.acl_ent[i].addr));
-				DEBUG(2, printf("addr: %s/", strbuf2));
-				setenv(strbuf, strbuf2, 1);
-				free(strbuf); free(strbuf2);
-				
-				asprintf(&strbuf, "CISCO_SPLIT_INC_%d_MASK", i);
-				asprintf(&strbuf2, "%s", inet_ntoa(a->u.acl.acl_ent[i].mask));
-				DEBUG(2, printf("%s ", strbuf2));
-				setenv(strbuf, strbuf2, 1);
-				free(strbuf); free(strbuf2);
-				
-				{ /* this is just here because ip route does not accept netmasks */
-					int len;
-					uint32_t addr;
-					
-					for (len = 0, addr = ntohl(a->u.acl.acl_ent[i].mask.s_addr);
-						addr; addr <<= 1, len++)
-						; /* do nothing */
-					
-					asprintf(&strbuf, "CISCO_SPLIT_INC_%d_MASKLEN", i);
-					asprintf(&strbuf2, "%d", len);
-					DEBUG(2, printf("(%s), ", strbuf2));
-					setenv(strbuf, strbuf2, 1);
-					free(strbuf); free(strbuf2);
-				}
-				
-				asprintf(&strbuf, "CISCO_SPLIT_INC_%d_PROTOCOL", i);
-				asprintf(&strbuf2, "%hu", a->u.acl.acl_ent[i].protocol);
-				DEBUG(2, printf("protocol: %s, ", strbuf2));
-				setenv(strbuf, strbuf2, 1);
-				free(strbuf); free(strbuf2);
-				
-				asprintf(&strbuf, "CISCO_SPLIT_INC_%d_SPORT", i);
-				asprintf(&strbuf2, "%hu", a->u.acl.acl_ent[i].sport);
-				DEBUG(2, printf("sport: %s, ", strbuf2));
-				setenv(strbuf, strbuf2, 1);
-				free(strbuf); free(strbuf2);
-				
-				asprintf(&strbuf, "CISCO_SPLIT_INC_%d_DPORT", i);
-				asprintf(&strbuf2, "%hu", a->u.acl.acl_ent[i].dport);
-				DEBUG(2, printf("dport: %s\n", strbuf2));
-				setenv(strbuf, strbuf2, 1);
-				free(strbuf); free(strbuf2);
-			}
-			break;
-			
-		case ISAKMP_MODECFG_ATTRIB_CISCO_SAVE_PW:
-			DEBUG(2, printf("got save password setting: %d\n", a->u.attr_16));
-			break;
-			
-		default:
-			DEBUG(2, printf("unknown attriubte %d / 0x%X\n", a->type, a->type));
-			break;
-		}
-
-	if (reject == 0 && !seen_address)
-		reject = ISAKMP_N_ATTRIBUTES_NOT_SUPPORTED;
-
+	if (reject == 0)
+		reject = do_config_to_env(s, r->payload->next->u.modecfg.attributes);
+	
 	if (reject != 0)
 		phase2_fatal(s, "configuration response rejected: %s(%d)", reject);
 
