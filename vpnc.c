@@ -579,7 +579,7 @@ static uint8_t *gen_keymat(struct sa_block *s,
 static int do_config_to_env(struct sa_block *s, struct isakmp_attribute *a)
 {
 	int i;
-	int reject;
+	int reject = 0;
 	int seen_address = 0;
 	char *strbuf, *strbuf2;
 	
@@ -751,7 +751,7 @@ static int do_config_to_env(struct sa_block *s, struct isakmp_attribute *a)
 	if (reject == 0 && !seen_address)
 		reject = ISAKMP_N_ATTRIBUTES_NOT_SUPPORTED;
 	
-	return 0;
+	return reject;
 }
 
 /* * */
