@@ -167,6 +167,12 @@ static int recv_ignore_dup(void *recvbuf, size_t recvbufsize)
 		(struct sockaddr *)&recvaddr, &recvaddr_size);
 	if (recvsize == -1)
 		error(1, errno, "receiving packet");
+	
+	/* skip NAT-T draft-0 keepalives */
+	if ((natt_draft > -1) && (natt_draft < 2) &&
+		(recvsize == 1) && (*((u_char *)(recvbuf)) == 0xff))
+		recvsize = -1;
+	
 	if (recvsize > 0) {
 		if (recvaddr_size != sizeof(recvaddr)
 			|| recvaddr.sin_family != dest_addr->sa_family
@@ -215,7 +221,7 @@ ssize_t sendrecv(void *recvbuf, size_t recvbufsize, void *tosend, size_t sendsiz
 	pfd.events = POLLIN;
 	tries = 0;
 
-	if ((natt_draft > 1)&&(tosend != NULL)&&(encap_mode != IPSEC_ENCAP_TUNNEL)) {
+	if ((natt_draft > 1) && (tosend != NULL) && (encap_mode != IPSEC_ENCAP_TUNNEL)) {
 		DEBUG(2, printf("NAT-T mode, adding non-esp marker\n"));
 		realtosend = xallocc(sendsize+4);
 		memcpy(realtosend+4, tosend, sendsize);
@@ -345,9 +351,6 @@ static uint16_t unpack_verify_phase2(struct sa_block *s,
 {
 	struct isakmp_packet *r;
 	int reject = 0;
-	
-	if ((natt_draft > -1) && (natt_draft < 2) && (r_length == 1) && (r_packet[0] == 0xff))
-		return -2; // Keepalive NAT-T draft 0
 	
 	*r_p = NULL;
 
@@ -744,7 +747,7 @@ static int do_config_to_env(struct sa_block *s, struct isakmp_attribute *a)
 			break;
 			
 		default:
-			DEBUG(2, printf("unknown attriubte %d / 0x%X\n", a->type, a->type));
+			DEBUG(2, printf("unknown attribute %d / 0x%X\n", a->type, a->type));
 			break;
 		}
 
@@ -1429,8 +1432,6 @@ static int do_phase2_notice_check(struct sa_block *s, struct isakmp_packet **r_p
 	
 	while (1) {
 		reject = unpack_verify_phase2(s, r_packet, r_length, r_p, NULL, 0);
-		if (reject == -2)
-			continue;
 		if (reject == ISAKMP_N_INVALID_COOKIE) {
 			r_length = sendrecv(r_packet, sizeof(r_packet), NULL, 0, 0);
 			continue;
@@ -1496,11 +1497,11 @@ static int do_phase_2_xauth(struct sa_block *s)
 {
 	struct isakmp_packet *r;
 	int loopcount;
+	int reject;
 
 	DEBUG(2, printf("S5.1\n"));
 	/* This can go around for a while.  */
 	for (loopcount = 0;; loopcount++) {
-		int reject;
 		struct isakmp_payload *rp;
 		struct isakmp_attribute *a, *ap, *reply_attr;
 		char ntop_buf[32];
@@ -1650,19 +1651,37 @@ static int do_phase_2_xauth(struct sa_block *s)
 		sendrecv_phase2(s, rp, ISAKMP_EXCHANGE_MODECFG_TRANSACTION,
 			r->message_id, 0, 0, 0, 0, 0, 0, 0);
 
-		free_isakmp_packet(r);
 	}
+	
+	if ((opt_vendor == NETSCREEN) &&
+		(r->payload->next->u.modecfg.type == ISAKMP_MODECFG_CFG_SET)) {
+		struct isakmp_attribute *a = r->payload->next->u.modecfg.attributes;
+		
+		DEBUG(2, printf("S5.5.1\n"));
+		
+		do_config_to_env(s, a);
+		
+		for (; a; a = a->next)
+			if(a->af == isakmp_attr_lots)
+				a->u.lots.length = 0;
 
+		r->payload->next->u.modecfg.type = ISAKMP_MODECFG_CFG_ACK;
+		sendrecv_phase2(s, r->payload->next,
+			ISAKMP_EXCHANGE_MODECFG_TRANSACTION,
+			r->message_id, 0, 0, 0, 0, 0, 0, 0);
+		
+		reject = do_phase2_notice_check(s, &r);
+		if (reject == -1)
+			return 1;
+	}
+	
 	DEBUG(2, printf("S5.6\n"));
 	{
 		/* The final SET should have just one attribute.  */
-		int reject = 0;
 		struct isakmp_attribute *a = r->payload->next->u.modecfg.attributes;
 		uint16_t set_result = 1;
 
-		if (opt_vendor == NETSCREEN && a && a->type != ISAKMP_XAUTH_ATTRIB_STATUS) {
-			do_config_to_env(s, r->payload->next->u.modecfg.attributes);
-		} else if (a == NULL
+		if (a == NULL
 			|| a->type != ISAKMP_XAUTH_ATTRIB_STATUS
 			|| a->af != isakmp_attr_16 || a->next != NULL) {
 			reject = ISAKMP_N_INVALID_PAYLOAD_TYPE;
@@ -1693,9 +1712,6 @@ static int do_phase_2_config(struct sa_block *s)
 	struct utsname uts;
 	uint32_t msgid;
 	int reject;
-	
-	if (opt_vendor == NETSCREEN)
-		return 0;
 	
 	uname(&uts);
 
@@ -1895,8 +1911,6 @@ static void setup_link(struct sa_block *s)
 
 		DEBUG(2, printf("S7.3\n"));
 		reject = unpack_verify_phase2(s, r_packet, r_length, &r, nonce, sizeof(nonce));
-		if (reject == -2)
-			continue;
 
 		DEBUG(2, printf("S7.4\n"));
 		if (((reject == 0) || (reject == ISAKMP_N_AUTHENTICATION_FAILED))
@@ -2192,7 +2206,7 @@ int main(int argc, char **argv)
 		if (oursa->auth_algo == IKE_AUTH_XAUTHInitPreShared)
 			do_load_balance = do_phase_2_xauth(oursa);
 		DEBUG(2, printf("S6\n"));
-		if (do_load_balance == 0)
+		if ((opt_vendor != NETSCREEN) && (do_load_balance == 0))
 			do_load_balance = do_phase_2_config(oursa);
 	} while (do_load_balance);
 	DEBUG(2, printf("S7\n"));
