@@ -443,9 +443,9 @@ static const struct config_names_s {
 		"Don't ask anything, exit on missing options",
 		NULL
 	}, {
-		CONFIG_VENDOR, 0, 1,
+		CONFIG_VENDOR, 1, 1,
 		"--vendor",
-		"Vendor",
+		"Vendor ",
 		"<Vendor name>",
 		"vendor of your IPSec gateway (cisco, netscreen)",
 		config_def_vendor

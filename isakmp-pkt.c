@@ -670,11 +670,11 @@ static struct isakmp_payload *parse_isakmp_payload(uint8_t type,
 		break;
 	case ISAKMP_PAYLOAD_D:
 		r->u.d.doi = fetch4();
-		hex_dump("n.doi", &r->u.d.doi, UINT32);
+		hex_dump("d.doi", &r->u.d.doi, UINT32);
 		r->u.d.protocol = fetch1();
-		hex_dump("n.protocol", &r->u.d.protocol, UINT8);
+		hex_dump("d.protocol", &r->u.d.protocol, UINT8);
 		r->u.d.spi_length = fetch1();
-		hex_dump("n.spi_length", &r->u.d.spi_length, UINT8);
+		hex_dump("d.spi_length", &r->u.d.spi_length, UINT8);
 		r->u.d.num_spi = fetch2();
 		hex_dump("d.num_spi", &r->u.d.num_spi, UINT16);
 		if (r->u.d.num_spi * r->u.d.spi_length + 12u != length) {
@@ -699,7 +699,7 @@ static struct isakmp_payload *parse_isakmp_payload(uint8_t type,
 			return r;
 		}
 		r->u.modecfg.id = fetch2();
-		hex_dump("t.id", &r->u.modecfg.id, UINT16);
+		hex_dump("modecfg.id", &r->u.modecfg.id, UINT16);
 		length -= 8;
 		r->u.modecfg.attributes = parse_isakmp_attributes(&data, length, reject);
 		data_len -= olength - 8;
