@@ -53,13 +53,13 @@ void hex_dump(const char *str, const void *data, ssize_t len)
 		return;
 
 	switch (len) {
-	case UINT8:
+	case DUMP_UINT8:
 		printf("%s: %02x\n", str, *(uint8_t *)p);
 		return;
-	case UINT16:
+	case DUMP_UINT16:
 		printf("%s: %04x\n", str, *(uint16_t *)p);
 		return;
-	case UINT32:
+	case DUMP_UINT32:
 		printf("%s: %08x\n", str, *(uint32_t *)p);
 		return;
 	}

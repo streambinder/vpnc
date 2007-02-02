@@ -55,9 +55,9 @@ enum config_enum {
 };
 
 enum hex_dump_enum {
-	UINT8 = -1,
-	UINT16 = -2,
-	UINT32 = -4
+	DUMP_UINT8 = -1,
+	DUMP_UINT16 = -2,
+	DUMP_UINT32 = -4
 };
 
 enum vendor_enum {
