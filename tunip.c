@@ -733,13 +733,10 @@ int encap_esp_recv_peer(struct encap_method *encap, struct peer_desc *peer)
 			(unsigned long)blksz);
 		return -1;
 	}
-#if 0
-	printf("receiving ESP packet (before decrypt):\n");
-	for (i = 0; i < len; i++)
-		printf(" %02x", encap->buf[encap->bufpayload
-				+ encap->fixed_header_size + encap->var_header_size + i]);
-	printf("\n");
-#endif
+	
+	hex_dump("receiving ESP packet (before decrypt)",
+		&encap->buf[encap->bufpayload + encap->fixed_header_size +
+			 encap->var_header_size], len);
 
 	{
 		unsigned char *data;
@@ -750,14 +747,10 @@ int encap_esp_recv_peer(struct encap_method *encap, struct peer_desc *peer)
 		gcry_cipher_decrypt(peer->local_sa->cry_ctx, data, len, NULL, 0);
 	}
 
-#if 0
-	printf("receiving ESP packet (after decrypt %d):\n", len);
-	for (i = 0; i < len; i++)
-		printf(" %02x", encap->buf[encap->bufpayload
-				+ encap->fixed_header_size + encap->var_header_size + i]);
-	printf("\n");
-#endif
-
+	hex_dump("receiving ESP packet (after decrypt)",
+		&encap->buf[encap->bufpayload + encap->fixed_header_size +
+			encap->var_header_size], len);
+	
 	padlen = encap->buf[encap->bufpayload
 		+ encap->fixed_header_size + encap->var_header_size + len - 2];
 	next_header = encap->buf[encap->bufpayload
