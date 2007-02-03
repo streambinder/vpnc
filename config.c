@@ -40,7 +40,7 @@ const char *config[LAST_CONFIG];
 int opt_debug = 0;
 int opt_nd;
 int opt_1des;
-int opt_udpencap;
+enum natt_mode_enum opt_natt_mode;
 enum vendor_enum opt_vendor;
 uint16_t opt_udpencapport;
 
@@ -219,6 +219,11 @@ static const char *config_def_local_port(void)
 	return "500";
 }
 
+static const char *config_def_natt_mode(void)
+{
+	return "natt";
+}
+
 static const char *config_def_udp_port(void)
 {
 	return "10000";
@@ -320,13 +325,6 @@ static const struct config_names_s {
 		"your password (obfuscated)",
 		NULL
 	}, {
-		CONFIG_UDP_ENCAP, 0, 0,
-		"--udp",
-		"UDP Encapsulate",
-		NULL,
-		"Use Cisco-UDP encapsulation of IPSEC traffic",
-		NULL
-	}, {
 		CONFIG_DOMAIN, 1, 1,
 		"--domain",
 		"Domain ",
@@ -340,6 +338,27 @@ static const struct config_names_s {
 		NULL,
 		"enable interactive extended authentication (for challange response auth)",
 		NULL
+	}, {
+		CONFIG_VENDOR, 1, 1,
+		"--vendor",
+		"Vendor ",
+		"<cisco/netscreen>",
+		"vendor of your IPSec gateway",
+		config_def_vendor
+	}, {
+		CONFIG_NATT_MODE, 1, 1,
+		"--natt-mode",
+		"NAT Traversal Mode ",
+		"<natt/none/force-natt/cisco-udp>",
+		"Which NAT-Traversal Method to use:\n"
+		" * natt -- NAT-T as defined in RFC3947\n"
+		" * none -- disable use of any NAT-T method\n"
+		" * force-natt -- always use NAT-T encapsulation even\n"
+		"                 without presence of a NAT device\n"
+		"                 (useful if the OS captures all ESP traffic)\n"
+		" * cisco-udp -- Cisco proprietary UDP encapsulation, commonly over Port 10000\n"
+		"Note: cisco-tcp encapsulation is not yet supported\n",
+		config_def_natt_mode
 	}, {
 		CONFIG_SCRIPT, 1, 1,
 		"--script",
@@ -417,24 +436,13 @@ static const struct config_names_s {
 	}, {
 		CONFIG_UDP_ENCAP_PORT, 1, 1,
 		"--udp-port",
-		"UDP Encapsulation Port ",
+		"Cisco UDP Encapsulation Port ",
 		"<0-65535>",
-		"local UDP port number to use (0 == use random port)",
+		"local UDP port number to use (0 == use random port)\n"
+		"This is only relevant if cisco-udp nat-traversal is used.\n"
+		"This is the _local_ port, the remote udp port is discovered automatically.\n"
+		"It is especially not the cisco-tcp port\n",
 		config_def_udp_port
-	}, {
-		CONFIG_DISABLE_NATT, 0, 1,
-		"--disable-natt",
-		"Disable NAT Traversal",
-		NULL,
-		"disable use of NAT-T",
-		NULL
-	}, {
-		CONFIG_FORCE_NATT, 0, 1,
-		"--force-natt",
-		"Force NAT Traversal",
-		NULL,
-		"force use of NAT-T",
-		NULL
 	}, {
 		CONFIG_NON_INTERACTIVE, 0, 1,
 		"--non-inter",
@@ -442,13 +450,6 @@ static const struct config_names_s {
 		NULL,
 		"Don't ask anything, exit on missing options",
 		NULL
-	}, {
-		CONFIG_VENDOR, 1, 1,
-		"--vendor",
-		"Vendor ",
-		"<Vendor name>",
-		"vendor of your IPSec gateway (cisco, netscreen)",
-		config_def_vendor
 	}, {
 		0, 0, 0, NULL, NULL, NULL, NULL, NULL
 	}
@@ -662,23 +663,35 @@ void do_config(int argc, char **argv)
 			exit(1);
 		}
 	}
-
+	
 	if (!got_conffile) {
 		read_config_file("/etc/vpnc/default.conf", config, 1);
 		read_config_file("/etc/vpnc.conf", config, 1);
 	}
-
+	
 	if (!print_config) {
 		for (i = 0; config_names[i].name != NULL; i++)
 			if (!config[config_names[i].nm] && i != CONFIG_NONE
 				&& config_names[i].get_def != NULL)
 				config[config_names[i].nm] = config_names[i].get_def();
-
+		
 		opt_debug = (config[CONFIG_DEBUG]) ? atoi(config[CONFIG_DEBUG]) : 0;
 		opt_nd = (config[CONFIG_ND]) ? 1 : 0;
 		opt_1des = (config[CONFIG_ENABLE_1DES]) ? 1 : 0;
-		opt_udpencap=(config[CONFIG_UDP_ENCAP]) ? 1 : 0;
 		opt_udpencapport=atoi(config[CONFIG_UDP_ENCAP_PORT]);
+		
+		if (!strcmp(config[CONFIG_NATT_MODE], "natt")) {
+			opt_natt_mode = NATT;
+		} else if (!strcmp(config[CONFIG_NATT_MODE], "none")) {
+			opt_natt_mode = NONE;
+		} else if (!strcmp(config[CONFIG_NATT_MODE], "force-natt")) {
+			opt_natt_mode = FORCE_NATT;
+		} else if (!strcmp(config[CONFIG_NATT_MODE], "cisco-udp")) {
+			opt_natt_mode = CISCO_UDP;
+		} else {
+			printf("%s: unknown nat traversal mode %s\nknown modes: natt none force-natt cisco-udp\n", argv[0], config[CONFIG_NATT_MODE]);
+			exit(1);
+		}
 		
 		if (!strcmp(config[CONFIG_VENDOR], "cisco")) {
 			opt_vendor = CISCO;
@@ -689,7 +702,7 @@ void do_config(int argc, char **argv)
 			exit(1);
 		}
 	}
-
+	
 	if (opt_debug >= 99) {
 		printf("WARNING! active debug level is >= 99, output includes username and password (hex encoded)\n");
 		fprintf(stderr,

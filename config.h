@@ -46,11 +46,9 @@ enum config_enum {
 	CONFIG_XAUTH_PASSWORD,
 	CONFIG_XAUTH_PASSWORD_OBF,
 	CONFIG_XAUTH_INTERACTIVE,
-	CONFIG_UDP_ENCAP,
-	CONFIG_UDP_ENCAP_PORT,
-	CONFIG_DISABLE_NATT,
-	CONFIG_FORCE_NATT,
 	CONFIG_VENDOR,
+	CONFIG_NATT_MODE,
+	CONFIG_UDP_ENCAP_PORT,
 	LAST_CONFIG
 };
 
@@ -65,13 +63,20 @@ enum vendor_enum {
 	NETSCREEN
 };
 
+enum natt_mode_enum {
+	NONE,
+	NATT,
+	FORCE_NATT,
+	CISCO_UDP
+};
+
 extern const char *config[LAST_CONFIG];
 
 extern enum vendor_enum opt_vendor;
 extern int opt_debug;
 extern int opt_nd;
 extern int opt_1des;
-extern int opt_udpencap;
+extern enum natt_mode_enum opt_natt_mode;
 extern uint16_t opt_udpencapport;
 
 #define DEBUG(lvl, a) do {if (opt_debug >= (lvl)) {a;}} while (0)
