@@ -36,6 +36,7 @@ enum config_enum {
 	CONFIG_LOCAL_PORT,
 	CONFIG_VERSION,
 	CONFIG_IF_NAME,
+	CONFIG_IF_MODE,
 	CONFIG_IKE_DH,
 	CONFIG_IPSEC_PFS,
 	CONFIG_IPSEC_GATEWAY,
@@ -59,15 +60,20 @@ enum hex_dump_enum {
 };
 
 enum vendor_enum {
-	CISCO,
-	NETSCREEN
+	VENDOR_CISCO,
+	VENDOR_NETSCREEN
 };
 
 enum natt_mode_enum {
-	NONE,
-	NATT,
-	FORCE_NATT,
-	CISCO_UDP
+	NATT_NONE,
+	NATT_NORMAL,
+	NATT_FORCE,
+	NATT_CISCO_UDP
+};
+
+enum if_mode_enum {
+	IF_MODE_TUN,
+	IF_MODE_TAP
 };
 
 extern const char *config[LAST_CONFIG];
@@ -77,6 +83,7 @@ extern int opt_debug;
 extern int opt_nd;
 extern int opt_1des;
 extern enum natt_mode_enum opt_natt_mode;
+extern enum if_mode_enum opt_if_mode;
 extern uint16_t opt_udpencapport;
 
 #define DEBUG(lvl, a) do {if (opt_debug >= (lvl)) {a;}} while (0)

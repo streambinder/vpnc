@@ -42,6 +42,7 @@ int opt_nd;
 int opt_1des;
 enum natt_mode_enum opt_natt_mode;
 enum vendor_enum opt_vendor;
+enum if_mode_enum opt_if_mode;
 uint16_t opt_udpencapport;
 
 void hex_dump(const char *str, const void *data, ssize_t len)
@@ -217,6 +218,11 @@ static const char *config_def_pfs(void)
 static const char *config_def_local_port(void)
 {
 	return "500";
+}
+
+static const char *config_def_if_mode(void)
+{
+	return "tun";
 }
 
 static const char *config_def_natt_mode(void)
@@ -403,8 +409,17 @@ static const struct config_names_s {
 		"--ifname",
 		"Interface name ",
 		"<ASCII string>",
-		"visible name of the TUN interface",
+		"visible name of the TUN/TAP interface",
 		NULL
+	}, {
+		CONFIG_IF_MODE, 1, 1,
+		"--ifmode",
+		"Interface mode ",
+		"<tun/tap>",
+		"mode of TUN/TAP interface:\n"
+		" * tun: virtual point to point interface (default)\n"
+		" * tap: virtual ethernet interface\n",
+		config_def_if_mode
 	}, {
 		CONFIG_DEBUG, 1, 1,
 		"--debug",
@@ -681,22 +696,31 @@ void do_config(int argc, char **argv)
 		opt_udpencapport=atoi(config[CONFIG_UDP_ENCAP_PORT]);
 		
 		if (!strcmp(config[CONFIG_NATT_MODE], "natt")) {
-			opt_natt_mode = NATT;
+			opt_natt_mode = NATT_NORMAL;
 		} else if (!strcmp(config[CONFIG_NATT_MODE], "none")) {
-			opt_natt_mode = NONE;
+			opt_natt_mode = NATT_NONE;
 		} else if (!strcmp(config[CONFIG_NATT_MODE], "force-natt")) {
-			opt_natt_mode = FORCE_NATT;
+			opt_natt_mode = NATT_FORCE;
 		} else if (!strcmp(config[CONFIG_NATT_MODE], "cisco-udp")) {
-			opt_natt_mode = CISCO_UDP;
+			opt_natt_mode = NATT_CISCO_UDP;
 		} else {
 			printf("%s: unknown nat traversal mode %s\nknown modes: natt none force-natt cisco-udp\n", argv[0], config[CONFIG_NATT_MODE]);
 			exit(1);
 		}
 		
+		if (!strcmp(config[CONFIG_IF_MODE], "tun")) {
+			opt_if_mode = IF_MODE_TUN;
+		} else if (!strcmp(config[CONFIG_IF_MODE], "tap")) {
+			opt_if_mode = IF_MODE_TAP;
+		} else {
+			printf("%s: unknown interface mode %s\nknown modes: tun tap\n", argv[0], config[CONFIG_IF_MODE]);
+			exit(1);
+		}
+		
 		if (!strcmp(config[CONFIG_VENDOR], "cisco")) {
-			opt_vendor = CISCO;
+			opt_vendor = VENDOR_CISCO;
 		} else if (!strcmp(config[CONFIG_VENDOR], "netscreen")) {
-			opt_vendor = NETSCREEN;
+			opt_vendor = VENDOR_NETSCREEN;
 		} else {
 			printf("%s: unknown vendor %s\nknown vendors: cisco netscreen\n", argv[0], config[CONFIG_VENDOR]);
 			exit(1);

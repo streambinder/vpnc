@@ -874,7 +874,7 @@ static void do_phase_1(const char *key_id, const char *shared_key, struct sa_blo
 		l = l->next->next;
 		l->next = new_isakmp_payload(ISAKMP_PAYLOAD_ID);
 		l = l->next;
-		if (opt_vendor == CISCO)
+		if (opt_vendor == VENDOR_CISCO)
 			l->u.id.type = ISAKMP_IPSEC_ID_KEY_ID;
 		else
 			l->u.id.type = ISAKMP_IPSEC_ID_USER_FQDN;
@@ -887,7 +887,7 @@ static void do_phase_1(const char *key_id, const char *shared_key, struct sa_blo
 			xauth_vid, sizeof(xauth_vid));
 		l = l->next = new_isakmp_data_payload(ISAKMP_PAYLOAD_VID,
 			unity_vid, sizeof(unity_vid));
-		if ((opt_natt_mode == NATT) || (opt_natt_mode == FORCE_NATT)) {
+		if ((opt_natt_mode == NATT_NORMAL) || (opt_natt_mode == NATT_FORCE)) {
 			l = l->next = new_isakmp_data_payload(ISAKMP_PAYLOAD_VID,
 				natt_vid_02n, sizeof(natt_vid_02n));
 			l = l->next = new_isakmp_data_payload(ISAKMP_PAYLOAD_VID,
@@ -1107,7 +1107,7 @@ static void do_phase_1(const char *key_id, const char *shared_key, struct sa_blo
 				DEBUG(2, printf("peer is using type %d for NAT-Discovery payloads\n", natd_type));
 				if (!seen_sa /*|| !seen_natt_vid*/) {
 					reject = ISAKMP_N_INVALID_PAYLOAD_TYPE;
-				} else if (opt_natt_mode == NONE) {
+				} else if (opt_natt_mode == NATT_NONE) {
 					;
 				} else if (rp->u.natd.length != s->md_len) {
 					reject = ISAKMP_N_PAYLOAD_MALFORMED;
@@ -1366,7 +1366,7 @@ static void do_phase_1(const char *key_id, const char *shared_key, struct sa_blo
 				gcry_md_final(hm);
 				pl = pl->next = new_isakmp_data_payload(natd_type,
 					gcry_md_read(hm, 0), s->md_len);
-				if (opt_natt_mode == FORCE_NATT) /* force detection of "this end behind NAT" */
+				if (opt_natt_mode == NATT_FORCE) /* force detection of "this end behind NAT" */
 					pl->u.ke.data[0] ^= 1; /* by flipping a bit in the nat-detection-hash */
 				if (seen_natd && memcmp(natd_us, pl->u.ke.data, s->md_len) == 0)
 					seen_natd_us = 1;
@@ -1653,7 +1653,7 @@ static int do_phase_2_xauth(struct sa_block *s)
 
 	}
 	
-	if ((opt_vendor == NETSCREEN) &&
+	if ((opt_vendor == VENDOR_NETSCREEN) &&
 		(r->payload->next->u.modecfg.type == ISAKMP_MODECFG_CFG_SET)) {
 		struct isakmp_attribute *a = r->payload->next->u.modecfg.attributes;
 		
@@ -1739,7 +1739,7 @@ static int do_phase_2_config(struct sa_block *s)
 	
 	a = new_isakmp_attribute(ISAKMP_MODECFG_ATTRIB_CISCO_BANNER, a);
 	a = new_isakmp_attribute(ISAKMP_MODECFG_ATTRIB_CISCO_DO_PFS, a);
-	if (opt_natt_mode == CISCO_UDP)
+	if (opt_natt_mode == NATT_CISCO_UDP)
 		a = new_isakmp_attribute(ISAKMP_MODECFG_ATTRIB_CISCO_UDP_ENCAP_PORT, a);
 	a = new_isakmp_attribute(ISAKMP_MODECFG_ATTRIB_CISCO_DEF_DOMAIN, a);
 	a = new_isakmp_attribute(ISAKMP_MODECFG_ATTRIB_INTERNAL_IP4_NBNS, a);
@@ -2156,7 +2156,7 @@ static void setup_link(struct sa_block *s)
 			dh_shared_secret, dh_grp ? dh_getlen(dh_grp) : 0,
 			nonce, sizeof(nonce), nonce_r->u.nonce.data, nonce_r->u.nonce.length);
 		memcpy(&tous_dest, dest_addr, sizeof(tous_dest));
-		if ((opt_natt_mode == CISCO_UDP) && s->peer_udpencap_port) {
+		if ((opt_natt_mode == NATT_CISCO_UDP) && s->peer_udpencap_port) {
 			close(tunnelfd);
 			tunnelfd = make_socket(htons(opt_udpencapport));
 			tous_dest.sin_port = htons(s->peer_udpencap_port);
@@ -2206,7 +2206,7 @@ int main(int argc, char **argv)
 		if (oursa->auth_algo == IKE_AUTH_XAUTHInitPreShared)
 			do_load_balance = do_phase_2_xauth(oursa);
 		DEBUG(2, printf("S6\n"));
-		if ((opt_vendor != NETSCREEN) && (do_load_balance == 0))
+		if ((opt_vendor != VENDOR_NETSCREEN) && (do_load_balance == 0))
 			do_load_balance = do_phase_2_config(oursa);
 	} while (do_load_balance);
 	DEBUG(2, printf("S7\n"));
