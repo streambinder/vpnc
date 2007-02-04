@@ -785,6 +785,81 @@ int encap_esp_recv_peer(struct encap_method *encap, struct peer_desc *peer)
 	return 0;
 }
 
+static void process_tun(struct peer_desc *peer)
+{
+	int pack;
+	
+	/* Receive a packet from the tunnel interface */
+	pack = tun_read(peer->tun_fd, buf + MAX_HEADER, MAX_PACKET);
+	if (pack == -1) {
+		syslog(LOG_ERR, "read: %m");
+		return;
+	}
+	
+	
+	if (peer->remote_sa->use_dest == 0) {
+		syslog(LOG_NOTICE, "peer hasn't a known address yet");
+		return;
+	}
+	
+	if (((struct ip *)(buf + MAX_HEADER))->ip_dst.s_addr
+		== peer->remote_sa->dest.sin_addr.s_addr) {
+		syslog(LOG_ALERT, "routing loop to %s",
+			inet_ntoa(peer->remote_sa->dest.sin_addr));
+		return;
+	}
+	
+	/* Encapsulate and send to the other end of the tunnel */
+	encap_send_peer(peer->remote_sa->em, peer, buf, pack);
+	
+	/* Update sent packet timeout */
+	peer->remote_sa->last_packet_sent = time(NULL);
+}
+
+static void process_socket(struct encap_method *meth)
+{
+	/* Receive a packet from a socket */
+	struct peer_desc *peer;
+	int pack;
+	struct sockaddr_in from;
+	
+	pack = encap_recv(meth, buf, MAX_HEADER + MAX_PACKET, &from);
+	if (pack == -1)
+		return;
+	
+	peer = encap_peer_find(meth);
+	if (peer == NULL) {
+		syslog(LOG_NOTICE, "unknown spi from %s", inet_ntoa(from.sin_addr));
+		return;
+	}
+	
+	/* Check auth digest and/or decrypt */
+	if (encap_recv_peer(meth, peer) != 0)
+		return;
+	
+	/* Check origin IP; update our copy if need be */
+	if (peer->remote_sa->use_dest == 0
+		|| from.sin_addr.s_addr != peer->remote_sa->dest.sin_addr.s_addr) {
+		/* remote end changed address */
+		char addr1[16];
+		strcpy(addr1, inet_ntoa(peer->remote_sa->dest.sin_addr));
+		syslog(LOG_NOTICE,
+			"spi %u: remote address changed from %s to %s",
+			peer->remote_sa->spi, addr1, inet_ntoa(from.sin_addr));
+		peer->remote_sa->dest.sin_addr.s_addr = from.sin_addr.s_addr;
+		peer->remote_sa->use_dest = 1;
+		update_sa_addr(peer->remote_sa);
+	}
+	/* Update received packet timeout */
+	peer->remote_sa->last_packet_recv = time(NULL);
+	
+	if (encap_any_decap(meth) == 0)
+		syslog(LOG_DEBUG, "received update probe from peer");
+	else
+		/* Send the decapsulated packet to the tunnel interface */
+		tun_send_ip(meth, peer->tun_fd);
+}
+
 static uint8_t volatile do_kill;
 static uint8_t *kill_packet;
 static size_t kill_packet_size;
@@ -846,75 +921,10 @@ static void vpnc_main_loop(struct peer_desc *peer, struct encap_method *meth, co
 		}
 
 		if (FD_ISSET(peer->tun_fd, &refds)) {
-			int pack;
-
-			/* Receive a packet from the tunnel interface */
-			pack = tun_read(peer->tun_fd, buf + MAX_HEADER, MAX_PACKET);
-			if (pack == -1) {
-				syslog(LOG_ERR, "read: %m");
-				continue;
-			}
-
-
-			if (peer->remote_sa->use_dest == 0) {
-				syslog(LOG_NOTICE, "peer hasn't a known address yet");
-				continue;
-			}
-
-			if (((struct ip *)(buf + MAX_HEADER))->ip_dst.s_addr
-				== peer->remote_sa->dest.sin_addr.s_addr) {
-				syslog(LOG_ALERT, "routing loop to %s",
-					inet_ntoa(peer->remote_sa->dest.sin_addr));
-				continue;
-			}
-
-			/* Encapsulate and send to the other end of the tunnel */
-			encap_send_peer(peer->remote_sa->em, peer, buf, pack);
-
-			/* Update sent packet timeout */
-			peer->remote_sa->last_packet_sent = time(NULL);
+			process_tun(peer);
 		}
 		if (FD_ISSET(encap_fd, &refds) ) {
-			/* Receive a packet from a socket */
-			struct peer_desc *peer;
-			int pack;
-			struct sockaddr_in from;
-
-			pack = encap_recv(meth, buf, MAX_HEADER + MAX_PACKET, &from);
-			if (pack == -1)
-				continue;
-
-			peer = encap_peer_find(meth);
-			if (peer == NULL) {
-				syslog(LOG_NOTICE, "unknown spi from %s", inet_ntoa(from.sin_addr));
-				continue;
-			}
-
-			/* Check auth digest and/or decrypt */
-			if (encap_recv_peer(meth, peer) != 0)
-				continue;
-
-			/* Check origin IP; update our copy if need be */
-			if (peer->remote_sa->use_dest == 0
-				|| from.sin_addr.s_addr != peer->remote_sa->dest.sin_addr.s_addr) {
-				/* remote end changed address */
-				char addr1[16];
-				strcpy(addr1, inet_ntoa(peer->remote_sa->dest.sin_addr));
-				syslog(LOG_NOTICE,
-					"spi %u: remote address changed from %s to %s",
-					peer->remote_sa->spi, addr1, inet_ntoa(from.sin_addr));
-				peer->remote_sa->dest.sin_addr.s_addr = from.sin_addr.s_addr;
-				peer->remote_sa->use_dest = 1;
-				update_sa_addr(peer->remote_sa);
-			}
-			/* Update received packet timeout */
-			peer->remote_sa->last_packet_recv = time(NULL);
-
-			if (encap_any_decap(meth) == 0)
-				syslog(LOG_DEBUG, "received update probe from peer");
-			else
-				/* Send the decapsulated packet to the tunnel interface */
-				tun_send_ip(meth, peer->tun_fd);
+			process_socket(meth);
 		}
 	}
 	
