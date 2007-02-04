@@ -140,12 +140,19 @@ static void setup_tunnel(struct sa_block *s)
 	if (config[CONFIG_IF_NAME])
 		memcpy(s->tun_name, config[CONFIG_IF_NAME], strlen(config[CONFIG_IF_NAME]));
 
-	s->tun_fd = tun_open(s->tun_name);
+	s->tun_fd = tun_open(s->tun_name, opt_if_mode);
 	DEBUG(2, printf("using interface %s\n", s->tun_name));
 	setenv("TUNDEV", s->tun_name, 1);
 
 	if (s->tun_fd == -1)
 		error(1, errno, "can't initialise tunnel interface");
+	
+	if (opt_if_mode == IF_MODE_TAP) {
+		if (tun_get_hwaddr(s->tun_fd, s->tun_name, &(s->tun_hwaddr)) < 0) {
+			error(1, errno, "can't get tunnel HW address");
+		}
+		hex_dump("interface HW addr", &s->tun_hwaddr, ETH_ALEN);
+	}
 }
 
 static void config_tunnel()

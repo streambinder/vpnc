@@ -28,6 +28,7 @@
 struct sa_block {
 	int tun_fd;
 	char tun_name[IFNAMSIZ];
+	struct sockaddr tun_hwaddr;
 	uint8_t i_cookie[ISAKMP_COOKIE_LENGTH];
 	uint8_t r_cookie[ISAKMP_COOKIE_LENGTH];
 	uint8_t *key; /* ike encryption key */

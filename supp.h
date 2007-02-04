@@ -22,12 +22,6 @@
 #ifndef __SUPP_H__
 #define __SUPP_H__
 
-#include <stdio.h>
-#include <sys/socket.h>
-#include <net/if.h>
-#include "sysdep.h"
-#include "isakmp.h"
-
 enum supp_algo_key {
 	SUPP_ALGO_NAME,
 	SUPP_ALGO_MY_ID,

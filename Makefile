@@ -51,7 +51,7 @@ all : $(BINS)
 
 vpnc : $(OBJS) vpnc.o
 
-cisco-decrypt : cisco-decrypt.o config.o supp.o
+cisco-decrypt : cisco-decrypt.o config.o supp.o sysdep.o
 
 .depend: $(SRCS)
 	$(CC) -MM $(SRCS) $(CFLAGS) $(CPPFLAGS) > $@

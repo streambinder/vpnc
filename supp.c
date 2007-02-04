@@ -22,6 +22,7 @@
 #include "supp.h"
 #include "math_group.h"
 #include "config.h"
+#include "isakmp.h"
 
 #include <gcrypt.h>
 #include <stdlib.h>

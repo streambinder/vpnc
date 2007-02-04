@@ -25,10 +25,6 @@
 #include <sys/ioctl.h>
 #include <errno.h>
 
-#if !defined(HAVE_VASPRINTF) || !defined(HAVE_ASPRINTF) || !defined(HAVE_ERROR)
-#include <stdarg.h>
-#endif
-
 #include <sys/socket.h>
 #include <net/if.h>
 
@@ -36,7 +32,7 @@
 #include <net/tun/if_tun.h>
 #elif defined(__linux__)
 #include <linux/if_tun.h>
-#elif defiend(__APPLE__)
+#elif defined(__APPLE__)
 #else
 #include <net/if_tun.h>
 #endif
@@ -56,27 +52,11 @@
 #include <netinet/tcp.h>
 #endif
 
-#if defined(__linux__)
-#define HAVE_VASPRINTF 1
-#define HAVE_ASPRINTF  1
-#define HAVE_ERROR     1
-#define HAVE_GETLINE   1
-/* #define HAVE_FGETLN    1 */
-#define HAVE_UNSETENV  1
-#define HAVE_SETENV    1
-#elif defined(__sun__)
-/* nothing */
-#else
-#define HAVE_VASPRINTF 1
-#define HAVE_ASPRINTF  1
-/* #define HAVE_ERROR     1 */
-/* #define HAVE_GETLINE   1 */
-#define HAVE_FGETLN    1
-#define HAVE_UNSETENV  1
-#define HAVE_SETENV    1
-#endif
-
 #include "sysdep.h"
+
+#if !defined(HAVE_VASPRINTF) || !defined(HAVE_ASPRINTF) || !defined(HAVE_ERROR)
+#include <stdarg.h>
+#endif
 
 #if defined(__sun__)
 extern char **environ;
@@ -84,11 +64,11 @@ static int ip_fd = -1, muxid;
 #endif
 
 /* 
- * Allocate TUN device, returns opened fd. 
+ * Allocate TUN/TAP device, returns opened fd. 
  * Stores dev name in the first arg(must be large enough).
  */
 #if defined(__sun__)
-int tun_open(char *dev)
+int tun_open(char *dev, enum if_mode_enum mode)
 {
 	int tun_fd, if_fd, ppa = -1;
 	struct ifreq ifr;
@@ -101,12 +81,12 @@ int tun_open(char *dev)
 		ppa = atoi(ptr);
 	}
 
-	if ((ip_fd = open("/dev/udp", O_RDWR, 0)) < 0) {
+	if ((ip_fd = open("/dev/ip", O_RDWR, 0)) < 0) {
 		syslog(LOG_ERR, "Can't open /dev/ip");
 		return -1;
 	}
 
-	if ((tun_fd = open("/dev/tun", O_RDWR, 0)) < 0) {
+	if ((tun_fd = open(((mode == IF_MODE_TUN) ? "/dev/tun" : "/dev/tap"), O_RDWR, 0)) < 0) {
 		syslog(LOG_ERR, "Can't open /dev/tun");
 		return -1;
 	}
@@ -117,7 +97,7 @@ int tun_open(char *dev)
 		return -1;
 	}
 
-	if ((if_fd = open("/dev/tun", O_RDWR, 0)) < 0) {
+	if ((if_fd = open(((mode == IF_MODE_TUN) ? "/dev/tun" : "/dev/tap"), O_RDWR, 0)) < 0) {
 		syslog(LOG_ERR, "Can't open /dev/tun (2)");
 		return -1;
 	}
@@ -137,7 +117,7 @@ int tun_open(char *dev)
 	}
 	close(if_fd);
 
-	snprintf(dev, IFNAMSIZ, "tun%d", ppa);
+	snprintf(dev, IFNAMSIZ, "%s%d", ((mode == IF_MODE_TUN) ? "tun" : "tap"), ppa);
 
 	memset(&ifr, 0, sizeof(ifr));
 	strcpy(ifr.ifr_name, dev);
@@ -152,7 +132,7 @@ int tun_open(char *dev)
 	return tun_fd;
 }
 #elif defined(IFF_TUN)
-int tun_open(char *dev)
+int tun_open(char *dev, enum if_mode_enum mode)
 {
 	struct ifreq ifr;
 	int fd, err;
@@ -164,7 +144,7 @@ int tun_open(char *dev)
 	}
 
 	memset(&ifr, 0, sizeof(ifr));
-	ifr.ifr_flags = IFF_TUN | IFF_NO_PI;
+	ifr.ifr_flags = ((mode == IF_MODE_TUN) ? IFF_TUN : IFF_TAP) | IFF_NO_PI;
 	if (*dev)
 		strncpy(ifr.ifr_name, dev, IFNAMSIZ);
 
@@ -176,13 +156,13 @@ int tun_open(char *dev)
 	return fd;
 }
 #else
-int tun_open(char *dev)
+int tun_open(char *dev, enum if_mode_enum mode)
 {
 	char tunname[14];
 	int i, fd;
 
 	if (*dev) {
-		if (strncmp(dev, "tun", 3))
+		if (strncmp(dev, ((mode == IF_MODE_TUN) ? "tun" : "tap"), 3))
 			error(1, 0,
 				"error: arbitrary naming tunnel interface is not supported in this version\n");
 		snprintf(tunname, sizeof(tunname), "/dev/%s", dev);
@@ -190,10 +170,12 @@ int tun_open(char *dev)
 	}
 
 	for (i = 0; i < 255; i++) {
-		snprintf(tunname, sizeof(tunname), "/dev/tun%d", i);
+		snprintf(tunname, sizeof(tunname), "/dev/%s%d",
+			((mode == IF_MODE_TUN) ? "tun" : "tap"), i);
 		/* Open device */
 		if ((fd = open(tunname, O_RDWR)) > 0) {
-			snprintf(dev, IFNAMSIZ, "tun%d", i);
+			snprintf(dev, IFNAMSIZ, "%s%d",
+				((mode == IF_MODE_TUN) ? "tun" : "tap"), i);
 			return fd;
 		}
 	}
@@ -312,7 +294,38 @@ int tun_read(int fd, unsigned char *buf, int len)
 {
 	return read(fd, buf, len);
 }
+
 #endif
+
+/*
+ * Get HW addr
+ */
+int tun_get_hwaddr(int fd, char *dev, struct sockaddr *hwaddr)
+{
+#ifdef SIOCGIFHWADDR
+	struct ifreq ifr;
+	
+	/* Use a new socket fd! */
+	if ((fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+		return -1;
+	}
+	
+	memset(&ifr, 0, sizeof(struct ifreq));
+	strncpy(ifr.ifr_name, dev, IFNAMSIZ);
+	
+	if (ioctl(fd, SIOCGIFHWADDR, &ifr) < 0) {
+		return -1;
+	}
+	
+	memcpy(hwaddr, &ifr.ifr_hwaddr, sizeof(struct sockaddr));
+	
+	return 0;
+#else
+	/* todo: implement using SIOCGLIFADDR */
+	errno = ENOSYS;
+	return -1;
+#endif
+}
 
 /***********************************************************************/
 /* other support functions */
