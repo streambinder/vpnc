@@ -25,7 +25,7 @@ ETCDIR=/etc/vpnc
 SBINDIR=$(PREFIX)/sbin
 MANDIR=$(PREFIX)/share/man
 
-SRCS = vpnc-debug.c isakmp-pkt.c tunip.c config.c dh.c math_group.c supp.c
+SRCS = sysdep.c vpnc-debug.c isakmp-pkt.c tunip.c config.c dh.c math_group.c supp.c
 BINS = vpnc cisco-decrypt
 OBJS = $(addsuffix .o,$(basename $(SRCS)))
 HDRS := $(addsuffix .h,$(basename $(SRCS))) isakmp.h sysdep.h
@@ -39,34 +39,8 @@ CPPFLAGS = -DVERSION=\"$(VERSION)\"
 LDFLAGS = -g $(shell libgcrypt-config --libs)
 CFLAGS +=  $(shell libgcrypt-config --cflags)
 
-ifeq ($(shell uname -s), Linux)
-SRCS +=sysdep-linux.c
-endif
-ifeq ($(shell uname -s), FreeBSD)
-CPPFLAGS += -DSOCKADDR_IN_SIN_LEN -DHAVE_SA_LEN
-SRCS +=sysdep-bsd.c
-endif
-ifeq ($(shell uname -s), NetBSD)
-CPPFLAGS += -DSOCKADDR_IN_SIN_LEN -DHAVE_SA_LEN
-SRCS +=sysdep-bsd.c
-endif
-ifeq ($(shell uname -s), DragonFly)
-CPPFLAGS += -DSOCKADDR_IN_SIN_LEN -DHAVE_SA_LEN -DDRAGONFLY_BSD
-SRCS +=sysdep-bsd.c
-endif
-ifeq ($(shell uname -s), OpenBSD)
-CPPFLAGS += -DSOCKADDR_IN_SIN_LEN -DHAVE_SA_LEN -DNEED_IPLEN_FIX -DNEW_TUN
-SRCS +=sysdep-bsd.c
-endif
 ifeq ($(shell uname -s), SunOS)
-CPPFLAGS += -DNEED_IPLEN_FIX
 LDFLAGS += -lnsl -lresolv -lsocket
-SRCS +=sysdep-svr4.c
-endif
-ifeq ($(shell uname -s), Darwin)
-CFLAGS += -fstrict-aliasing -freorder-blocks -fsched-interblock
-CPPFLAGS += -DSOCKADDR_IN_SIN_LEN -DHAVE_SA_LEN -DNEED_IPLEN_FIX -DDARWIN
-SRCS +=sysdep-bsd.c
 endif
 
 FILELIST := $(SRCS) $(HDRS) $(BINSRCS) vpnc-script vpnc-disconnect \
