@@ -126,6 +126,7 @@ struct sa_desc {
 struct peer_desc {
 	struct sa_desc *local_sa, *remote_sa;
 	int tun_fd; /* file descriptor for associated tunnel device */
+	uint8_t *tun_hwaddr;
 };
 
 /* A real ESP header (RFC 2406) */
@@ -789,7 +790,7 @@ static uint8_t *kill_packet;
 static size_t kill_packet_size;
 static struct sockaddr *kill_dest;
 
-static void vpnc_main_loop(struct peer_desc *peer, struct encap_method *meth, int tun_fd, const char *pidfile)
+static void vpnc_main_loop(struct peer_desc *peer, struct encap_method *meth, const char *pidfile)
 {
 	fd_set rfds, refds;
 	int nfds=0, encap_fd =-1;
@@ -813,8 +814,8 @@ static void vpnc_main_loop(struct peer_desc *peer, struct encap_method *meth, in
 	enable_keepalives = !strcmp(meth->name, "udpesp");
 
 	FD_ZERO(&rfds);
-	FD_SET(tun_fd, &rfds);
-	nfds = MAX(nfds, tun_fd +1);
+	FD_SET(peer->tun_fd, &rfds);
+	nfds = MAX(nfds, peer->tun_fd +1);
 
 	encap_fd = encap_get_fd (meth);
 	FD_SET(encap_fd, &rfds);
@@ -844,7 +845,7 @@ static void vpnc_main_loop(struct peer_desc *peer, struct encap_method *meth, in
 			continue;
 		}
 
-		if (FD_ISSET(tun_fd, &refds)) {
+		if (FD_ISSET(peer->tun_fd, &refds)) {
 			int pack;
 
 			/* Receive a packet from the tunnel interface */
@@ -954,7 +955,8 @@ vpnc_doit(unsigned long tous_spi,
 	unsigned long tothem_spi,
 	const unsigned char *tothem_key,
 	struct sockaddr_in *tothem_dest,
-	int tun_fd, int md_algo, int cry_algo,
+	int tun_fd, uint8_t *tun_hwaddr,
+	int md_algo, int cry_algo,
 	uint8_t * kill_packet_p, size_t kill_packet_size_p,
 	struct sockaddr *kill_dest_p,
 	uint16_t encap_mode, int udp_fd,
@@ -1045,6 +1047,7 @@ vpnc_doit(unsigned long tous_spi,
 
 
 	vpnpeer.tun_fd = tun_fd;
+	vpnpeer.tun_hwaddr = tun_hwaddr;
 	vpnpeer.local_sa = &tous_sa;
 	vpnpeer.remote_sa = &tothem_sa;
 
@@ -1083,5 +1086,5 @@ vpnc_doit(unsigned long tous_spi,
 		openlog("vpnc", LOG_PID, LOG_DAEMON);
 	}
 
-	vpnc_main_loop(&vpnpeer, &meth, tun_fd, (!opt_nd) ? pidfile : NULL);
+	vpnc_main_loop(&vpnpeer, &meth, (!opt_nd) ? pidfile : NULL);
 }

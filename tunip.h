@@ -28,7 +28,7 @@
 struct sa_block {
 	int tun_fd;
 	char tun_name[IFNAMSIZ];
-	struct sockaddr tun_hwaddr;
+	uint8_t tun_hwaddr[ETH_ALEN];
 	uint8_t i_cookie[ISAKMP_COOKIE_LENGTH];
 	uint8_t r_cookie[ISAKMP_COOKIE_LENGTH];
 	uint8_t *key; /* ike encryption key */
@@ -56,7 +56,8 @@ extern void vpnc_doit(unsigned long tous_spi,
         unsigned long tothem_spi,
         const unsigned char *tothem_key,
         struct sockaddr_in *tothem_dest,
-        int tun_fd, int md_algo, int cry_algo,
+        int tun_fd, uint8_t *tun_hwaddr,
+	int md_algo, int cry_algo,
         uint8_t * kill_packet_p, size_t kill_packet_size_p,
         struct sockaddr *kill_dest_p,
         uint16_t encap_mode, int udp_fd,

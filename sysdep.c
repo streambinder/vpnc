@@ -300,7 +300,7 @@ int tun_read(int fd, unsigned char *buf, int len)
 /*
  * Get HW addr
  */
-int tun_get_hwaddr(int fd, char *dev, struct sockaddr *hwaddr)
+int tun_get_hwaddr(int fd, char *dev, uint8_t *hwaddr)
 {
 #ifdef SIOCGIFHWADDR
 	struct ifreq ifr;
@@ -317,7 +317,7 @@ int tun_get_hwaddr(int fd, char *dev, struct sockaddr *hwaddr)
 		return -1;
 	}
 	
-	memcpy(hwaddr, &ifr.ifr_hwaddr, sizeof(struct sockaddr));
+	memcpy(hwaddr, &ifr.ifr_hwaddr.sa_data, ETH_ALEN);
 	
 	return 0;
 #else

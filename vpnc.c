@@ -148,10 +148,10 @@ static void setup_tunnel(struct sa_block *s)
 		error(1, errno, "can't initialise tunnel interface");
 	
 	if (opt_if_mode == IF_MODE_TAP) {
-		if (tun_get_hwaddr(s->tun_fd, s->tun_name, &(s->tun_hwaddr)) < 0) {
+		if (tun_get_hwaddr(s->tun_fd, s->tun_name, s->tun_hwaddr) < 0) {
 			error(1, errno, "can't get tunnel HW address");
 		}
-		hex_dump("interface HW addr", &s->tun_hwaddr, ETH_ALEN);
+		hex_dump("interface HW addr", s->tun_hwaddr, ETH_ALEN);
 	}
 }
 
@@ -2174,7 +2174,8 @@ static void setup_link(struct sa_block *s)
 		DEBUG(2, printf("S7.10\n"));
 		vpnc_doit(s->tous_esp_spi, tous_keys, &tothem_dest,
 			s->tothem_esp_spi, tothem_keys, (struct sockaddr_in *)&tous_dest,
-			s->tun_fd, ipsec_hash_algo, ipsec_cry_algo,
+			s->tun_fd, s->tun_hwaddr,
+			ipsec_hash_algo, ipsec_cry_algo,
 			s->kill_packet, s->kill_packet_size, dest_addr,
 			encap_mode, tunnelfd,
 			config[CONFIG_PID_FILE]);

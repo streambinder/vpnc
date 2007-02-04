@@ -30,7 +30,7 @@ int tun_open(char *dev, enum if_mode_enum mode);
 int tun_close(int fd, char *dev);
 int tun_write(int fd, unsigned char *buf, int len);
 int tun_read(int fd, unsigned char *buf, int len);
-int tun_get_hwaddr(int fd, char *dev, struct sockaddr *hwaddr);
+int tun_get_hwaddr(int fd, char *dev, uint8_t *hwaddr);
 
 /***************************************************************************/
 #if defined(__linux__)
