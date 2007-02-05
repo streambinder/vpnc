@@ -167,7 +167,7 @@ static int recv_ignore_dup(void *recvbuf, size_t recvbufsize)
 	uint8_t *resend_check_hash;
 	int recvsize, hash_len;
 	struct sockaddr_in recvaddr;
-	int recvaddr_size = sizeof(recvaddr);
+	size_t recvaddr_size = sizeof(recvaddr);
 	char ntop_buf[32];
 
 	recvsize = recvfrom(sockfd, recvbuf, recvbufsize, 0,

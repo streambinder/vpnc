@@ -151,7 +151,7 @@ struct encap_method {
 	unsigned int bufsize, bufpayload, var_header_size;
 	int buflen;
 	struct sockaddr_in from;
-	int fromlen;
+	size_t fromlen;
 
 	int (*recv) (struct encap_method * encap,
 		unsigned char *buf, unsigned int bufsize, struct sockaddr_in * from);
@@ -429,7 +429,7 @@ static int encap_udp_new(struct encap_method *encap, int udp_fd)
  */
 int find_local_addr(struct sockaddr_in *dest, struct sockaddr_in *source)
 {
-	int addrlen;
+	size_t addrlen;
 	struct sockaddr_in dest_socket;
 	int fd;
 
