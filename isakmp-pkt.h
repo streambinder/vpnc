@@ -99,6 +99,7 @@ struct isakmp_payload {
 			uint16_t type;
 			uint16_t data_length;
 			uint8_t *data;
+			struct isakmp_attribute *attributes; /* sometimes, data is an attributes array */
 		} n;
 		struct {
 			uint32_t doi;

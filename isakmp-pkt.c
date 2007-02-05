@@ -494,7 +494,7 @@ static struct isakmp_attribute *parse_isakmp_attributes(const uint8_t ** data_p,
 static struct isakmp_payload *parse_isakmp_payload(uint8_t type,
 	const uint8_t ** data_p, size_t * data_len_p, int * reject)
 {
-	const uint8_t *data = *data_p;
+	const uint8_t *data = *data_p, *tmpdata;
 	size_t data_len = *data_len_p;
 	struct isakmp_payload *r;
 	uint8_t next_type;
@@ -667,6 +667,10 @@ static struct isakmp_payload *parse_isakmp_payload(uint8_t type,
 		r->u.n.data = xallocc(r->u.n.data_length);
 		fetchn(r->u.n.data, r->u.n.data_length);
 		hex_dump("n.data", r->u.n.data, r->u.n.data_length);
+		if ((r->u.n.doi == ISAKMP_DOI_IPSEC)&&(r->u.n.type == ISAKMP_N_IPSEC_RESPONDER_LIFETIME)) {
+			tmpdata = r->u.n.data;
+			r->u.n.attributes = parse_isakmp_attributes(&tmpdata, r->u.n.data_length, reject);
+		}
 		break;
 	case ISAKMP_PAYLOAD_D:
 		r->u.d.doi = fetch4();
