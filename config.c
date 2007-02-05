@@ -39,7 +39,7 @@ const char *config[LAST_CONFIG];
 
 int opt_debug = 0;
 int opt_nd;
-int opt_1des;
+int opt_1des, opt_no_encryption;
 enum natt_mode_enum opt_natt_mode;
 enum vendor_enum opt_vendor;
 enum if_mode_enum opt_if_mode;
@@ -398,6 +398,13 @@ static const struct config_names_s {
 		"enables weak single DES encryption",
 		NULL
 	}, {
+		CONFIG_ENABLE_NO_ENCRYPTION, 0, 1,
+		"--enable-no-encryption",
+		"Enable no encryption",
+		NULL,
+		"enables using no encryption for data traffic (key exchanged must be encrypted)",
+		NULL
+	}, {
 		CONFIG_VERSION, 1, 1,
 		"--application-version",
 		"Application version ",
@@ -693,6 +700,7 @@ void do_config(int argc, char **argv)
 		opt_debug = (config[CONFIG_DEBUG]) ? atoi(config[CONFIG_DEBUG]) : 0;
 		opt_nd = (config[CONFIG_ND]) ? 1 : 0;
 		opt_1des = (config[CONFIG_ENABLE_1DES]) ? 1 : 0;
+		opt_no_encryption = (config[CONFIG_ENABLE_NO_ENCRYPTION]) ? 1 : 0;
 		opt_udpencapport=atoi(config[CONFIG_UDP_ENCAP_PORT]);
 		
 		if (!strcmp(config[CONFIG_NATT_MODE], "natt")) {

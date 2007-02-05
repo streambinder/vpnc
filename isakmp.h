@@ -129,7 +129,8 @@ enum ike_attr_enum {
 
 /* IKE encryption algorithm IDs.  */
 enum ike_enc_enum {
-	IKE_ENC_DES_CBC = 1,
+	IKE_ENC_NO_CBC = 0,
+	IKE_ENC_DES_CBC,
 	IKE_ENC_IDEA_CBC,
 	IKE_ENC_BLOWFISH_CBC,
 	IKE_ENC_RC5_R16_B16_CBC,

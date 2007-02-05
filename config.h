@@ -30,6 +30,7 @@ enum config_enum {
 	CONFIG_DEBUG,
 	CONFIG_DOMAIN,
 	CONFIG_ENABLE_1DES,
+	CONFIG_ENABLE_NO_ENCRYPTION,
 	CONFIG_ND,
 	CONFIG_NON_INTERACTIVE,
 	CONFIG_PID_FILE,
@@ -81,7 +82,7 @@ extern const char *config[LAST_CONFIG];
 extern enum vendor_enum opt_vendor;
 extern int opt_debug;
 extern int opt_nd;
-extern int opt_1des;
+extern int opt_1des, opt_no_encryption;
 extern enum natt_mode_enum opt_natt_mode;
 extern enum if_mode_enum opt_if_mode;
 extern uint16_t opt_udpencapport;

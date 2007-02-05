@@ -558,9 +558,10 @@ static uint8_t *gen_keymat(struct sa_block *s,
 	int cnt;
 
 	int md_len = gcry_md_get_algo_dlen(md_algo);
-	size_t cry_len;
+	size_t cry_len = 0;
 
-	gcry_cipher_algo_info(crypt_algo, GCRYCTL_GET_KEYLEN, NULL, &cry_len);
+	if (crypt_algo != 0)
+		gcry_cipher_algo_info(crypt_algo, GCRYCTL_GET_KEYLEN, NULL, &cry_len);
 	blksz = md_len + cry_len;
 	cnt = (blksz + s->md_len - 1) / s->md_len;
 	block = xallocc(cnt * s->md_len);
@@ -2066,6 +2067,13 @@ static void setup_link(struct sa_block *s)
 							"This algorithm is considered to weak today\n"
 							"If your vpn concentrator admin still insists on using DES\n"
 							"use the \"--enable-1des\" option.\n");
+					} else if (ipsec_cry_algo == GCRY_CIPHER_NONE && !opt_no_encryption) {
+						error(1, 0, "peer selected NULL as \"encrytion\" method.\n"
+							"This is _no_ encryption at all.\n"
+							"Your traffic is still protected against modification with %s\n"
+							"If your vpn concentrator admin still insists on not using encryption\n"
+							"use the \"--enable-no-encryption\" option.\n",
+							get_algo(SUPP_ALGO_HASH, SUPP_ALGO_IPSEC_SA, seen_auth, NULL, 0)->name);
 					}
 				}
 			}

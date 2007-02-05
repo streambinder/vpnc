@@ -110,6 +110,7 @@ struct sa_desc {
 	/* Preprocessed encryption key */
 	gcry_cipher_hd_t cry_ctx;
 	int cry_algo;
+	size_t blksize;
 
 	/* Authentication secret */
 	const unsigned char *auth_secret;
@@ -551,7 +552,7 @@ static void encap_esp_encapsulate(struct encap_method *encap,
 	 *      obscure on that point.
 	 * seems fine
 	 */
-	gcry_cipher_algo_info(peer->remote_sa->cry_algo, GCRYCTL_GET_BLKLEN, NULL, &pad_blksz);
+	pad_blksz = peer->remote_sa->blksize;
 	while (pad_blksz & 3) /* must be multiple of 4 */
 		pad_blksz <<= 1;
 	padding = pad_blksz - ((encap->buflen + 2 - encap->var_header_size - encap->bufpayload) % pad_blksz);
@@ -585,7 +586,7 @@ static void encap_esp_encapsulate(struct encap_method *encap,
 	hex_dump("sending ESP packet (before crypt)", encap->buf, encap->buflen);
 #endif
 
-	{
+	if (peer->remote_sa->cry_algo) {
 		gcry_cipher_setiv(peer->remote_sa->cry_ctx, iv, peer->remote_sa->ivlen);
 		gcry_cipher_encrypt(peer->remote_sa->cry_ctx, cleartext, cleartextlen, NULL, 0);
 	}
@@ -751,7 +752,7 @@ int encap_esp_recv_peer(struct encap_method *encap, struct peer_desc *peer)
 		}
 	}
 
-	gcry_cipher_algo_info(peer->local_sa->cry_algo, GCRYCTL_GET_BLKLEN, NULL, &blksz);
+	blksz = peer->local_sa->blksize;
 	if ((len % blksz) != 0) {
 		syslog(LOG_ALERT,
 			"payload len %d not a multiple of algorithm block size %lu", len,
@@ -763,7 +764,7 @@ int encap_esp_recv_peer(struct encap_method *encap, struct peer_desc *peer)
 		&encap->buf[encap->bufpayload + encap->fixed_header_size +
 			 encap->var_header_size], len);
 
-	{
+	if (peer->remote_sa->cry_algo) {
 		unsigned char *data;
 
 		data = (encap->buf + encap->bufpayload
@@ -1113,7 +1114,10 @@ vpnc_doit(unsigned long tous_spi,
 	tous_sa.md_algo = md_algo;
 	tous_sa.spi = htonl(tous_spi);
 	tous_sa.enc_secret = tous_key;
-	gcry_cipher_algo_info(cry_algo, GCRYCTL_GET_KEYLEN, NULL, &(tous_sa.enc_secret_size));
+	if (cry_algo)
+		gcry_cipher_algo_info(cry_algo, GCRYCTL_GET_KEYLEN, NULL, &(tous_sa.enc_secret_size));
+	else
+		tous_sa.enc_secret_size = 0;
 	hex_dump("tous.enc_secret", tous_sa.enc_secret, tous_sa.enc_secret_size);
 	tous_sa.auth_secret = tous_key + tous_sa.enc_secret_size;
 	tous_sa.auth_secret_size = gcry_md_get_algo_dlen(md_algo);
@@ -1125,9 +1129,15 @@ vpnc_doit(unsigned long tous_spi,
 		tous_sa.use_dest = 1;
 	}
 	tous_sa.cry_algo = cry_algo;
-	gcry_cipher_open(&tous_sa.cry_ctx, tous_sa.cry_algo, GCRY_CIPHER_MODE_CBC, 0);
-	gcry_cipher_setkey(tous_sa.cry_ctx, tous_sa.enc_secret, tous_sa.enc_secret_size);
-	gcry_cipher_algo_info(tous_sa.cry_algo, GCRYCTL_GET_BLKLEN, NULL, &(tous_sa.ivlen));
+	if (cry_algo) {
+		gcry_cipher_open(&tous_sa.cry_ctx, tous_sa.cry_algo, GCRY_CIPHER_MODE_CBC, 0);
+		gcry_cipher_setkey(tous_sa.cry_ctx, tous_sa.enc_secret, tous_sa.enc_secret_size);
+		gcry_cipher_algo_info(tous_sa.cry_algo, GCRYCTL_GET_BLKLEN, NULL, &(tous_sa.ivlen));
+	} else {
+		tous_sa.cry_ctx = NULL;
+		tous_sa.ivlen = 0;
+		tous_sa.blksize = 8; /* seems to be this without encryption... */
+	}
 
 	memset(&tothem_sa, 0, sizeof(struct sa_desc));
 	tothem_sa.next = local_sa_list;
@@ -1139,7 +1149,10 @@ vpnc_doit(unsigned long tous_spi,
 	tothem_sa.md_algo = md_algo;
 	tothem_sa.spi = htonl(tothem_spi);
 	tothem_sa.enc_secret = tothem_key;
-	gcry_cipher_algo_info(cry_algo, GCRYCTL_GET_KEYLEN, NULL, &(tothem_sa.enc_secret_size));
+	if (cry_algo)
+		gcry_cipher_algo_info(cry_algo, GCRYCTL_GET_KEYLEN, NULL, &(tothem_sa.enc_secret_size));
+	else
+		tothem_sa.enc_secret_size = 0;
 	hex_dump("tothem.enc_secret", tothem_sa.enc_secret, tothem_sa.enc_secret_size);
 	tothem_sa.auth_secret = tothem_key + tothem_sa.enc_secret_size;
 	tothem_sa.auth_secret_size = gcry_md_get_algo_dlen(md_algo);
@@ -1151,9 +1164,15 @@ vpnc_doit(unsigned long tous_spi,
 		tothem_sa.use_dest = 1;
 	}
 	tothem_sa.cry_algo = cry_algo;
-	gcry_cipher_open(&tothem_sa.cry_ctx, tothem_sa.cry_algo, GCRY_CIPHER_MODE_CBC, 0);
-	gcry_cipher_setkey(tothem_sa.cry_ctx, tothem_sa.enc_secret, tothem_sa.enc_secret_size);
-	gcry_cipher_algo_info(tothem_sa.cry_algo, GCRYCTL_GET_BLKLEN, NULL, &(tothem_sa.ivlen));
+	if (cry_algo) {
+		gcry_cipher_open(&tothem_sa.cry_ctx, tothem_sa.cry_algo, GCRY_CIPHER_MODE_CBC, 0);
+		gcry_cipher_setkey(tothem_sa.cry_ctx, tothem_sa.enc_secret, tothem_sa.enc_secret_size);
+		gcry_cipher_algo_info(tothem_sa.cry_algo, GCRYCTL_GET_BLKLEN, NULL, &(tothem_sa.ivlen));
+	} else {
+		tothem_sa.cry_ctx = NULL;
+		tothem_sa.ivlen = 0;
+		tothem_sa.blksize = 8; /* ...I hope this is rellay ok */
+	}
 
 	DEBUG(2, printf("local spi: %#08x\n", tous_sa.spi));
 	DEBUG(2, printf("remote spi: %#08x\n", tothem_sa.spi));
