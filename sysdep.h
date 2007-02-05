@@ -114,7 +114,7 @@ int tun_get_hwaddr(int fd, char *dev, uint8_t *hwaddr);
 
 /* where is this defined? */
 #include <sys/socket.h>
-const char *inet_ntop(int af, const void *src, char *dst, socklen_t cnt);
+const char *inet_ntop(int af, const void *src, char *dst, int cnt);
 #endif
 /***************************************************************************/
 
