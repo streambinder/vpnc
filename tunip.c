@@ -1,10 +1,11 @@
 /* IPSec ESP and AH support.
    Copyright (c) 1999      Pierre Beyssac
    Copyright (C) 2002      Geoffrey Keating
-   Copyright (C) 2003-2005 Maurice Massar
+   Copyright (C) 2003-2007 Maurice Massar
    Copyright (C) 2004      Tomas Mraz
    Copyright (C) 2005      Michael Tilstra
    Copyright (C) 2006      Daniel Roethlisberger
+   Copyright (C) 2007      Paolo Zarpellon (tap support)
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -173,7 +174,7 @@ extern int natt_draft;
 
 #define MAX_HEADER 72
 #define MAX_PACKET 4096
-unsigned char buf[MAX_HEADER + MAX_PACKET];
+uint8_t buf[MAX_HEADER + MAX_PACKET + ETH_HLEN];
 
 struct peer_desc vpnpeer;
 
@@ -344,13 +345,36 @@ static int encap_any_decap(struct encap_method *encap)
 /*
  * Send decapsulated packet to tunnel device
  */
-static int tun_send_ip(struct encap_method *encap, int fd)
+static int tun_send_ip(struct encap_method *encap, int fd, uint8_t *hwaddr)
 {
-	int sent;
-
-	sent = tun_write(fd, encap->buf, encap->buflen);
-	if (sent != encap->buflen)
-		syslog(LOG_ERR, "truncated in: %d -> %d\n", encap->buflen, sent);
+	int sent, len;
+	uint8_t *start;
+	
+	start = encap->buf;
+	len = encap->buflen;
+	
+	if (opt_if_mode == IF_MODE_TAP) {
+		/*
+		 * Add ethernet header before encap->buf where
+		 * at least ETH_HLEN bytes should be available.
+		 */
+		struct ether_header *eth_hdr = (struct ether_header *) (encap->buf - ETH_HLEN);
+		
+		memcpy(eth_hdr->ether_dhost, hwaddr, ETH_ALEN);
+		memcpy(eth_hdr->ether_shost, hwaddr, ETH_ALEN);
+		
+		/* Use a different MAC as source */
+		eth_hdr->ether_shost[0] ^= 0x80; /* toggle some visible bit */
+		eth_hdr->ether_type = htons(ETHERTYPE_IP);
+		
+		start = (uint8_t *) eth_hdr;
+		len += ETH_HLEN;
+	}
+	
+	sent = tun_write(fd, start, len);
+	if (sent != len)
+		syslog(LOG_ERR, "truncated in: %d -> %d\n", len, sent);
+	hex_dump("Tx pkt", start, len);
 	return 1;
 }
 
@@ -785,17 +809,100 @@ int encap_esp_recv_peer(struct encap_method *encap, struct peer_desc *peer)
 	return 0;
 }
 
+/*
+ * Process ARP
+ * Return 1 if packet has been processed, 0 otherwise
+ */
+static int process_arp(int fd, uint8_t *hwaddr, uint8_t *frame)
+{
+	int frame_size;
+	uint8_t tmp[4];
+	struct ether_header *eth = (struct ether_header *) frame;
+	struct ether_arp *arp = (struct ether_arp *) (frame + ETH_HLEN);
+	
+	if (ntohs(eth->ether_type) != ETHERTYPE_ARP) {
+		return 0;
+	}
+	
+	if (ntohs(arp->arp_hrd) != ARPHRD_ETHER ||
+		ntohs(arp->arp_pro) != 0x800 ||
+		arp->arp_hln != ETH_ALEN ||
+		arp->arp_pln != 4 ||
+		ntohs(arp->arp_op) != ARPOP_REQUEST ||
+		!memcmp(arp->arp_spa, arp->arp_tpa, 4) ||
+		memcmp(eth->ether_shost, hwaddr, ETH_ALEN)) {
+		/* whatever .. just drop it */
+		return 1;
+	}
+	
+	/* send arp reply */
+	
+	memcpy(eth->ether_dhost, hwaddr, ETH_ALEN);
+	eth->ether_shost[0] ^= 0x80; /* Use a different MAC as source */
+	
+	memcpy(tmp, arp->arp_spa, 4);
+	memcpy(arp->arp_spa, arp->arp_tpa, 4);
+	memcpy(arp->arp_tpa, tmp, 4);
+	
+	memcpy(arp->arp_tha, hwaddr, ETH_ALEN);
+	arp->arp_sha[0] ^= 0x80; /* Use a different MAC as source */
+	
+	arp->arp_op = htons(ARPOP_REPLY);
+	
+	frame_size = ETH_HLEN + sizeof(struct ether_arp);
+	tun_write(fd, frame, frame_size);
+	hex_dump("ARP reply", frame, frame_size);
+	
+	return 1;
+}
+
+/*
+ * Process non-IP packets
+ * Return 1 if packet has been processed, 0 otherwise
+ */
+static int process_non_ip(uint8_t *frame)
+{
+	struct ether_header *eth = (struct ether_header *) frame;
+	
+	if (ntohs(eth->ether_type) != ETHERTYPE_IP) {
+		/* drop non-ip traffic */
+		return 1;
+	}
+	
+	return 0;
+}
+
 static void process_tun(struct peer_desc *peer)
 {
 	int pack;
+	int size = MAX_PACKET;
+	uint8_t *start = buf + MAX_HEADER;
+	
+	if (opt_if_mode == IF_MODE_TAP) {
+		/* Make sure IP packet starts at buf + MAX_HEADER */
+		start -= ETH_HLEN;
+		size += ETH_HLEN;
+	}
 	
 	/* Receive a packet from the tunnel interface */
-	pack = tun_read(peer->tun_fd, buf + MAX_HEADER, MAX_PACKET);
+	pack = tun_read(peer->tun_fd, start, size);
+	
+	hex_dump("Rx pkt", start, pack);
+	
+	if (opt_if_mode == IF_MODE_TAP) {
+		if (process_arp(peer->tun_fd, peer->tun_hwaddr, start)) {
+			return;
+		}
+		if (process_non_ip(start)) {
+			return;
+		}
+		pack -= ETH_HLEN;
+	}
+	
 	if (pack == -1) {
 		syslog(LOG_ERR, "read: %m");
 		return;
 	}
-	
 	
 	if (peer->remote_sa->use_dest == 0) {
 		syslog(LOG_NOTICE, "peer hasn't a known address yet");
@@ -822,8 +929,13 @@ static void process_socket(struct encap_method *meth)
 	struct peer_desc *peer;
 	int pack;
 	struct sockaddr_in from;
+	uint8_t *start = buf;
 	
-	pack = encap_recv(meth, buf, MAX_HEADER + MAX_PACKET, &from);
+	if (opt_if_mode == IF_MODE_TAP) {
+		start += ETH_HLEN;
+	}
+	
+	pack = encap_recv(meth, start, MAX_HEADER + MAX_PACKET, &from);
 	if (pack == -1)
 		return;
 	
@@ -857,7 +969,7 @@ static void process_socket(struct encap_method *meth)
 		syslog(LOG_DEBUG, "received update probe from peer");
 	else
 		/* Send the decapsulated packet to the tunnel interface */
-		tun_send_ip(meth, peer->tun_fd);
+		tun_send_ip(meth, peer->tun_fd, peer->tun_hwaddr);
 }
 
 static uint8_t volatile do_kill;
