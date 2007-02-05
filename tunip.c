@@ -1045,13 +1045,12 @@ static void vpnc_main_loop(struct peer_desc *peer, struct encap_method *meth, co
 	tun_close(oursa->tun_fd, oursa->tun_name);
 	if (pidfile)
 		unlink(pidfile); /* ignore errors */
-	syslog(LOG_NOTICE, "terminated");
+	syslog(LOG_NOTICE, "terminated by signal: %d", do_kill);
 }
 
 static void killit(int signum)
 {
-	do_kill = signum; /* unused */
-	do_kill = 1;
+	do_kill = signum;
 }
 
 static void write_pidfile(const char *pidfile)
@@ -1085,6 +1084,7 @@ vpnc_doit(unsigned long tous_spi,
 	uint16_t encap_mode, int udp_fd,
 	const char *pidfile)
 {
+	struct sigaction act;
 	struct encap_method meth;
 
 	static struct sa_desc tous_sa, tothem_sa;
@@ -1197,7 +1197,10 @@ vpnc_doit(unsigned long tous_spi,
 	kill_packet_size = kill_packet_size_p;
 	kill_dest = kill_dest_p;
 
-	signal(SIGHUP, killit);
+	sigaction(SIGHUP, NULL, &act);
+	if (act.sa_handler == SIG_DFL)
+		signal(SIGHUP, killit);
+	
 	signal(SIGINT, killit);
 	signal(SIGTERM, killit);
 	signal(SIGXCPU, killit);
