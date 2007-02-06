@@ -819,6 +819,60 @@ static struct isakmp_payload *make_our_sa_ike(void)
 	return r;
 }
 
+static void lifetime_ike_process(struct sa_block *s, struct isakmp_attribute *a)
+{
+	uint32_t value;
+	
+	assert(a != NULL);
+	assert(a->type == IKE_ATTRIB_LIFE_TYPE);
+	assert(a->af == isakmp_attr_16);
+	assert(a->u.attr_16 == IKE_LIFE_TYPE_SECONDS || a->u.attr_16 == IKE_LIFE_TYPE_K);
+	assert(a->next != NULL);
+	assert(a->next->type == IKE_ATTRIB_LIFE_DURATION);
+	
+	if (a->next->af == isakmp_attr_16)
+		value = a->next->u.attr_16;
+	else if (a->next->af == isakmp_attr_lots && a->next->u.lots.length == 4)
+		value = ntohl(*((uint32_t *) a->next->u.lots.data));
+	else
+		assert(0);
+	
+	DEBUG(2, printf("got ike lifetime attributen: %d %s\n", value,
+		(a->u.attr_16 == IKE_LIFE_TYPE_SECONDS) ? "seconds" : "kilobyte"));
+	
+	if (a->u.attr_16 == IKE_LIFE_TYPE_SECONDS)
+		s->lifetime_ike_seconds = value;
+	else
+		s->lifetime_ike_bytes = value;
+}
+
+static void lifetime_ipsec_process(struct sa_block *s, struct isakmp_attribute *a)
+{
+	uint32_t value;
+	
+	assert(a != NULL);
+	assert(a->type == ISAKMP_IPSEC_ATTRIB_SA_LIFE_TYPE);
+	assert(a->af == isakmp_attr_16);
+	assert(a->u.attr_16 == IPSEC_LIFE_SECONDS || a->u.attr_16 == IPSEC_LIFE_K);
+	assert(a->next != NULL);
+	assert(a->next->type == ISAKMP_IPSEC_ATTRIB_SA_LIFE_DURATION);
+	
+	if (a->next->af == isakmp_attr_16)
+		value = a->next->u.attr_16;
+	else if (a->next->af == isakmp_attr_lots && a->next->u.lots.length == 4)
+		value = ntohl(*((uint32_t *) a->next->u.lots.data));
+	else
+		assert(0);
+	
+	DEBUG(2, printf("got ipsec lifetime attributen: %d %s\n", value,
+		(a->u.attr_16 == IPSEC_LIFE_K) ? "seconds" : "kilobyte"));
+	
+	if (a->u.attr_16 == IPSEC_LIFE_K)
+		s->lifetime_ipsec_seconds = value;
+	else
+		s->lifetime_ipsec_bytes = value;
+}
+
 static void do_phase_1(const char *key_id, const char *shared_key, struct sa_block *s)
 {
 	unsigned char i_nonce[20];
@@ -849,6 +903,7 @@ static void do_phase_1(const char *key_id, const char *shared_key, struct sa_blo
 	
 	DEBUG(2, printf("S4.1\n"));
 	gcry_create_nonce(s->i_cookie, ISAKMP_COOKIE_LENGTH);
+	s->lifetime_ike_start = time(NULL);
 	s->do_pfs = -1;
 	if (s->i_cookie[0] == 0)
 		s->i_cookie[0] = 1;
@@ -1013,7 +1068,14 @@ static void do_phase_1(const char *key_id, const char *shared_key, struct sa_blo
 								reject = ISAKMP_N_BAD_PROPOSAL_SYNTAX;
 							break;
 						case IKE_ATTRIB_LIFE_TYPE:
+							/* lifetime duration MUST follow lifetype attribute */
+							if (a->next->type == IKE_ATTRIB_LIFE_DURATION) {
+								lifetime_ike_process(s, a);
+							} else
+								reject = ISAKMP_N_BAD_PROPOSAL_SYNTAX;
+							break;
 						case IKE_ATTRIB_LIFE_DURATION:
+							/* already processed above in IKE_ATTRIB_LIFE_TYPE: */
 							break;
 						default:
 							DEBUG(1, printf
@@ -1471,8 +1533,12 @@ static int do_phase2_notice_check(struct sa_block *s, struct isakmp_packet **r_p
 								sin_addr)));
 					return -1;
 				} else if (r->payload->next->u.n.type == ISAKMP_N_IPSEC_RESPONDER_LIFETIME) {
-					/* responder liftime notice ==> ignore */
-					DEBUG(2, printf("got responder liftime notice, ignoring..\n"));
+					if (r->payload->next->u.n.protocol == ISAKMP_IPSEC_PROTO_ISAKMP)
+						lifetime_ike_process(s, r->payload->next->u.n.attributes);
+					else if (r->payload->next->u.n.protocol == ISAKMP_IPSEC_PROTO_IPSEC_ESP)
+						lifetime_ipsec_process(s, r->payload->next->u.n.attributes);
+					else
+						DEBUG(2, printf("got unknown lifetime notice, ignoring..\n"));
 					r_length = sendrecv(r_packet, sizeof(r_packet), NULL, 0, 0);
 					continue;
 				} else if (r->payload->next->u.n.type == ISAKMP_N_IPSEC_INITIAL_CONTACT) {
@@ -1893,6 +1959,7 @@ static void setup_link(struct sa_block *s)
 	them->u.id.data = xallocc(8);
 	memset(them->u.id.data, 0, 8);
 	us->next = them;
+	s->lifetime_ipsec_start = time(NULL);
 
 	if (!dh_grp) {
 		rp->next->next = us;
@@ -1923,7 +1990,7 @@ static void setup_link(struct sa_block *s)
 		DEBUG(2, printf("S7.4\n"));
 		if (((reject == 0) || (reject == ISAKMP_N_AUTHENTICATION_FAILED))
 			&& r->exchange_type == ISAKMP_EXCHANGE_INFORMATIONAL) {
-			/* handle notifie responder-lifetime (ignore) */
+			/* handle notifie responder-lifetime */
 			/* (broken hash => ignore AUTHENTICATION_FAILED) */
 			if (reject == 0 && r->payload->next->type != ISAKMP_PAYLOAD_N)
 				reject = ISAKMP_N_INVALID_PAYLOAD_TYPE;
@@ -1931,7 +1998,12 @@ static void setup_link(struct sa_block *s)
 			if (reject == 0
 				&& r->payload->next->u.n.type ==
 				ISAKMP_N_IPSEC_RESPONDER_LIFETIME) {
-				DEBUG(2, printf("ignoring responder-lifetime notify\n"));
+				if (r->payload->next->u.n.protocol == ISAKMP_IPSEC_PROTO_ISAKMP)
+					lifetime_ike_process(s, r->payload->next->u.n.attributes);
+				else if (r->payload->next->u.n.protocol == ISAKMP_IPSEC_PROTO_IPSEC_ESP)
+					lifetime_ipsec_process(s, r->payload->next->u.n.attributes);
+				else
+					DEBUG(2, printf("got unknown lifetime notice, ignoring..\n"));
 				memcpy(s->current_iv, realiv, s->ivlen);
 				memcpy(s->current_iv_msgid, realiv_msgid, 4);
 				continue;
@@ -2030,7 +2102,14 @@ static void setup_link(struct sa_block *s)
 							reject = ISAKMP_N_BAD_PROPOSAL_SYNTAX;
 						break;
 					case ISAKMP_IPSEC_ATTRIB_SA_LIFE_TYPE:
+						/* lifetime duration MUST follow lifetype attribute */
+						if (a->next->type == ISAKMP_IPSEC_ATTRIB_SA_LIFE_DURATION) {
+							lifetime_ipsec_process(s, a);
+						} else
+							reject = ISAKMP_N_BAD_PROPOSAL_SYNTAX;
+						break;
 					case ISAKMP_IPSEC_ATTRIB_SA_LIFE_DURATION:
+						/* already processed above in ISAKMP_IPSEC_ATTRIB_SA_LIFE_TYPE: */
 						break;
 					default:
 						reject = ISAKMP_N_ATTRIBUTES_NOT_SUPPORTED;
@@ -2080,6 +2159,14 @@ static void setup_link(struct sa_block *s)
 			break;
 
 		case ISAKMP_PAYLOAD_N:
+			if (reject == 0 && rp->u.n.type == ISAKMP_N_IPSEC_RESPONDER_LIFETIME) {
+				if (rp->u.n.protocol == ISAKMP_IPSEC_PROTO_ISAKMP)
+					lifetime_ike_process(s, rp->u.n.attributes);
+				else if (rp->u.n.protocol == ISAKMP_IPSEC_PROTO_IPSEC_ESP)
+					lifetime_ipsec_process(s, rp->u.n.attributes);
+				else
+					DEBUG(2, printf("got unknown lifetime notice, ignoring..\n"));
+			}
 			break;
 		case ISAKMP_PAYLOAD_ID:
 			break;

@@ -46,6 +46,10 @@ struct sa_block {
 	size_t kill_packet_size;
 	uint16_t peer_udpencap_port;
 	int do_pfs;
+	time_t   lifetime_ike_start,   lifetime_ipsec_start;
+	uint32_t lifetime_ike_seconds, lifetime_ipsec_seconds;
+	uint32_t lifetime_ike_bytes,   lifetime_ipsec_bytes;
+	uint32_t lifetime_ike_sent,    lifetime_ipsec_sent;
 };
 
 extern struct sa_block oursa[1];
