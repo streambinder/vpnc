@@ -371,6 +371,8 @@ static uint16_t unpack_verify_phase2(struct sa_block *s,
 	if (reject != 0)
 		return reject;
 
+	s->lifetime_ike_rx += r_length;
+	
 	{
 		r = parse_isakmp_packet(r_packet, r_length, &reject);
 		if (reject != 0)
@@ -504,6 +506,8 @@ static void sendrecv_phase2(struct sa_block *s, struct isakmp_payload *pl,
 		p_flat = *save_p_flat;
 		p_size = *save_p_size;
 	}
+
+	s->lifetime_ike_tx += p_size;
 
 	recvlen = sendrecv(r_packet, sizeof(r_packet), p_flat, p_size, sendonly);
 	if (sendonly == 0)
@@ -843,7 +847,7 @@ static void lifetime_ike_process(struct sa_block *s, struct isakmp_attribute *a)
 	if (a->u.attr_16 == IKE_LIFE_TYPE_SECONDS)
 		s->lifetime_ike_seconds = value;
 	else
-		s->lifetime_ike_bytes = value;
+		s->lifetime_ike_kbytes = value;
 }
 
 static void lifetime_ipsec_process(struct sa_block *s, struct isakmp_attribute *a)
@@ -865,12 +869,12 @@ static void lifetime_ipsec_process(struct sa_block *s, struct isakmp_attribute *
 		assert(0);
 	
 	DEBUG(2, printf("got ipsec lifetime attributen: %d %s\n", value,
-		(a->u.attr_16 == IPSEC_LIFE_K) ? "seconds" : "kilobyte"));
+		(a->u.attr_16 == IPSEC_LIFE_SECONDS) ? "seconds" : "kilobyte"));
 	
-	if (a->u.attr_16 == IPSEC_LIFE_K)
+	if (a->u.attr_16 == IPSEC_LIFE_SECONDS)
 		s->lifetime_ipsec_seconds = value;
 	else
-		s->lifetime_ipsec_bytes = value;
+		s->lifetime_ipsec_kbytes = value;
 }
 
 static void do_phase_1(const char *key_id, const char *shared_key, struct sa_block *s)

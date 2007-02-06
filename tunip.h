@@ -48,8 +48,9 @@ struct sa_block {
 	int do_pfs;
 	time_t   lifetime_ike_start,   lifetime_ipsec_start;
 	uint32_t lifetime_ike_seconds, lifetime_ipsec_seconds;
-	uint32_t lifetime_ike_bytes,   lifetime_ipsec_bytes;
-	uint32_t lifetime_ike_sent,    lifetime_ipsec_sent;
+	uint32_t lifetime_ike_kbytes,  lifetime_ipsec_kbytes;
+	uint32_t lifetime_ike_rx,      lifetime_ipsec_rx;
+	uint32_t lifetime_ike_tx,      lifetime_ipsec_tx;
 };
 
 extern struct sa_block oursa[1];

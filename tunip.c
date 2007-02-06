@@ -918,6 +918,7 @@ static void process_tun(struct peer_desc *peer)
 	}
 	
 	/* Encapsulate and send to the other end of the tunnel */
+	oursa->lifetime_ipsec_tx += pack;
 	encap_send_peer(peer->remote_sa->em, peer, buf, pack);
 	
 	/* Update sent packet timeout */
@@ -966,11 +967,13 @@ static void process_socket(struct encap_method *meth)
 	/* Update received packet timeout */
 	peer->remote_sa->last_packet_recv = time(NULL);
 	
-	if (encap_any_decap(meth) == 0)
+	if (encap_any_decap(meth) == 0) {
 		syslog(LOG_DEBUG, "received update probe from peer");
-	else
+	} else {
 		/* Send the decapsulated packet to the tunnel interface */
+		oursa->lifetime_ipsec_rx += meth->buflen;
 		tun_send_ip(meth, peer->tun_fd, peer->tun_hwaddr);
+	}
 }
 
 static uint8_t volatile do_kill;
@@ -1027,6 +1030,11 @@ static void vpnc_main_loop(struct peer_desc *peer, struct encap_method *meth, co
 					syslog(LOG_ERR, "sendto: %m");
 				}
 			}
+			DEBUG(3,printf("lifetime status: %ld of %u seconds used, %u of %u kbytes used\n",
+				time(NULL) - oursa->lifetime_ipsec_start,
+				oursa->lifetime_ipsec_seconds,
+				oursa->lifetime_ipsec_rx/1024 + oursa->lifetime_ipsec_tx/1024,
+				oursa->lifetime_ipsec_kbytes));
 		} while ((presult == 0 || (presult == -1 && errno == EINTR)) && !do_kill);
 		if (presult == -1) {
 			syslog(LOG_ERR, "select: %m");
