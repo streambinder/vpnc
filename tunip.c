@@ -1133,6 +1133,7 @@ vpnc_doit(unsigned long tous_spi,
 		gcry_cipher_open(&tous_sa.cry_ctx, tous_sa.cry_algo, GCRY_CIPHER_MODE_CBC, 0);
 		gcry_cipher_setkey(tous_sa.cry_ctx, tous_sa.enc_secret, tous_sa.enc_secret_size);
 		gcry_cipher_algo_info(tous_sa.cry_algo, GCRYCTL_GET_BLKLEN, NULL, &(tous_sa.ivlen));
+		tous_sa.blksize = tous_sa.ivlen;
 	} else {
 		tous_sa.cry_ctx = NULL;
 		tous_sa.ivlen = 0;
@@ -1168,6 +1169,7 @@ vpnc_doit(unsigned long tous_spi,
 		gcry_cipher_open(&tothem_sa.cry_ctx, tothem_sa.cry_algo, GCRY_CIPHER_MODE_CBC, 0);
 		gcry_cipher_setkey(tothem_sa.cry_ctx, tothem_sa.enc_secret, tothem_sa.enc_secret_size);
 		gcry_cipher_algo_info(tothem_sa.cry_algo, GCRYCTL_GET_BLKLEN, NULL, &(tothem_sa.ivlen));
+		tothem_sa.blksize = tothem_sa.ivlen;
 	} else {
 		tothem_sa.cry_ctx = NULL;
 		tothem_sa.ivlen = 0;
