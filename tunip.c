@@ -1272,7 +1272,6 @@ vpnc_doit(unsigned long tous_spi,
 
 	chdir("/");
 
-	setsid();
 	if (!opt_nd) {
 		pid_t pid;
 		if ((pid = fork()) < 0) {
@@ -1281,6 +1280,7 @@ vpnc_doit(unsigned long tous_spi,
 			close(0); open("/dev/null", O_RDONLY, 0666);
 			close(1); open("/dev/null", O_WRONLY, 0666);
 			close(2); open("/dev/null", O_WRONLY, 0666);
+			setsid();
 			openlog("vpnc", LOG_PID, LOG_DAEMON);
 			write_pidfile(pidfile);
 		} else {
