@@ -19,6 +19,12 @@
 #set -x
 
 OS="`uname -s`"
+
+VPNC_WIN_SCRIPT=/etc/vpnc/vpnc-script-win
+if [ "$OS" = "CYGWIN_NT-5.1" ]; then
+    exec $VPNC_WIN_SCRIPT
+fi
+
 DEFAULT_ROUTE_FILE=/var/run/vpnc/defaultroute
 RESOLV_CONF_BACKUP=/var/run/vpnc/resolv.conf-backup
 

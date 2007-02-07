@@ -5,7 +5,7 @@
    Copyright (C) 2004      Tomas Mraz
    Copyright (C) 2005      Michael Tilstra
    Copyright (C) 2006      Daniel Roethlisberger
-   Copyright (C) 2007      Paolo Zarpellon (tap support)
+   Copyright (C) 2007      Paolo Zarpellon (tap+Cygwin support)
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -71,6 +71,10 @@
 #include <time.h>
 #include <sys/select.h>
 #include <signal.h>
+
+#ifdef __CYGWIN__
+#include <pthread.h>
+#endif
 
 #ifndef __sun__
 #include <err.h>
@@ -810,8 +814,16 @@ int encap_esp_recv_peer(struct encap_method *encap, struct peer_desc *peer)
 	return 0;
 }
 
+#ifdef __CYGWIN__
 /*
- * Process ARP
+ * TODO: use libgcrypt init to make it thread-safe
+ *       instead of this mutex
+ */
+static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+#endif
+
+/*
+ * Process ARP 
  * Return 1 if packet has been processed, 0 otherwise
  */
 static int process_arp(int fd, uint8_t *hwaddr, uint8_t *frame)
@@ -888,6 +900,10 @@ static void process_tun(struct peer_desc *peer)
 	/* Receive a packet from the tunnel interface */
 	pack = tun_read(peer->tun_fd, start, size);
 	
+#if defined(__CYGWIN__)
+	pthread_mutex_lock(&mutex);
+#endif
+	
 	hex_dump("Rx pkt", start, pack);
 	
 	if (opt_if_mode == IF_MODE_TAP) {
@@ -932,6 +948,10 @@ static void process_socket(struct encap_method *meth)
 	int pack;
 	struct sockaddr_in from;
 	uint8_t *start = buf;
+	
+#if defined(__CYGWIN__)
+	pthread_mutex_lock(&mutex);
+#endif
 	
 	if (opt_if_mode == IF_MODE_TAP) {
 		start += ETH_HLEN;
@@ -981,11 +1001,27 @@ static uint8_t *kill_packet;
 static size_t kill_packet_size;
 static struct sockaddr *kill_dest;
 
+#if defined(__CYGWIN__)
+static void *tun_thread (void *arg)
+{
+	struct peer_desc *peer = (struct peer_desc *) arg;
+
+	while (!do_kill) {
+		process_tun(peer);
+		pthread_mutex_unlock(&mutex);
+	}
+	return (NULL);
+}
+#endif
+
 static void vpnc_main_loop(struct peer_desc *peer, struct encap_method *meth, const char *pidfile)
 {
 	fd_set rfds, refds;
 	int nfds=0, encap_fd =-1;
 	int enable_keepalives;
+#if defined(__CYGWIN__)
+	pthread_t tid;
+#endif
 
 	/* non-esp marker, nat keepalive payload (0xFF) */
 	char keepalive_v2[5] = { 0x00, 0x00, 0x00, 0x00, 0xFF };
@@ -1005,12 +1041,22 @@ static void vpnc_main_loop(struct peer_desc *peer, struct encap_method *meth, co
 	enable_keepalives = !strcmp(meth->name, "udpesp");
 
 	FD_ZERO(&rfds);
+
+#if !defined(__CYGWIN__)
 	FD_SET(peer->tun_fd, &rfds);
 	nfds = MAX(nfds, peer->tun_fd +1);
+#endif
 
 	encap_fd = encap_get_fd (meth);
 	FD_SET(encap_fd, &rfds);
 	nfds = MAX(nfds, encap_fd +1);
+
+#if defined(__CYGWIN__)
+	if (pthread_create(&tid, NULL, tun_thread, peer)) {
+	        syslog(LOG_ERR, "Cannot create tun thread!\n");
+		return;
+	}
+#endif
 
 	while (!do_kill) {
 		int presult;
@@ -1041,11 +1087,17 @@ static void vpnc_main_loop(struct peer_desc *peer, struct encap_method *meth, co
 			continue;
 		}
 
+#if !defined(__CYGWIN__)
 		if (FD_ISSET(peer->tun_fd, &refds)) {
 			process_tun(peer);
 		}
+#endif
+
 		if (FD_ISSET(encap_fd, &refds) ) {
 			process_socket(meth);
+#if defined(__CYGWIN__)
+			pthread_mutex_unlock(&mutex);
+#endif
 		}
 	}
 	

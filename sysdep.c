@@ -1,5 +1,6 @@
 /* IPSec VPN client compatible with Cisco equipment.
     Copyright (C) 2007      Maurice Massar
+    Copyright (C) 2007      Paolo Zarpellon <paolo.zarpellon@gmail.com> (Cygwin support)
 
     based on VTun - Virtual Tunnel over TCP/IP network.
     Copyright (C) 1998-2000  Maxim Krasnyansky <max_mk@yahoo.com>
@@ -28,15 +29,6 @@
 #include <sys/socket.h>
 #include <net/if.h>
 
-#if defined(__DragonFly__)
-#include <net/tun/if_tun.h>
-#elif defined(__linux__)
-#include <linux/if_tun.h>
-#elif defined(__APPLE__)
-#else
-#include <net/if_tun.h>
-#endif
-
 #ifdef __sun__
 #include <ctype.h>
 #include <sys/time.h>
@@ -52,6 +44,30 @@
 #include <netinet/tcp.h>
 #endif
 
+#if defined(__CYGWIN__)
+#include <io.h>
+#include <w32api/windef.h>
+#include <w32api/winbase.h>
+#include <w32api/winnt.h>
+#include <w32api/winioctl.h>
+#include <w32api/iphlpapi.h>
+#include <w32api/iptypes.h>
+#include <w32api/winreg.h>
+#include <sys/cygwin.h>
+#endif
+
+#if defined(__DragonFly__)
+#include <net/tun/if_tun.h>
+#elif defined(__linux__)
+#include <linux/if_tun.h>
+#elif defined(__APPLE__)
+/* no header for tun */
+#elif defined(__CYGWIN__)
+#include "tap-win32.h"
+#else
+#include <net/if_tun.h>
+#endif
+
 #include "sysdep.h"
 
 #if !defined(HAVE_VASPRINTF) || !defined(HAVE_ASPRINTF) || !defined(HAVE_ERROR)
@@ -61,6 +77,18 @@
 #if defined(__sun__)
 extern char **environ;
 static int ip_fd = -1, muxid;
+#endif
+
+#if defined(__CYGWIN__)
+/*
+ * Overlapped structures for asynchronous read and write
+ */
+static OVERLAPPED overlap_read, overlap_write;
+
+typedef enum {
+	SEARCH_IF_GUID_FROM_NAME,
+	SEARCH_IF_NAME_FROM_GUID
+} search_if_en;
 #endif
 
 /* 
@@ -130,6 +158,269 @@ int tun_open(char *dev, enum if_mode_enum mode)
 	}
 
 	return tun_fd;
+}
+#elif defined(__CYGWIN__)
+/*
+ * Get interface guid/name from registry
+ */
+static char *search_if(char *value, char *key, search_if_en type)
+{
+	int i = 0;
+	LONG status;
+	DWORD len;
+	HKEY net_conn_key;
+	BOOL found = FALSE;
+	char guid[256];
+	char ifname[256];
+	char conn_string[512];
+	HKEY conn_key;
+	DWORD value_type;
+	
+	if (!value || !key) {
+		return NULL;
+	}
+	
+	status = RegOpenKeyEx(HKEY_LOCAL_MACHINE,
+		NETWORK_CONNECTIONS_KEY,
+		0,
+		KEY_READ,
+		&net_conn_key);
+	
+	if (status != ERROR_SUCCESS) {
+		printf("Error opening registry key: %s\n", NETWORK_CONNECTIONS_KEY);
+		return NULL;
+	}
+	
+	while (!found) {
+		len = sizeof(guid);
+		status = RegEnumKeyEx(net_conn_key, i++, guid, &len,
+			NULL, NULL, NULL, NULL);
+		if (status == ERROR_NO_MORE_ITEMS) {
+			break;
+		} else if (status != ERROR_SUCCESS) {
+			continue;
+		}
+		snprintf(conn_string, sizeof(conn_string),
+			"%s\\%s\\Connection",
+			NETWORK_CONNECTIONS_KEY, guid);
+		status = RegOpenKeyEx(HKEY_LOCAL_MACHINE,
+			conn_string,
+			0,
+			KEY_READ,
+			&conn_key);
+		if (status != ERROR_SUCCESS) {
+			continue;
+		}
+		len = sizeof(ifname);
+		status = RegQueryValueEx(conn_key, "Name", NULL,
+			&value_type, ifname, &len);
+		if (status != ERROR_SUCCESS || value_type != REG_SZ) {
+			RegCloseKey(conn_key);
+			continue;
+		}
+		
+		switch (type) {
+		case SEARCH_IF_GUID_FROM_NAME:
+			if (!strcmp(key, ifname)) {
+				strcpy(value, guid);
+				found = TRUE;
+			}
+			break;
+		case SEARCH_IF_NAME_FROM_GUID:
+			if (!strcmp(key, guid)) {
+				strcpy(value, ifname);
+				found = TRUE;
+			}
+			break;
+		default:
+			break;
+		}
+		RegCloseKey(conn_key);
+	}
+	RegCloseKey(net_conn_key);
+	
+	if (found) {
+		return value;
+	}
+	
+	return NULL;
+}
+
+/*
+ * Open the TUN/TAP device with the provided guid
+ */
+static int open_tun_device (char *guid, char *dev, enum if_mode_enum mode)
+{
+	HANDLE handle;
+	ULONG len, status, info[3];
+	char device_path[512];
+	
+	printf("Device: %s\n", dev);
+	
+	if (mode == IF_MODE_TUN) {
+		printf("TUN mode is not supported\n");
+		return -1;
+	}
+	
+	/*
+	 * Let's try to open Windows TAP-Win32 adapter
+	 */
+	snprintf(device_path, sizeof(device_path), "%s%s%s",
+		USERMODEDEVICEDIR, guid, TAPSUFFIX);
+	
+	handle = CreateFile(device_path,
+		GENERIC_READ | GENERIC_WRITE,
+		0, /* Don't let other processes share or open
+		the resource until the handle's been closed */
+		0,
+		OPEN_EXISTING,
+		FILE_ATTRIBUTE_SYSTEM | FILE_FLAG_OVERLAPPED,
+		0);
+	
+	if (handle == INVALID_HANDLE_VALUE) {
+		return -1;
+	}
+	
+	/*
+	 * get driver version info
+	 */
+	memset(info, 0, sizeof(info));
+	if (DeviceIoControl(handle, TAP_IOCTL_GET_VERSION,
+		&info, sizeof(info),
+		&info, sizeof(info), &len, NULL)) {
+		printf("TAP-Win32 Driver Version %d.%d %s\n",
+		(int) info[0],
+		(int) info[1],
+		(info[2] ? "(DEBUG)" : ""));
+	}
+	
+	/*
+	 * Set driver media status to 'connected'
+	 */
+	status = TRUE;
+	if (!DeviceIoControl(handle, TAP_IOCTL_SET_MEDIA_STATUS,
+		&status, sizeof(status),
+		&status, sizeof(status), &len, NULL)) {
+		printf("WARNING: The TAP-Win32 driver rejected a "
+		"TAP_IOCTL_SET_MEDIA_STATUS DeviceIoControl call.\n");
+	}
+	
+	/*
+	 * Initialize overlapped structures
+	 */
+	overlap_read.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+	overlap_write.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+	if (!overlap_read.hEvent || !overlap_write.hEvent) {
+		return -1;
+	}
+	
+	//
+	// Return fd
+	//
+	return cygwin_attach_handle_to_fd(NULL, -1, handle, 1, GENERIC_READ | GENERIC_WRITE);
+}
+
+/*
+ * Allocate TUN device, returns opened fd.
+ * Stores dev name in the first arg (must be large enough).
+ */
+int tun_open (char *dev, enum if_mode_enum mode)
+{
+	int fd = -1;
+	HKEY unit_key;
+	char guid[256];
+	char comp_id[256];
+	char enum_name[256];
+	char unit_string[512];
+	BOOL found = FALSE;
+	HKEY adapter_key;
+	DWORD value_type;
+	LONG status;
+	DWORD len;
+	
+	if (!dev) {
+		return -1;
+	}
+	
+	/*
+	 * Device name has been provided. Open such device.
+	 */
+	if (*dev != '\0') {
+		if (!search_if(guid, dev, SEARCH_IF_GUID_FROM_NAME)) {
+			return -1;
+		}
+		return open_tun_device(guid, dev, mode);
+	}
+	
+	/*
+	 * Device name has non been specified. Look for one available!
+	 */
+	int i = 0;
+	status = RegOpenKeyEx(HKEY_LOCAL_MACHINE,
+		ADAPTER_KEY,
+		0,
+		KEY_READ,
+		&adapter_key);
+	if (status != ERROR_SUCCESS) {
+		printf("Error opening registry key: %s", ADAPTER_KEY);
+		return -1;
+	}
+	
+	while (!found) {
+		len = sizeof(enum_name);
+		status = RegEnumKeyEx(adapter_key, i++,
+			enum_name, &len,
+			NULL, NULL, NULL, NULL);
+		if (status == ERROR_NO_MORE_ITEMS) {
+			break;
+		} else if (status != ERROR_SUCCESS) {
+			continue;
+		}
+		snprintf(unit_string, sizeof(unit_string), "%s\\%s",
+			ADAPTER_KEY, enum_name);
+		status = RegOpenKeyEx(HKEY_LOCAL_MACHINE,
+			unit_string,
+			0,
+			KEY_READ,
+			&unit_key);
+		if (status != ERROR_SUCCESS) {
+			continue;
+		}
+		len = sizeof(comp_id);
+		status = RegQueryValueEx(unit_key,
+			"ComponentId", NULL,
+			&value_type, comp_id, &len);
+		if (status != ERROR_SUCCESS || value_type != REG_SZ) {
+			RegCloseKey(unit_key);
+			continue;
+		}
+		len = sizeof(guid);
+		status = RegQueryValueEx(unit_key,
+			"NetCfgInstanceId", NULL,
+			&value_type, guid, &len);
+		if (status != ERROR_SUCCESS || value_type != REG_SZ) {
+			RegCloseKey(unit_key);
+			continue;
+		}
+		if (strcmp(comp_id, TAP_COMPONENT_ID) != 0) {
+			RegCloseKey(unit_key);
+			continue;
+		}
+		
+		/*
+		 * Let's try to open this device
+		 */
+		search_if(dev, guid, SEARCH_IF_NAME_FROM_GUID);
+		fd = open_tun_device(guid, dev, mode);
+		if (fd != -1) {
+			found = TRUE;
+		}
+		
+		RegCloseKey(unit_key);
+	}
+	RegCloseKey(adapter_key);
+	
+	return fd;
 }
 #elif defined(IFF_TUN)
 int tun_open(char *dev, enum if_mode_enum mode)
@@ -207,6 +498,12 @@ int tun_close(int fd, char *dev)
 	close(fd);
 	return 0;
 }
+#elif defined(__CYGWIN__)
+int tun_close(int fd, char *dev)
+{
+	dev = NULL; /* unused */
+	return CloseHandle((HANDLE) get_osfhandle(fd));
+}
 #else
 int tun_close(int fd, char *dev)
 {
@@ -233,6 +530,53 @@ int tun_read(int fd, unsigned char *buf, int len)
 	sbuf.maxlen = len;
 	sbuf.buf = buf;
 	return getmsg(fd, NULL, &sbuf, &f) >= 0 ? sbuf.len : -1;
+}
+#elif defined(__CYGWIN__)
+int tun_read(int fd, unsigned char *buf, int len)
+{
+	DWORD read_size;
+	
+	ResetEvent(overlap_read.hEvent);
+	if (ReadFile((HANDLE) get_osfhandle(fd), buf, len, &read_size, &overlap_read)) {
+		return read_size;
+	}
+	switch (GetLastError()) {
+	case ERROR_IO_PENDING:
+		WaitForSingleObject(overlap_read.hEvent, INFINITE);
+		GetOverlappedResult((HANDLE) get_osfhandle(fd), &overlap_read, &read_size, FALSE);
+		return read_size;
+		break;
+	default:
+		break;
+	}
+	
+	return -1;
+}
+
+int tun_write(int fd, unsigned char *buf, int len)
+{
+	DWORD write_size;
+	
+	ResetEvent(overlap_write.hEvent);
+	if (WriteFile((HANDLE) get_osfhandle(fd),
+		buf,
+		len,
+		&write_size,
+		&overlap_write)) {
+		return write_size;
+	}
+	switch (GetLastError()) {
+	case ERROR_IO_PENDING:
+		WaitForSingleObject(overlap_write.hEvent, INFINITE);
+		GetOverlappedResult((HANDLE) get_osfhandle(fd), &overlap_write,
+			&write_size, FALSE);
+		return write_size;
+		break;
+	default:
+		break;
+	}
+	
+	return -1;
 }
 #elif defined(NEW_TUN)
 #define MAX_MRU 2048
@@ -302,7 +646,18 @@ int tun_read(int fd, unsigned char *buf, int len)
  */
 int tun_get_hwaddr(int fd, char *dev, uint8_t *hwaddr)
 {
-#ifdef SIOCGIFHWADDR
+#if defined(__CYGWIN__)
+	ULONG len;
+	
+	dev = NULL; /* unused */
+	if (!DeviceIoControl((HANDLE) get_osfhandle(fd), TAP_IOCTL_GET_MAC,
+		hwaddr, ETH_ALEN, hwaddr, ETH_ALEN, &len, NULL)) {
+		printf("Cannot get HW address\n");
+		return -1;
+	}
+	
+	return 0;
+#elif defined(SIOCGIFHWADDR)
 	struct ifreq ifr;
 	
 	/* Use a new socket fd! */
