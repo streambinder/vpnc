@@ -27,7 +27,7 @@
 #include <gcrypt.h>
 #include <stdlib.h>
 
-supported_algo_t supp_dh_group[] = {
+const supported_algo_t supp_dh_group[] = {
 	{"nopfs", 0, 0, 0, 0},
 	{"dh1", OAKLEY_GRP_1, IKE_GROUP_MODP_768,  IKE_GROUP_MODP_768,  0},
 	{"dh2", OAKLEY_GRP_2, IKE_GROUP_MODP_1024, IKE_GROUP_MODP_1024, 0},
@@ -36,13 +36,13 @@ supported_algo_t supp_dh_group[] = {
 	{NULL, 0, 0, 0, 0}
 };
 
-supported_algo_t supp_hash[] = {
+const supported_algo_t supp_hash[] = {
 	{"md5", GCRY_MD_MD5, IKE_HASH_MD5, IPSEC_AUTH_HMAC_MD5, 0},
 	{"sha1", GCRY_MD_SHA1, IKE_HASH_SHA, IPSEC_AUTH_HMAC_SHA, 0},
 	{NULL, 0, 0, 0, 0}
 };
 
-supported_algo_t supp_crypt[] = {
+const supported_algo_t supp_crypt[] = {
 	{"null", GCRY_CIPHER_NONE, IKE_ENC_NO_CBC, ISAKMP_IPSEC_ESP_NULL, 0},
 	{"des", GCRY_CIPHER_DES, IKE_ENC_DES_CBC, ISAKMP_IPSEC_ESP_DES, 0},
 	{"3des", GCRY_CIPHER_3DES, IKE_ENC_3DES_CBC, ISAKMP_IPSEC_ESP_3DES, 0},
@@ -52,7 +52,7 @@ supported_algo_t supp_crypt[] = {
 	{NULL, 0, 0, 0, 0}
 };
 
-supported_algo_t supp_auth[] = {
+const supported_algo_t supp_auth[] = {
 	{"psk", 0, IKE_AUTH_PRESHARED, 0, 0},
 	{"psk+xauth", 0, IKE_AUTH_XAUTHInitPreShared, 0, 0},
 	{NULL, 0, 0, 0, 0}
@@ -61,7 +61,7 @@ supported_algo_t supp_auth[] = {
 const supported_algo_t *get_algo(enum algo_group what, enum supp_algo_key key, int id,
 	const char *name, int keylen)
 {
-	supported_algo_t *sa = NULL;
+	const supported_algo_t *sa = NULL;
 	int i = 0, val = 0;
 	const char *valname = NULL;
 

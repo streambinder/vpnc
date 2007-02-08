@@ -42,10 +42,10 @@ typedef struct {
 	int keylen;
 } supported_algo_t;
 
-extern supported_algo_t supp_dh_group[];
-extern supported_algo_t supp_hash[];
-extern supported_algo_t supp_crypt[];
-extern supported_algo_t supp_auth[];
+extern const supported_algo_t supp_dh_group[];
+extern const supported_algo_t supp_hash[];
+extern const supported_algo_t supp_crypt[];
+extern const supported_algo_t supp_auth[];
 
 extern const supported_algo_t *get_algo(enum algo_group what, enum supp_algo_key key, int id, const char *name, int keylen);
 extern const supported_algo_t *get_dh_group_ike(void);
