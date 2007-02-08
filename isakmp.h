@@ -202,7 +202,7 @@ enum ike_life_enum {
 };
 
 /* IPSEC situation masks.  */
-enum isakmp_ipsect_sit_enum {
+enum isakmp_ipsec_sit_enum {
 	ISAKMP_IPSEC_SIT_IDENTITY_ONLY = 0x1,
 	ISAKMP_IPSEC_SIT_SECRECY       = 0x2,
 	ISAKMP_IPSEC_SIT_INTEGRITY     = 0x4
@@ -230,7 +230,8 @@ enum isakmp_ipsec_proto_enum {
 	ISAKMP_IPSEC_PROTO_ISAKMP,
 	ISAKMP_IPSEC_PROTO_IPSEC_AH,
 	ISAKMP_IPSEC_PROTO_IPSEC_ESP,
-	ISAKMP_IPSEC_PROTO_IPCOMP
+	ISAKMP_IPSEC_PROTO_IPCOMP,
+	ISAKMP_IPSEC_PROTO_MODECFG = 512 /* hack for simplicity in debug code */
 };
 
 /* IPSEC transform IDs.  */
