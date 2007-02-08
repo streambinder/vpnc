@@ -1123,7 +1123,7 @@ static void do_phase_1(const char *key_id, const char *shared_key, struct sa_blo
 									NULL, 0)->name));
 						if (s->cry_algo == GCRY_CIPHER_DES && !opt_1des) {
 							error(1, 0, "peer selected (single) DES as \"encrytion\" method.\n"
-								"This algorithm is considered to weak today\n"
+								"This algorithm is considered too weak today\n"
 								"If your vpn concentrator admin still insists on using DES\n"
 								"use the \"--enable-1des\" option.\n");
 						}

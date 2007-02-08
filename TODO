@@ -110,6 +110,8 @@ TODO list
 
 --
 
+* try a list of gateways
+
 * implement compression
 
 * implement rekeying / DPD / frozen connections?
