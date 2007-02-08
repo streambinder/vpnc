@@ -31,7 +31,8 @@ OBJS = $(addsuffix .o,$(basename $(SRCS)))
 HDRS := $(addsuffix .h,$(basename $(SRCS))) isakmp.h
 BINOBJS = $(addsuffix .o,$(BINS))
 BINSRCS = $(addsuffix .c,$(BINS))
-VERSION := $(shell sed 's/[^0-9.-]//g;s/-/-r/' VERSION)
+VERSION := $(shell sh mk-version)
+RELEASE_VERSION := $(shell cat VERSION)
 
 CC=gcc
 CFLAGS += -W -Wall -O3 -Wmissing-declarations -Wwrite-strings -g
@@ -77,7 +78,7 @@ vpnc-%.tgz : $(FILELIST)
 	tar zcf ../$@ vpnc-$*
 	rm -rf vpnc-$*
 
-dist : VERSION vpnc-$(VERSION).tgz
+dist : VERSION vpnc-$(RELEASE_VERSION).tgz
 
 clean :
 	-rm -f tags $(OBJS) $(BINOBJS) $(BINS)
