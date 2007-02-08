@@ -379,7 +379,7 @@ static int tun_send_ip(struct encap_method *encap, int fd, uint8_t *hwaddr)
 	sent = tun_write(fd, start, len);
 	if (sent != len)
 		syslog(LOG_ERR, "truncated in: %d -> %d\n", len, sent);
-	hex_dump("Tx pkt", start, len);
+	hex_dump("Tx pkt", start, len, NULL);
 	return 1;
 }
 
@@ -583,11 +583,11 @@ static void encap_esp_encapsulate(struct encap_method *encap,
 	/* Copy initialization vector in packet */
 	iv = (unsigned char *)(eh + 1);
 	gcry_create_nonce(iv, peer->remote_sa->ivlen);
-	hex_dump("iv", iv, peer->remote_sa->ivlen);
-	hex_dump("auth_secret", peer->remote_sa->auth_secret, peer->remote_sa->auth_secret_size);
+	hex_dump("iv", iv, peer->remote_sa->ivlen, NULL);
+	hex_dump("auth_secret", peer->remote_sa->auth_secret, peer->remote_sa->auth_secret_size, NULL);
 
 #if 1
-	hex_dump("sending ESP packet (before crypt)", encap->buf, encap->buflen);
+	hex_dump("sending ESP packet (before crypt)", encap->buf, encap->buflen, NULL);
 #endif
 
 	if (peer->remote_sa->cry_algo) {
@@ -596,7 +596,7 @@ static void encap_esp_encapsulate(struct encap_method *encap,
 	}
 
 #if 1
-	hex_dump("sending ESP packet (after crypt)", encap->buf, encap->buflen);
+	hex_dump("sending ESP packet (after crypt)", encap->buf, encap->buflen, NULL);
 #endif
 
 	/* Handle optional authentication field */
@@ -609,7 +609,7 @@ static void encap_esp_encapsulate(struct encap_method *encap,
 			1, peer->remote_sa->auth_secret, peer->remote_sa->auth_secret_size);
 		encap->buflen += 12; /*gcry_md_get_algo_dlen(md_algo); see RFC .. only use 96 bit */
 #if 1
-		hex_dump("sending ESP packet (after ah)", encap->buf, encap->buflen);
+		hex_dump("sending ESP packet (after ah)", encap->buf, encap->buflen, NULL);
 #endif
 	}
 }
@@ -766,7 +766,7 @@ int encap_esp_recv_peer(struct encap_method *encap, struct peer_desc *peer)
 	
 	hex_dump("receiving ESP packet (before decrypt)",
 		&encap->buf[encap->bufpayload + encap->fixed_header_size +
-			 encap->var_header_size], len);
+			 encap->var_header_size], len, NULL);
 
 	if (peer->remote_sa->cry_algo) {
 		unsigned char *data;
@@ -779,7 +779,7 @@ int encap_esp_recv_peer(struct encap_method *encap, struct peer_desc *peer)
 
 	hex_dump("receiving ESP packet (after decrypt)",
 		&encap->buf[encap->bufpayload + encap->fixed_header_size +
-			encap->var_header_size], len);
+			encap->var_header_size], len, NULL);
 	
 	padlen = encap->buf[encap->bufpayload
 		+ encap->fixed_header_size + encap->var_header_size + len - 2];
@@ -864,7 +864,7 @@ static int process_arp(int fd, uint8_t *hwaddr, uint8_t *frame)
 	
 	frame_size = ETH_HLEN + sizeof(struct ether_arp);
 	tun_write(fd, frame, frame_size);
-	hex_dump("ARP reply", frame, frame_size);
+	hex_dump("ARP reply", frame, frame_size, NULL);
 	
 	return 1;
 }
@@ -904,7 +904,7 @@ static void process_tun(struct peer_desc *peer)
 	pthread_mutex_lock(&mutex);
 #endif
 	
-	hex_dump("Rx pkt", start, pack);
+	hex_dump("Rx pkt", start, pack, NULL);
 	
 	if (opt_if_mode == IF_MODE_TAP) {
 		if (process_arp(peer->tun_fd, peer->tun_hwaddr, start)) {
@@ -1178,10 +1178,10 @@ vpnc_doit(unsigned long tous_spi,
 		gcry_cipher_algo_info(cry_algo, GCRYCTL_GET_KEYLEN, NULL, &(tous_sa.enc_secret_size));
 	else
 		tous_sa.enc_secret_size = 0;
-	hex_dump("tous.enc_secret", tous_sa.enc_secret, tous_sa.enc_secret_size);
+	hex_dump("tous.enc_secret", tous_sa.enc_secret, tous_sa.enc_secret_size, NULL);
 	tous_sa.auth_secret = tous_key + tous_sa.enc_secret_size;
 	tous_sa.auth_secret_size = gcry_md_get_algo_dlen(md_algo);
-	hex_dump("tous.auth_secret", tous_sa.auth_secret, tous_sa.auth_secret_size);
+	hex_dump("tous.auth_secret", tous_sa.auth_secret, tous_sa.auth_secret_size, NULL);
 	memcpy(&tous_sa.init, tous_dest, sizeof(struct sockaddr_in));
 	memcpy(&tous_sa.dest, tous_dest, sizeof(struct sockaddr_in));
 	if (update_sa_addr(&tous_sa) != -1) {
@@ -1214,10 +1214,10 @@ vpnc_doit(unsigned long tous_spi,
 		gcry_cipher_algo_info(cry_algo, GCRYCTL_GET_KEYLEN, NULL, &(tothem_sa.enc_secret_size));
 	else
 		tothem_sa.enc_secret_size = 0;
-	hex_dump("tothem.enc_secret", tothem_sa.enc_secret, tothem_sa.enc_secret_size);
+	hex_dump("tothem.enc_secret", tothem_sa.enc_secret, tothem_sa.enc_secret_size, NULL);
 	tothem_sa.auth_secret = tothem_key + tothem_sa.enc_secret_size;
 	tothem_sa.auth_secret_size = gcry_md_get_algo_dlen(md_algo);
-	hex_dump("tothem.auth_secret", tothem_sa.auth_secret, tothem_sa.auth_secret_size);
+	hex_dump("tothem.auth_secret", tothem_sa.auth_secret, tothem_sa.auth_secret_size, NULL);
 	memcpy(&tothem_sa.init, tothem_dest, sizeof(struct sockaddr_in));
 	memcpy(&tothem_sa.dest, tothem_dest, sizeof(struct sockaddr_in));
 	if (update_sa_addr(&tothem_sa) != -1) {

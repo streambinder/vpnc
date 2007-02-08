@@ -45,23 +45,27 @@ enum vendor_enum opt_vendor;
 enum if_mode_enum opt_if_mode;
 uint16_t opt_udpencapport;
 
-void hex_dump(const char *str, const void *data, ssize_t len)
+void hex_dump(const char *str, const void *data, ssize_t len, const struct debug_strings *decode)
 {
 	size_t i;
 	const uint8_t *p = data;
+	const char *decodedval;
 
 	if (opt_debug < 3)
 		return;
 
 	switch (len) {
 	case DUMP_UINT8:
-		printf("%s: %02x\n", str, *(uint8_t *)p);
+		decodedval = val_to_string(*(uint8_t *)p, decode);
+		printf("%s: %02x%s\n", str, *(uint8_t *)p, decodedval);
 		return;
 	case DUMP_UINT16:
-		printf("%s: %04x\n", str, *(uint16_t *)p);
+		decodedval = val_to_string(*(uint16_t *)p, decode);
+		printf("%s: %04x%s\n", str, *(uint16_t *)p, decodedval);
 		return;
 	case DUMP_UINT32:
-		printf("%s: %08x\n", str, *(uint32_t *)p);
+		decodedval = val_to_string(*(uint32_t *)p, decode);
+		printf("%s: %08x%s\n", str, *(uint32_t *)p, decodedval);
 		return;
 	}
 

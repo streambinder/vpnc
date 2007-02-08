@@ -42,7 +42,6 @@
 
 #include "sysdep.h"
 #include "config.h"
-#include "vpnc-debug.h"
 #include "isakmp-pkt.h"
 #include "math_group.h"
 #include "dh.h"
@@ -151,7 +150,7 @@ static void setup_tunnel(struct sa_block *s)
 		if (tun_get_hwaddr(s->tun_fd, s->tun_name, s->tun_hwaddr) < 0) {
 			error(1, errno, "can't get tunnel HW address");
 		}
-		hex_dump("interface HW addr", s->tun_hwaddr, ETH_ALEN);
+		hex_dump("interface HW addr", s->tun_hwaddr, ETH_ALEN, NULL);
 	}
 }
 
@@ -411,8 +410,8 @@ static uint16_t unpack_verify_phase2(struct sa_block *s,
 		if (opt_debug >= 3) {
 			printf("hashlen: %lu\n", (unsigned long)s->md_len);
 			printf("u.hash.length: %d\n", h->u.hash.length);
-			hex_dump("expected_hash", expected_hash, s->md_len);
-			hex_dump("h->u.hash.data", h->u.hash.data, s->md_len);
+			hex_dump("expected_hash", expected_hash, s->md_len, NULL);
+			hex_dump("h->u.hash.data", h->u.hash.data, s->md_len, NULL);
 		}
 
 		reject = 0;
@@ -911,16 +910,16 @@ static void do_phase_1(const char *key_id, const char *shared_key, struct sa_blo
 	s->do_pfs = -1;
 	if (s->i_cookie[0] == 0)
 		s->i_cookie[0] = 1;
-	hex_dump("i_cookie", s->i_cookie, ISAKMP_COOKIE_LENGTH);
+	hex_dump("i_cookie", s->i_cookie, ISAKMP_COOKIE_LENGTH, NULL);
 	gcry_create_nonce(i_nonce, sizeof(i_nonce));
-	hex_dump("i_nonce", i_nonce, sizeof(i_nonce));
+	hex_dump("i_nonce", i_nonce, sizeof(i_nonce), NULL);
 	DEBUG(2, printf("S4.2\n"));
 	/* Set up the Diffie-Hellman stuff.  */
 	{
 		dh_grp = group_get(get_dh_group_ike()->my_id);
 		dh_public = xallocc(dh_getlen(dh_grp));
 		dh_create_exchange(dh_grp, dh_public);
-		hex_dump("dh_public", dh_public, dh_getlen(dh_grp));
+		hex_dump("dh_public", dh_public, dh_getlen(dh_grp), NULL);
 	}
 
 	DEBUG(2, printf("S4.3\n"));
@@ -1171,7 +1170,7 @@ static void do_phase_1(const char *key_id, const char *shared_key, struct sa_blo
 					DEBUG(2, printf("peer is NAT-T capable (draft-00)\n"));
 				} else {
 					hex_dump("unknown ISAKMP_PAYLOAD_VID: ",
-						rp->u.vid.data, rp->u.vid.length);
+						rp->u.vid.data, rp->u.vid.length, NULL);
 				}
 
 				break;
@@ -1238,7 +1237,7 @@ static void do_phase_1(const char *key_id, const char *shared_key, struct sa_blo
 			gcry_md_write(skeyid_ctx, nonce->u.nonce.data, nonce->u.nonce.length);
 			gcry_md_final(skeyid_ctx);
 			skeyid = gcry_md_read(skeyid_ctx, 0);
-			hex_dump("skeyid", skeyid, s->md_len);
+			hex_dump("skeyid", skeyid, s->md_len, NULL);
 		}
 
 		/* Verify the hash.  */
@@ -1288,7 +1287,7 @@ static void do_phase_1(const char *key_id, const char *shared_key, struct sa_blo
 			returned_hash = xallocc(s->md_len);
 			memcpy(returned_hash, gcry_md_read(hm, 0), s->md_len);
 			gcry_md_close(hm);
-			hex_dump("returned_hash", returned_hash, s->md_len);
+			hex_dump("returned_hash", returned_hash, s->md_len, NULL);
 
 			free(sa_f);
 			free(idi);
@@ -1306,7 +1305,7 @@ static void do_phase_1(const char *key_id, const char *shared_key, struct sa_blo
 			/* Determine the shared secret.  */
 			dh_shared_secret = xallocc(dh_getlen(dh_grp));
 			dh_create_shared(dh_grp, dh_shared_secret, ke->u.ke.data);
-			hex_dump("dh_shared_secret", dh_shared_secret, dh_getlen(dh_grp));
+			hex_dump("dh_shared_secret", dh_shared_secret, dh_getlen(dh_grp), NULL);
 
 			gcry_md_open(&hm, s->md_algo, GCRY_MD_FLAG_HMAC);
 			gcry_md_setkey(hm, skeyid, s->md_len);
@@ -1318,7 +1317,7 @@ static void do_phase_1(const char *key_id, const char *shared_key, struct sa_blo
 			s->skeyid_d = xallocc(s->md_len);
 			memcpy(s->skeyid_d, gcry_md_read(hm, 0), s->md_len);
 			gcry_md_close(hm);
-			hex_dump("skeyid_d", s->skeyid_d, s->md_len);
+			hex_dump("skeyid_d", s->skeyid_d, s->md_len, NULL);
 
 			gcry_md_open(&hm, s->md_algo, GCRY_MD_FLAG_HMAC);
 			gcry_md_setkey(hm, skeyid, s->md_len);
@@ -1331,7 +1330,7 @@ static void do_phase_1(const char *key_id, const char *shared_key, struct sa_blo
 			s->skeyid_a = xallocc(s->md_len);
 			memcpy(s->skeyid_a, gcry_md_read(hm, 0), s->md_len);
 			gcry_md_close(hm);
-			hex_dump("skeyid_a", s->skeyid_a, s->md_len);
+			hex_dump("skeyid_a", s->skeyid_a, s->md_len, NULL);
 
 			gcry_md_open(&hm, s->md_algo, GCRY_MD_FLAG_HMAC);
 			gcry_md_setkey(hm, skeyid, s->md_len);
@@ -1344,7 +1343,7 @@ static void do_phase_1(const char *key_id, const char *shared_key, struct sa_blo
 			skeyid_e = xallocc(s->md_len);
 			memcpy(skeyid_e, gcry_md_read(hm, 0), s->md_len);
 			gcry_md_close(hm);
-			hex_dump("skeyid_e", skeyid_e, s->md_len);
+			hex_dump("skeyid_e", skeyid_e, s->md_len, NULL);
 
 			memset(dh_shared_secret, 0, sizeof(dh_shared_secret));
 
@@ -1368,7 +1367,7 @@ static void do_phase_1(const char *key_id, const char *shared_key, struct sa_blo
 			} else { /* keylen <= md_len */
 				memcpy(s->key, skeyid_e, s->keylen);
 			}
-			hex_dump("enc-key", s->key, s->keylen);
+			hex_dump("enc-key", s->key, s->keylen, NULL);
 
 			memset(skeyid_e, 0, s->md_len);
 		}
@@ -1385,7 +1384,7 @@ static void do_phase_1(const char *key_id, const char *shared_key, struct sa_blo
 			s->current_iv = xallocc(s->ivlen);
 			memcpy(s->current_iv, gcry_md_read(hm, 0), s->ivlen);
 			gcry_md_close(hm);
-			hex_dump("current_iv", s->current_iv, s->ivlen);
+			hex_dump("current_iv", s->current_iv, s->ivlen, NULL);
 			memset(s->current_iv_msgid, 0, 4);
 		}
 
@@ -1485,7 +1484,7 @@ static void do_phase_1(const char *key_id, const char *shared_key, struct sa_blo
 
 		s->initial_iv = xallocc(s->ivlen);
 		memcpy(s->initial_iv, s->current_iv, s->ivlen);
-		hex_dump("initial_iv", s->initial_iv, s->ivlen);
+		hex_dump("initial_iv", s->initial_iv, s->ivlen, NULL);
 
 		/* Now, send that packet and receive a new one.  */
 		r_length = sendrecv(r_packet, sizeof(r_packet), p2kt, p2kt_len, 0);
@@ -1944,7 +1943,7 @@ static void setup_link(struct sa_block *s)
 		DEBUG(3, printf("len = %d\n", dh_getlen(dh_grp)));
 		dh_public = xallocc(dh_getlen(dh_grp));
 		dh_create_exchange(dh_grp, dh_public);
-		hex_dump("dh_public", dh_public, dh_getlen(dh_grp));
+		hex_dump("dh_public", dh_public, dh_getlen(dh_grp), NULL);
 	}
 
 	gcry_create_nonce((uint8_t *) & s->tous_esp_spi, sizeof(s->tous_esp_spi));
@@ -2248,7 +2247,7 @@ static void setup_link(struct sa_block *s)
 			/* Determine the shared secret.  */
 			dh_shared_secret = xallocc(dh_getlen(dh_grp));
 			dh_create_shared(dh_grp, dh_shared_secret, ke->u.ke.data);
-			hex_dump("dh_shared_secret", dh_shared_secret, dh_getlen(dh_grp));
+			hex_dump("dh_shared_secret", dh_shared_secret, dh_getlen(dh_grp), NULL);
 		}
 		tous_keys = gen_keymat(s, ISAKMP_IPSEC_PROTO_IPSEC_ESP, s->tous_esp_spi,
 			ipsec_hash_algo, ipsec_cry_algo,
@@ -2294,7 +2293,7 @@ int main(int argc, char **argv)
 
 	do_config(argc, argv);
 	
-	hex_dump("hex_test", hex_test, sizeof(hex_test));
+	hex_dump("hex_test", hex_test, sizeof(hex_test), NULL);
 
 	DEBUG(1, printf("vpnc version " VERSION "\n"));
 	DEBUG(2, printf("S1\n"));
