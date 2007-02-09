@@ -124,9 +124,6 @@ struct sa_desc {
 
 	/* Encapsulation method to use to send packets */
 	struct encap_method *em;
-
-	/* timeout counters */
-	time_t last_packet_sent, last_packet_recv, last_checkifaddr;
 };
 
 struct peer_desc {
@@ -383,26 +380,10 @@ static int tun_send_ip(struct encap_method *encap, int fd, uint8_t *hwaddr)
 	return 1;
 }
 
-static int encap_esp_new(struct encap_method *encap, unsigned char proto)
+static int encap_esp_new(struct encap_method *encap, int esp_fd)
 {
-#ifdef IP_HDRINCL
-	int hincl = 1;
-#endif
+	encap->fd = esp_fd;
 
-	encap->fd = socket(PF_INET, SOCK_RAW, proto);
-
-	if (encap->fd == -1) {
-		perror("socket(SOCK_RAW)");
-		return -1;
-	}
-#ifdef IP_HDRINCL
-	if (setsockopt(encap->fd, IPPROTO_IP, IP_HDRINCL, &hincl, sizeof(hincl))
-		== -1) {
-		perror("setsockopt(IP_HDRINCL)");
-		close(encap->fd);
-		return -1;
-	}
-#endif
 	encap->name = "ipesp";
 	encap->recv = encap_rawip_recv;
 	encap->peer_find = encap_esp_peer_find;
@@ -413,9 +394,9 @@ static int encap_esp_new(struct encap_method *encap, unsigned char proto)
 	return 0;
 }
 
-static int encap_udp_new(struct encap_method *encap, int udp_fd)
+static int encap_udp_new(struct encap_method *encap, int esp_fd)
 {
-	encap->fd = udp_fd;
+	encap->fd = esp_fd;
 
 	encap->name = "udpesp";
 	encap->recv = encap_udp_recv;
@@ -934,11 +915,8 @@ static void process_tun(struct peer_desc *peer)
 	}
 	
 	/* Encapsulate and send to the other end of the tunnel */
-	oursa->lifetime_ipsec_tx += pack;
+	oursa->ipsec.life.tx += pack;
 	encap_send_peer(peer->remote_sa->em, peer, buf, pack);
-	
-	/* Update sent packet timeout */
-	peer->remote_sa->last_packet_sent = time(NULL);
 }
 
 static void process_socket(struct encap_method *meth)
@@ -984,22 +962,17 @@ static void process_socket(struct encap_method *meth)
 		peer->remote_sa->use_dest = 1;
 		update_sa_addr(peer->remote_sa);
 	}
-	/* Update received packet timeout */
-	peer->remote_sa->last_packet_recv = time(NULL);
 	
 	if (encap_any_decap(meth) == 0) {
 		syslog(LOG_DEBUG, "received update probe from peer");
 	} else {
 		/* Send the decapsulated packet to the tunnel interface */
-		oursa->lifetime_ipsec_rx += meth->buflen;
+		oursa->ipsec.life.rx += meth->buflen;
 		tun_send_ip(meth, peer->tun_fd, peer->tun_hwaddr);
 	}
 }
 
 static uint8_t volatile do_kill;
-static uint8_t *kill_packet;
-static size_t kill_packet_size;
-static struct sockaddr *kill_dest;
 
 #if defined(__CYGWIN__)
 static void *tun_thread (void *arg)
@@ -1077,10 +1050,10 @@ static void vpnc_main_loop(struct peer_desc *peer, struct encap_method *meth, co
 				}
 			}
 			DEBUG(3,printf("lifetime status: %ld of %u seconds used, %u of %u kbytes used\n",
-				time(NULL) - oursa->lifetime_ipsec_start,
-				oursa->lifetime_ipsec_seconds,
-				oursa->lifetime_ipsec_rx/1024 + oursa->lifetime_ipsec_tx/1024,
-				oursa->lifetime_ipsec_kbytes));
+				time(NULL) - oursa->ipsec.life.start,
+				oursa->ipsec.life.seconds,
+				oursa->ipsec.life.rx/1024 + oursa->ipsec.life.tx/1024,
+				oursa->ipsec.life.kbytes));
 		} while ((presult == 0 || (presult == -1 && errno == EINTR)) && !do_kill);
 		if (presult == -1) {
 			syslog(LOG_ERR, "select: %m");
@@ -1101,7 +1074,6 @@ static void vpnc_main_loop(struct peer_desc *peer, struct encap_method *meth, co
 		}
 	}
 	
-	sendrecv(NULL, 0, kill_packet, kill_packet_size, 1);
 	tun_close(oursa->tun_fd, oursa->tun_name);
 	if (pidfile)
 		unlink(pidfile); /* ignore errors */
@@ -1130,34 +1102,34 @@ static void write_pidfile(const char *pidfile)
 	fclose(pf);
 }
 
-void
-vpnc_doit(unsigned long tous_spi,
-	const unsigned char *tous_key,
-	struct sockaddr_in *tous_dest,
-	unsigned long tothem_spi,
-	const unsigned char *tothem_key,
-	struct sockaddr_in *tothem_dest,
-	int tun_fd, uint8_t *tun_hwaddr,
-	int md_algo, int cry_algo,
-	uint8_t * kill_packet_p, size_t kill_packet_size_p,
-	struct sockaddr *kill_dest_p,
-	uint16_t encap_mode, int udp_fd,
-	const char *pidfile)
+void vpnc_doit(struct sa_block *s)
 {
 	struct sigaction act;
 	struct encap_method meth;
 
-	static struct sa_desc tous_sa, tothem_sa;
-	time_t t = time(NULL);
+	struct sa_desc tous_sa, tothem_sa;
 
-	switch (encap_mode) {
+	/* TODO: cleanup this file next... */
+	unsigned long tous_spi          = s->ipsec.rx.spi;
+	const unsigned char *tous_key   = s->ipsec.rx.key;
+	struct sockaddr_in *tous_dest   = &s->ipsec.rx.dest;
+	unsigned long tothem_spi        = s->ipsec.tx.spi;
+	const unsigned char *tothem_key = s->ipsec.tx.key;
+	struct sockaddr_in *tothem_dest = &s->ipsec.tx.dest;
+	int tun_fd                      = s->tun_fd;
+	uint8_t *tun_hwaddr             = s->tun_hwaddr;
+	int md_algo                     = s->ipsec.md_algo;
+	int cry_algo                    = s->ipsec.cry_algo;
+	const char *pidfile             = config[CONFIG_PID_FILE];
+
+	switch (s->ipsec.encap_mode) {
 		case IPSEC_ENCAP_TUNNEL:
-			if (encap_esp_new(&meth, IPPROTO_ESP) == -1)
+			if (encap_esp_new(&meth, s->esp_fd) == -1)
 				exit(1);
 			break;
 		case IPSEC_ENCAP_UDP_TUNNEL:
 		case IPSEC_ENCAP_UDP_TUNNEL_OLD:
-			if (encap_udp_new(&meth, udp_fd) == -1)
+			if (encap_udp_new(&meth, s->esp_fd) == -1)
 				exit(1);
 			break;
 		default:
@@ -1168,9 +1140,6 @@ vpnc_doit(unsigned long tous_spi,
 	tous_sa.next = remote_sa_list;
 	remote_sa_list = &tous_sa;
 	tous_sa.em = &meth;
-	tous_sa.last_packet_recv = t;
-	tous_sa.last_packet_sent = t;
-	tous_sa.last_checkifaddr = t;
 	tous_sa.md_algo = md_algo;
 	tous_sa.spi = htonl(tous_spi);
 	tous_sa.enc_secret = tous_key;
@@ -1204,9 +1173,6 @@ vpnc_doit(unsigned long tous_spi,
 	tothem_sa.next = local_sa_list;
 	local_sa_list = &tothem_sa;
 	tothem_sa.em = &meth;
-	tothem_sa.last_packet_recv = t;
-	tothem_sa.last_packet_sent = t;
-	tothem_sa.last_checkifaddr = t;
 	tothem_sa.md_algo = md_algo;
 	tothem_sa.spi = htonl(tothem_spi);
 	tothem_sa.enc_secret = tothem_key;
@@ -1233,7 +1199,7 @@ vpnc_doit(unsigned long tous_spi,
 	} else {
 		tothem_sa.cry_ctx = NULL;
 		tothem_sa.ivlen = 0;
-		tothem_sa.blksize = 8; /* ...I hope this is rellay ok */
+		tothem_sa.blksize = 8; /* ...I hope this is really ok */
 	}
 
 	DEBUG(2, printf("local spi: %#08x\n", tous_sa.spi));
@@ -1255,9 +1221,6 @@ vpnc_doit(unsigned long tous_spi,
 	vpnpeer.remote_sa = &tothem_sa;
 
 	do_kill = 0;
-	kill_packet = kill_packet_p;
-	kill_packet_size = kill_packet_size_p;
-	kill_dest = kill_dest_p;
 
 	sigaction(SIGHUP, NULL, &act);
 	if (act.sa_handler == SIG_DFL)
