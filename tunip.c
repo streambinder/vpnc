@@ -824,7 +824,8 @@ static int process_arp(int fd, uint8_t *hwaddr, uint8_t *frame)
 		arp->arp_pln != 4 ||
 		ntohs(arp->arp_op) != ARPOP_REQUEST ||
 		!memcmp(arp->arp_spa, arp->arp_tpa, 4) ||
-		memcmp(eth->ether_shost, hwaddr, ETH_ALEN)) {
+		memcmp(eth->ether_shost, hwaddr, ETH_ALEN) ||
+		!memcmp(arp->arp_tpa, oursa->our_address, 4)) {
 		/* whatever .. just drop it */
 		return 1;
 	}
