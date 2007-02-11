@@ -35,18 +35,39 @@ struct lifetime {
 
 struct ike_sa {
 	uint32_t spi;
+	uint32_t seq_id; /* for replay protection (not implemented) */
+	
 	uint8_t *key;
-	struct sockaddr_in dest;
+	uint8_t *key_cry;
+	gcry_cipher_hd_t cry_ctx;
+	uint8_t *key_md;
+	
+	/* Description of the packet being processed */
+	unsigned char *buf;
+	unsigned int bufsize, bufpayload, var_header_size;
+	int buflen;
 };
+
+struct encap_method; /* private to tunip.c */
 
 struct sa_block {
 	const char *pidfile;
-	int ike_fd; /* fd over isakmp traffic, and in case of NAT-T esp too */
+	
 	int tun_fd; /* fd to host via tun/tap */
-	int esp_fd; /* raw socket for ip-esp or Cisco-UDP or ike_fd (NAT-T) */
 	char tun_name[IFNAMSIZ];
 	uint8_t tun_hwaddr[ETH_ALEN];
+	
+	struct in_addr dst; /* ip of concentrator, must be set */
+	struct in_addr src; /* local ip, from getsockname() */
+	
+	struct in_addr opt_src_ip; /* configured local ip, can be 0.0.0.0 */
+	
+	/* these sockets are connect()ed */
+	int ike_fd; /* fd over isakmp traffic, and in case of NAT-T esp too */
+	int esp_fd; /* raw socket for ip-esp or Cisco-UDP or ike_fd (NAT-T) */
+	
 	struct {
+		uint16_t src_port, dst_port;
 		uint8_t i_cookie[ISAKMP_COOKIE_LENGTH];
 		uint8_t r_cookie[ISAKMP_COOKIE_LENGTH];
 		uint8_t *key; /* ike encryption key */
@@ -69,16 +90,13 @@ struct sa_block {
 		size_t blk_len, iv_len;
 		uint16_t encap_mode;
 		uint16_t peer_udpencap_port;
+		int natt_draft;
 		struct lifetime life;
 		struct ike_sa rx, tx;
+		struct encap_method *em;
 	} ipsec;
 };
 
-extern struct sa_block oursa[1];
-
 extern void vpnc_doit(struct sa_block *s);
-
-extern int find_local_addr(struct sockaddr_in *dest,
-	struct sockaddr_in *source);
 
 #endif

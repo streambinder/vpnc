@@ -23,6 +23,6 @@
 
 #include "tunip.h"
 
-ssize_t sendrecv(struct sa_block *s, void *recvbuf, size_t recvbufsize, void *tosend, size_t sendsize, int sendonly);
+void process_late_ike(struct sa_block *s, uint8_t *r_packet, ssize_t r_length);
 
 #endif

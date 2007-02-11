@@ -51,11 +51,7 @@
 
 #define ISAKMP_PORT (500)
 
-int natt_draft = -1;
-
-static struct sockaddr *dest_addr;
-static uint16_t local_port; /* in network byte order */
-static int timeout = 5000; /* 5 seconds */
+static int timeout = 1000; /* 1 second */
 static uint8_t *resend_hash = NULL;
 
 static uint8_t r_packet[2048];
@@ -89,44 +85,49 @@ static void addenv_ipv4(const void *name, uint8_t * data)
 	addenv(name, inet_ntoa(*((struct in_addr *)data)));
 }
 
-static int make_socket(uint16_t port)
+static int make_socket(struct sa_block *s, uint16_t src_port, uint16_t dst_port)
 {
 	int sock;
 	struct sockaddr_in name;
+	size_t len = sizeof(name);
 
-	/* Create the socket. */
+	/* create the socket */
 	sock = socket(PF_INET, SOCK_DGRAM, 0);
 	if (sock < 0)
 		error(1, errno, "making socket");
 
-	/* Give the socket a name. */
+	/* give the socket a name */
 	name.sin_family = AF_INET;
-	name.sin_port = port;
-	name.sin_addr.s_addr = htonl(INADDR_ANY);
+	name.sin_addr = s->opt_src_ip;
+	name.sin_port = htons(src_port);
 	if (bind(sock, (struct sockaddr *)&name, sizeof(name)) < 0)
-		error(1, errno, "binding to port %d", ntohs(port));
+		error(1, errno, "binding to %s:%d", inet_ntoa(s->opt_src_ip), ntohs(src_port));
 
+	/* connect the socket */
+	name.sin_family = AF_INET;
+	name.sin_addr = s->dst;
+	name.sin_port = htons(dst_port);
+	if (connect(sock, (struct sockaddr *)&name, sizeof(name)) < 0)
+		error(1, errno, "connecting to port %d", ntohs(dst_port));
+
+	/* who am I */
+	if (getsockname(sock, (struct sockaddr *)&name, &len) < 0)
+		error(1, errno, "reading local address from socket %d", sock);
+	s->src = name.sin_addr;
+	
 	return sock;
 }
 
-static struct sockaddr *init_sockaddr(const char *hostname, uint16_t port)
+static void init_sockaddr(struct in_addr *dst, const char *hostname)
 {
 	struct hostent *hostinfo;
-	struct sockaddr_in *result;
 
-	result = malloc(sizeof(struct sockaddr_in));
-	if (result == NULL)
-		error(1, errno, "out of memory");
-
-	result->sin_family = AF_INET;
-	result->sin_port = htons(port);
-	if (inet_aton(hostname, &result->sin_addr) == 0) {
+	if (inet_aton(hostname, dst) == 0) {
 		hostinfo = gethostbyname(hostname);
 		if (hostinfo == NULL)
 			error(1, 0, "unknown host `%s'\n", hostname);
-		result->sin_addr = *(struct in_addr *)hostinfo->h_addr;
+		*dst = *(struct in_addr *)hostinfo->h_addr;
 	}
-	return (struct sockaddr *)result;
 }
 
 static void setup_tunnel(struct sa_block *s)
@@ -152,9 +153,9 @@ static void setup_tunnel(struct sa_block *s)
 	}
 }
 
-static void config_tunnel()
+static void config_tunnel(struct sa_block *s)
 {
-	setenv("VPNGATEWAY", inet_ntoa(((struct sockaddr_in *)dest_addr)->sin_addr), 1);
+	setenv("VPNGATEWAY", inet_ntoa(s->dst), 1);
 	setenv("reason", "connect", 1);
 	system(config[CONFIG_SCRIPT]);
 }
@@ -165,7 +166,6 @@ static int recv_ignore_dup(struct sa_block *s, void *recvbuf, size_t recvbufsize
 	int recvsize, hash_len;
 	struct sockaddr_in recvaddr;
 	size_t recvaddr_size = sizeof(recvaddr);
-	char ntop_buf[32];
 
 	recvsize = recvfrom(s->ike_fd, recvbuf, recvbufsize, 0,
 		(struct sockaddr *)&recvaddr, &recvaddr_size);
@@ -173,37 +173,24 @@ static int recv_ignore_dup(struct sa_block *s, void *recvbuf, size_t recvbufsize
 		error(1, errno, "receiving packet");
 	
 	/* skip NAT-T draft-0 keepalives */
-	if ((natt_draft > -1) && (natt_draft < 2) &&
+	if ((s->ipsec.natt_draft > -1) && (s->ipsec.natt_draft < 2) &&
 		(recvsize == 1) && (*((u_char *)(recvbuf)) == 0xff))
-		recvsize = -1;
+		return -1;
 	
-	if (recvsize > 0) {
-		if (recvaddr_size != sizeof(recvaddr)
-			|| recvaddr.sin_family != dest_addr->sa_family
-			|| recvaddr.sin_port != ((struct sockaddr_in *)dest_addr)->sin_port
-			|| memcmp(&recvaddr.sin_addr,
-				&((struct sockaddr_in *)dest_addr)->sin_addr,
-				sizeof(struct in_addr)) != 0) {
-			error(0, 0, "got response from unknown host %s:%d",
-				inet_ntop(recvaddr.sin_family, &recvaddr.sin_addr,
-					ntop_buf, sizeof(ntop_buf)), ntohs(recvaddr.sin_port));
-			return -1;
-		}
-
-		hash_len = gcry_md_get_algo_dlen(GCRY_MD_SHA1);
-		resend_check_hash = malloc(hash_len);
-		gcry_md_hash_buffer(GCRY_MD_SHA1, resend_check_hash, recvbuf, recvsize);
-		if (resend_hash && memcmp(resend_hash, resend_check_hash, hash_len) == 0) {
-			free(resend_check_hash);
-			return -1;
-		}
-		if (!resend_hash) {
-			resend_hash = resend_check_hash;
-		} else {
-			memcpy(resend_hash, resend_check_hash, hash_len);
-			free(resend_check_hash);
-		}
+	hash_len = gcry_md_get_algo_dlen(GCRY_MD_SHA1);
+	resend_check_hash = malloc(hash_len);
+	gcry_md_hash_buffer(GCRY_MD_SHA1, resend_check_hash, recvbuf, recvsize);
+	if (resend_hash && memcmp(resend_hash, resend_check_hash, hash_len) == 0) {
+		free(resend_check_hash);
+		return -1;
 	}
+	if (!resend_hash) {
+		resend_hash = resend_check_hash;
+	} else {
+		memcpy(resend_hash, resend_check_hash, hash_len);
+		free(resend_check_hash);
+	}
+	
 	return recvsize;
 }
 
@@ -212,7 +199,7 @@ static int recv_ignore_dup(struct sa_block *s, void *recvbuf, size_t recvbufsize
    new packet is put in RECVBUF of size RECVBUFSIZE and the actual size
    of the new packet is returned.  */
 
-ssize_t sendrecv(struct sa_block *s, void *recvbuf, size_t recvbufsize, void *tosend, size_t sendsize, int sendonly)
+static ssize_t sendrecv(struct sa_block *s, void *recvbuf, size_t recvbufsize, void *tosend, size_t sendsize, int sendonly)
 {
 	struct pollfd pfd;
 	int tries = 0;
@@ -225,7 +212,7 @@ ssize_t sendrecv(struct sa_block *s, void *recvbuf, size_t recvbufsize, void *to
 	pfd.events = POLLIN;
 	tries = 0;
 
-	if ((natt_draft > 1) && (tosend != NULL) && (s->ipsec.encap_mode != IPSEC_ENCAP_TUNNEL)) {
+	if ((s->ipsec.natt_draft > 1) && (tosend != NULL) && (s->ipsec.encap_mode != IPSEC_ENCAP_TUNNEL)) {
 		DEBUG(2, printf("NAT-T mode, adding non-esp marker\n"));
 		realtosend = xallocc(sendsize+4);
 		memcpy(realtosend+4, tosend, sendsize);
@@ -238,8 +225,7 @@ ssize_t sendrecv(struct sa_block *s, void *recvbuf, size_t recvbufsize, void *to
 		int pollresult;
 
 		if (realtosend != NULL)
-			if (sendto(s->ike_fd, realtosend, sendsize, 0,
-					dest_addr, sizeof(struct sockaddr_in)) != (int)sendsize)
+			if (write(s->ike_fd, realtosend, sendsize) != (int)sendsize)
 				error(1, errno, "can't send packet");
 		if (sendonly)
 			break;
@@ -269,7 +255,7 @@ ssize_t sendrecv(struct sa_block *s, void *recvbuf, size_t recvbufsize, void *to
 	if (sendonly)
 		return 0;
 
-	if ((natt_draft > 1)&&(s->ipsec.encap_mode != IPSEC_ENCAP_TUNNEL)&&(recvsize > 4)) {
+	if ((s->ipsec.natt_draft > 1)&&(s->ipsec.encap_mode != IPSEC_ENCAP_TUNNEL)&&(recvsize > 4)) {
 		recvsize -= 4; /* 4 bytes non-esp marker */
 		memmove(recvbuf, recvbuf+4, recvsize);
 	}
@@ -349,8 +335,7 @@ static int isakmp_crypt(struct sa_block *s, uint8_t * block, size_t blocklen, in
 	return 0;
 }
 
-static uint16_t unpack_verify_phase2(struct sa_block *s,
-	uint8_t * r_packet,
+static uint16_t unpack_verify_phase2(struct sa_block *s, uint8_t * r_packet,
 	size_t r_length, struct isakmp_packet **r_p, const uint8_t * nonce, size_t nonce_size)
 {
 	struct isakmp_packet *r;
@@ -832,7 +817,7 @@ static void lifetime_ike_process(struct sa_block *s, struct isakmp_attribute *a)
 	else
 		assert(0);
 	
-	DEBUG(2, printf("got ike lifetime attributen: %d %s\n", value,
+	DEBUG(2, printf("got ike lifetime attributes: %d %s\n", value,
 		(a->u.attr_16 == IKE_LIFE_TYPE_SECONDS) ? "seconds" : "kilobyte"));
 	
 	if (a->u.attr_16 == IKE_LIFE_TYPE_SECONDS)
@@ -859,7 +844,7 @@ static void lifetime_ipsec_process(struct sa_block *s, struct isakmp_attribute *
 	else
 		assert(0);
 	
-	DEBUG(2, printf("got ipsec lifetime attributen: %d %s\n", value,
+	DEBUG(2, printf("got ipsec lifetime attributes: %d %s\n", value,
 		(a->u.attr_16 == IPSEC_LIFE_SECONDS) ? "seconds" : "kilobyte"));
 	
 	if (a->u.attr_16 == IPSEC_LIFE_SECONDS)
@@ -894,7 +879,7 @@ static void do_phase_1(const char *key_id, const char *shared_key, struct sa_blo
 	int seen_natt_vid = 0, seen_natd = 0, seen_natd_them = 0, seen_natd_us = 0, natd_type = 0;
 	unsigned char *natd_us = NULL, *natd_them = NULL;
 	
-	natt_draft = -1;
+	s->ipsec.natt_draft = -1;
 	
 	DEBUG(2, printf("S4.1\n"));
 	gcry_create_nonce(s->ike.i_cookie, ISAKMP_COOKIE_LENGTH);
@@ -1146,19 +1131,19 @@ static void do_phase_1(const char *key_id, const char *shared_key, struct sa_blo
 						!memcmp(rp->u.vid.data, natt_vid_02,
 							sizeof(natt_vid_02)))) {
 					seen_natt_vid = 1;
-					if (natt_draft < 2) natt_draft = 2;
+					if (s->ipsec.natt_draft < 2) s->ipsec.natt_draft = 2;
 					DEBUG(2, printf("peer is NAT-T capable (draft-02)\\n\n"));
 				} else if (rp->u.vid.length == sizeof(natt_vid_01)
 					&& memcmp(rp->u.vid.data, natt_vid_01,
 						sizeof(natt_vid_01)) == 0) {
 					seen_natt_vid = 1;
-					if (natt_draft < 1) natt_draft = 1;
+					if (s->ipsec.natt_draft < 1) s->ipsec.natt_draft = 1;
 					DEBUG(2, printf("peer is NAT-T capable (draft-01)\n"));
 				} else if (rp->u.vid.length == sizeof(natt_vid_00)
 					&& memcmp(rp->u.vid.data, natt_vid_00,
 						sizeof(natt_vid_00)) == 0) {
 					seen_natt_vid = 1;
-					if (natt_draft < 0) natt_draft = 0;
+					if (s->ipsec.natt_draft < 0) s->ipsec.natt_draft = 0;
 					DEBUG(2, printf("peer is NAT-T capable (draft-00)\n"));
 				} else {
 					hex_dump("unknown ISAKMP_PAYLOAD_VID: ",
@@ -1178,16 +1163,16 @@ static void do_phase_1(const char *key_id, const char *shared_key, struct sa_blo
 					reject = ISAKMP_N_PAYLOAD_MALFORMED;
 				} else if (seen_natd == 0) {
 					gcry_md_hd_t hm;
+					uint16_t n_dst_port = htons(s->ike.dst_port);
+					
 					natd_us = xallocc(s->ike.md_len);
 					natd_them = xallocc(s->ike.md_len);
 					memcpy(natd_us, rp->u.natd.data, s->ike.md_len);
 					gcry_md_open(&hm, s->ike.md_algo, 0);
 					gcry_md_write(hm, s->ike.i_cookie, ISAKMP_COOKIE_LENGTH);
 					gcry_md_write(hm, s->ike.r_cookie, ISAKMP_COOKIE_LENGTH);
-					gcry_md_write(hm, &((struct sockaddr_in *)dest_addr)->sin_addr,
-						sizeof(struct in_addr));
-					gcry_md_write(hm, &((struct sockaddr_in *)dest_addr)->sin_port,
-						sizeof(uint16_t));
+					gcry_md_write(hm, &s->dst, sizeof(struct in_addr));
+					gcry_md_write(hm, &n_dst_port, sizeof(uint16_t));
 					gcry_md_final(hm);
 					memcpy(natd_them, gcry_md_read(hm, 0), s->ike.md_len);
 					gcry_md_close(hm);
@@ -1420,14 +1405,13 @@ static void do_phase_1(const char *key_id, const char *shared_key, struct sa_blo
 			/* this could be repeated fo any known outbound interfaces */
 			{
 				gcry_md_hd_t hm;
-				struct sockaddr_in src_addr;
-				src_addr.sin_port=local_port;
-				find_local_addr((struct sockaddr_in *)dest_addr, &src_addr);
+				uint16_t n_src_port = htons(s->ike.src_port);
+				
 				gcry_md_open(&hm, s->ike.md_algo, 0);
 				gcry_md_write(hm, s->ike.i_cookie, ISAKMP_COOKIE_LENGTH);
 				gcry_md_write(hm, s->ike.r_cookie, ISAKMP_COOKIE_LENGTH);
-				gcry_md_write(hm, &src_addr.sin_addr, sizeof(struct in_addr));
-				gcry_md_write(hm, &local_port, sizeof(uint16_t));
+				gcry_md_write(hm, &s->src, sizeof(struct in_addr));
+				gcry_md_write(hm, &n_src_port, sizeof(uint16_t));
 				gcry_md_final(hm);
 				pl = pl->next = new_isakmp_data_payload(natd_type,
 					gcry_md_read(hm, 0), s->ike.md_len);
@@ -1455,12 +1439,11 @@ static void do_phase_1(const char *key_id, const char *shared_key, struct sa_blo
 					default:
 						abort();
 				}
-				if (natt_draft > 1){
-					((struct sockaddr_in *)dest_addr)->sin_port = htons(4500);
-					if (local_port == htons(500)) {
-						close(s->ike_fd);
-						s->ike_fd = make_socket(local_port = htons(4500));
-					}
+				if (s->ipsec.natt_draft > 1) {
+					close(s->ike_fd);
+					if (s->ike.src_port == 500)
+						s->ike.src_port = 4500;
+					s->ike_fd = make_socket(s, s->ike.src_port, s->ike.dst_port = 4500);
 				}
 			} else {
 				DEBUG(1, printf("NAT status: NAT-T VID seen, no NAT device detected\n"));
@@ -1515,16 +1498,15 @@ static int do_phase2_notice_check(struct sa_block *s, struct isakmp_packet **r_p
 					/* load balancing notice ==> restart with new gw */
 					if (r->payload->next->u.n.data_length != 4)
 						error(1, 0, "malformed loadbalance target");
-					memcpy(&((struct sockaddr_in *)dest_addr)->sin_addr,
-						r->payload->next->u.n.data, 4);
-					((struct sockaddr_in *)dest_addr)->sin_port = htons(ISAKMP_PORT);
+					s->dst = *(struct in_addr *)r->payload->next->u.n.data;
+					s->ike.dst_port = ISAKMP_PORT;
 					s->ipsec.encap_mode = IPSEC_ENCAP_TUNNEL;
-					if (local_port == htons(4500)) {
-						close(s->ike_fd);
-						s->ike_fd = make_socket(local_port = htons(500));
-					}
+					if (s->ike.src_port == 4500)
+						s->ike.src_port = 500;
+					close(s->ike_fd);
+					s->ike_fd = make_socket(s, s->ike.src_port, s->ike.dst_port);
 					DEBUG(2, printf("got cisco loadbalancing notice, diverting to %s\n",
-							inet_ntoa(((struct sockaddr_in *)dest_addr)->sin_addr)));
+							inet_ntoa(s->dst)));
 					return -1;
 				} else if (r->payload->next->u.n.type == ISAKMP_N_IPSEC_RESPONDER_LIFETIME) {
 					if (r->payload->next->u.n.protocol == ISAKMP_IPSEC_PROTO_ISAKMP)
@@ -1643,8 +1625,7 @@ static int do_phase_2_xauth(struct sa_block *s)
 		if (reject != 0)
 			phase2_fatal(s, "xauth packet unsupported: %s(%d)", reject);
 
-		inet_ntop(dest_addr->sa_family,
-			&((struct sockaddr_in *)dest_addr)->sin_addr, ntop_buf, sizeof(ntop_buf));
+		inet_ntop(AF_INET, &s->dst, ntop_buf, sizeof(ntop_buf));
 
 		/* Collect data from the user.  */
 		reply_attr = NULL;
@@ -2129,7 +2110,15 @@ static void setup_link(struct sa_block *s)
 					s->ipsec.md_algo =
 						get_algo(SUPP_ALGO_HASH, SUPP_ALGO_IPSEC_SA,
 						seen_auth, NULL, 0)->my_id;
-					gcry_cipher_algo_info(s->ipsec.cry_algo, GCRYCTL_GET_KEYLEN, NULL, &(s->ipsec.key_len));
+					if (s->ipsec.cry_algo) {
+						gcry_cipher_algo_info(s->ipsec.cry_algo, GCRYCTL_GET_KEYLEN, NULL, &(s->ipsec.key_len));
+						gcry_cipher_algo_info(s->ipsec.cry_algo, GCRYCTL_GET_BLKLEN, NULL, &(s->ipsec.blk_len));
+						s->ipsec.iv_len = s->ipsec.blk_len;
+					} else {
+						s->ipsec.key_len = 0;
+						s->ipsec.iv_len = 0;
+						s->ipsec.blk_len = 8; /* seems to be this without encryption... */
+					}
 					s->ipsec.md_len = gcry_md_get_algo_dlen(s->ipsec.md_algo);
 					DEBUG(1, printf("IPSEC SA selected %s-%s\n",
 							get_algo(SUPP_ALGO_CRYPT,
@@ -2194,7 +2183,7 @@ static void setup_link(struct sa_block *s)
 
 	/* Set up the interface here so it's ready when our acknowledgement
 	 * arrives.  */
-	config_tunnel();
+	config_tunnel(s);
 	DEBUG(2, printf("S7.8\n"));
 	{
 		unsigned char *dh_shared_secret = NULL;
@@ -2206,13 +2195,10 @@ static void setup_link(struct sa_block *s)
 			hex_dump("dh_shared_secret", dh_shared_secret, dh_getlen(dh_grp), NULL);
 		}
 		
-		s->ipsec.rx.dest.sin_family = AF_INET;
-		memcpy(&s->ipsec.rx.dest.sin_addr, s->our_address, 4);
 		s->ipsec.rx.key = gen_keymat(s, ISAKMP_IPSEC_PROTO_IPSEC_ESP, s->ipsec.rx.spi,
 			dh_shared_secret, dh_grp ? dh_getlen(dh_grp) : 0,
 			nonce, sizeof(nonce), nonce_r->u.nonce.data, nonce_r->u.nonce.length);
 		
-		memcpy(&s->ipsec.tx.dest, dest_addr, sizeof(s->ipsec.tx.dest));
 		s->ipsec.tx.key = gen_keymat(s, ISAKMP_IPSEC_PROTO_IPSEC_ESP, s->ipsec.tx.spi,
 			dh_shared_secret, dh_grp ? dh_getlen(dh_grp) : 0,
 			nonce, sizeof(nonce), nonce_r->u.nonce.data, nonce_r->u.nonce.length);
@@ -2221,10 +2207,9 @@ static void setup_link(struct sa_block *s)
 			group_free(dh_grp);
 		
 		if ((opt_natt_mode == NATT_CISCO_UDP) && s->ipsec.peer_udpencap_port) {
-			s->esp_fd = make_socket(htons(opt_udpencapport));
-			s->ipsec.rx.dest.sin_port = htons(s->ipsec.peer_udpencap_port);
+			s->esp_fd = make_socket(s, opt_udpencapport, s->ipsec.peer_udpencap_port);
 			s->ipsec.encap_mode = IPSEC_ENCAP_UDP_TUNNEL;
-		} else if (opt_natt_mode != NATT_NONE) {
+		} else if (s->ipsec.encap_mode != IPSEC_ENCAP_TUNNEL) {
 			s->esp_fd = s->ike_fd;
 		} else {
 #ifdef IP_HDRINCL
@@ -2281,17 +2266,29 @@ static void setup_link(struct sa_block *s)
 	}
 }
 
+void process_late_ike(struct sa_block *s, uint8_t *r_packet, ssize_t r_length)
+{
+	int reject;
+	struct isakmp_packet *r;
+	
+	DEBUG(2,printf("got late ike paket: %d bytes\n", r_length));
+	reject = unpack_verify_phase2(s, r_packet, r_length, &r, NULL, 0);
+	
+	return;
+}
+
 int main(int argc, char **argv)
 {
 	int do_load_balance;
 	const uint8_t hex_test[] = { 0, 1, 2, 3 };
+	struct sa_block oursa[1];
 	struct sa_block *s = oursa;
 
 	test_pack_unpack();
 	gcry_check_version("1.1.90");
 	gcry_control(GCRYCTL_INIT_SECMEM, 16384, 0);
 	group_init();
-	memset(s, 0, sizeof(s));
+	memset(s, 0, sizeof(*s));
 	s->ipsec.encap_mode = IPSEC_ENCAP_TUNNEL;
 
 	do_config(argc, argv);
@@ -2300,10 +2297,11 @@ int main(int argc, char **argv)
 
 	DEBUG(1, printf("vpnc version " VERSION "\n"));
 	DEBUG(2, printf("S1\n"));
-	dest_addr = init_sockaddr(config[CONFIG_IPSEC_GATEWAY], ISAKMP_PORT);
+	init_sockaddr(&s->dst, config[CONFIG_IPSEC_GATEWAY]);
 	DEBUG(2, printf("S2\n"));
-	local_port = htons(atoi(config[CONFIG_LOCAL_PORT]));
-	s->ike_fd = make_socket(local_port);
+	s->ike.src_port = atoi(config[CONFIG_LOCAL_PORT]);
+	s->ike.dst_port = ISAKMP_PORT;
+	s->ike_fd = make_socket(s, s->ike.src_port, s->ike.dst_port);
 	DEBUG(2, printf("S3\n"));
 	setup_tunnel(s);
 
