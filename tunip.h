@@ -94,6 +94,7 @@ struct sa_block {
 		struct lifetime life;
 		struct ike_sa rx, tx;
 		struct encap_method *em;
+		uint16_t ip_id;
 	} ipsec;
 };
 

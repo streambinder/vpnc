@@ -116,13 +116,7 @@ struct encap_method {
 
 #define MAX_HEADER 72
 #define MAX_PACKET 4096
-uint8_t global_buffer[MAX_HEADER + MAX_PACKET + ETH_HLEN];
-
-uint16_t ip_id;
-
-#define encap_recv(s,b,bs,f)       ((s)->ipsec.em->recv((s),(b),(bs),(f)))
-#define encap_send_peer(s,p,b,bs)  ((s)->ipsec.em->send_peer((s),(p),(b),(bs)))
-#define encap_recv_peer(s,p)       ((s)->ipsec.em->recv_peer((s),(p)))
+static uint8_t global_buffer[MAX_HEADER + MAX_PACKET + ETH_HLEN];
 
 /*
  * in_cksum --
@@ -413,7 +407,7 @@ static void encap_esp_send_peer(struct sa_block *s, unsigned char *buf, unsigned
 	ip->ip_v = IPVERSION;
 	ip->ip_hl = 5;
 	/*gcry_md_get_algo_dlen(md_algo); see RFC .. only use 96 bit */
-	ip->ip_id = htons(ip_id++);
+	ip->ip_id = htons(s->ipsec.ip_id++);
 	ip->ip_p = IPPROTO_ESP;
 	ip->ip_src = s->src;
 	ip->ip_dst = s->dst;
@@ -894,6 +888,7 @@ void vpnc_doit(struct sa_block *s)
 	switch (s->ipsec.encap_mode) {
 		case IPSEC_ENCAP_TUNNEL:
 			encap_esp_new(&meth);
+			gcry_create_nonce(&s->ipsec.ip_id, sizeof(uint16_t));
 			break;
 		case IPSEC_ENCAP_UDP_TUNNEL:
 		case IPSEC_ENCAP_UDP_TUNNEL_OLD:
