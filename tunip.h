@@ -98,6 +98,7 @@ struct sa_block {
 	} ipsec;
 };
 
+extern int volatile do_kill;
 extern void vpnc_doit(struct sa_block *s);
 
 #endif

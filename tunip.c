@@ -116,6 +116,7 @@ struct encap_method {
 
 #define MAX_HEADER 72
 #define MAX_PACKET 4096
+int volatile do_kill;
 static uint8_t global_buffer[MAX_HEADER + MAX_PACKET + ETH_HLEN];
 
 /*
@@ -753,8 +754,6 @@ static void process_socket(struct sa_block *s)
 	}
 }
 
-static uint8_t volatile do_kill;
-
 #if defined(__CYGWIN__)
 static void *tun_thread (void *arg)
 {
@@ -773,6 +772,7 @@ static void vpnc_main_loop(struct sa_block *s)
 	fd_set rfds, refds;
 	int nfds=0;
 	int enable_keepalives;
+	ssize_t len;
 #if defined(__CYGWIN__)
 	pthread_t tid;
 #endif
@@ -803,6 +803,11 @@ static void vpnc_main_loop(struct sa_block *s)
 	
 	FD_SET(s->esp_fd, &rfds);
 	nfds = MAX(nfds, s->esp_fd +1);
+	
+	if (s->ike_fd != s->esp_fd) {
+		FD_SET(s->ike_fd, &rfds);
+		nfds = MAX(nfds, s->ike_fd +1);
+	}
 	
 #if defined(__CYGWIN__)
 	if (pthread_create(&tid, NULL, tun_thread, s)) {
@@ -850,10 +855,25 @@ static void vpnc_main_loop(struct sa_block *s)
 			pthread_mutex_unlock(&mutex);
 #endif
 		}
+		
+		if (s->ike_fd != s->esp_fd && FD_ISSET(s->ike_fd, &refds) ) {
+			DEBUG(3,printf("received something on ike fd..\n"));
+#if defined(__CYGWIN__)
+			pthread_mutex_lock(&mutex);
+#endif
+			len = recv(s->ike_fd, global_buffer, MAX_HEADER + MAX_PACKET, 0);
+			process_late_ike(s, global_buffer, len);
+#if defined(__CYGWIN__)
+			pthread_mutex_unlock(&mutex);
+#endif
+		}
 	}
 	
 	tun_close(s->tun_fd, s->tun_name);
-	syslog(LOG_NOTICE, "terminated by signal: %d", do_kill);
+	if (do_kill == -1)
+		syslog(LOG_NOTICE, "connection terminated by peer");
+	else
+		syslog(LOG_NOTICE, "terminated by signal: %d", do_kill);
 }
 
 static void killit(int signum)

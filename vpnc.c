@@ -2270,9 +2270,46 @@ void process_late_ike(struct sa_block *s, uint8_t *r_packet, ssize_t r_length)
 {
 	int reject;
 	struct isakmp_packet *r;
+	struct isakmp_payload *rp;
 	
 	DEBUG(2,printf("got late ike paket: %d bytes\n", r_length));
 	reject = unpack_verify_phase2(s, r_packet, r_length, &r, NULL, 0);
+	
+	/* just ignore broken stuff for now */
+	if (reject != 0)
+		return;
+	
+	/* everything must be encrypted by now */
+	if (r->payload == NULL || r->payload->type != ISAKMP_PAYLOAD_HASH)
+		return;
+	
+	/* empty packet? well, nothing to see here */
+	if (r->payload->next == NULL)
+		return;
+	
+	/* check if our isakmp sa gets deleted */
+	for (rp = r->payload->next; rp; rp = rp->next) {
+		/* search for delete payloads */
+		if (rp->type != ISAKMP_PAYLOAD_D)
+			continue;
+		
+		/* skip ipsec-esp delete */
+		if (rp->u.d.protocol != ISAKMP_IPSEC_PROTO_ISAKMP) {
+			DEBUG(2, printf("got non isakmp-delete, ignoring...\n"));
+			continue;
+		};
+		
+		/*
+		 * RFC 2408, 3.15 Delete Payload
+		 * it is not stated that the SPI field of a delete
+		 * payload can be ignored, because it is given in
+		 * the headers, but I assume so. In other cases
+		 * RFC 2408 (notifications) states this.
+		 */
+		do_kill = -1;
+		DEBUG(2, printf("got isakmp-delete, terminating...\n"));
+		return;
+	}
 	
 	return;
 }
