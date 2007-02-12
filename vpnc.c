@@ -164,11 +164,8 @@ static int recv_ignore_dup(struct sa_block *s, void *recvbuf, size_t recvbufsize
 {
 	uint8_t *resend_check_hash;
 	int recvsize, hash_len;
-	struct sockaddr_in recvaddr;
-	size_t recvaddr_size = sizeof(recvaddr);
 
-	recvsize = recvfrom(s->ike_fd, recvbuf, recvbufsize, 0,
-		(struct sockaddr *)&recvaddr, &recvaddr_size);
+	recvsize = recv(s->ike_fd, recvbuf, recvbufsize, 0);
 	if (recvsize == -1)
 		error(1, errno, "receiving packet");
 	
@@ -1905,7 +1902,7 @@ static void setup_link(struct sa_block *s)
 	int reject;
 	uint8_t *p_flat = NULL, *realiv = NULL, realiv_msgid[4];
 	size_t p_size = 0;
-	uint8_t nonce[20], *dh_public = NULL;
+	uint8_t nonce_i[20], *dh_public = NULL;
 	int i;
 
 	DEBUG(2, printf("S7.1\n"));
@@ -1920,8 +1917,8 @@ static void setup_link(struct sa_block *s)
 
 	gcry_create_nonce((uint8_t *) & s->ipsec.rx.spi, sizeof(s->ipsec.rx.spi));
 	rp = make_our_sa_ipsec(s);
-	gcry_create_nonce((uint8_t *) nonce, sizeof(nonce));
-	rp->next = new_isakmp_data_payload(ISAKMP_PAYLOAD_NONCE, nonce, sizeof(nonce));
+	gcry_create_nonce((uint8_t *) nonce_i, sizeof(nonce_i));
+	rp->next = new_isakmp_data_payload(ISAKMP_PAYLOAD_NONCE, nonce_i, sizeof(nonce_i));
 
 	us = new_isakmp_payload(ISAKMP_PAYLOAD_ID);
 	us->u.id.type = ISAKMP_IPSEC_ID_IPV4_ADDR;
@@ -1960,7 +1957,7 @@ static void setup_link(struct sa_block *s)
 		}
 
 		DEBUG(2, printf("S7.3\n"));
-		reject = unpack_verify_phase2(s, r_packet, r_length, &r, nonce, sizeof(nonce));
+		reject = unpack_verify_phase2(s, r_packet, r_length, &r, nonce_i, sizeof(nonce_i));
 
 		DEBUG(2, printf("S7.4\n"));
 		if (((reject == 0) || (reject == ISAKMP_N_AUTHENTICATION_FAILED))
@@ -2176,7 +2173,7 @@ static void setup_link(struct sa_block *s)
 
 	/* send final packet */
 	sendrecv_phase2(s, NULL, ISAKMP_EXCHANGE_IKE_QUICK,
-		msgid, 1, 0, 0, nonce, sizeof(nonce),
+		msgid, 1, 0, 0, nonce_i, sizeof(nonce_i),
 		nonce_r->u.nonce.data, nonce_r->u.nonce.length);
 
 	DEBUG(2, printf("S7.7\n"));
@@ -2197,11 +2194,11 @@ static void setup_link(struct sa_block *s)
 		
 		s->ipsec.rx.key = gen_keymat(s, ISAKMP_IPSEC_PROTO_IPSEC_ESP, s->ipsec.rx.spi,
 			dh_shared_secret, dh_grp ? dh_getlen(dh_grp) : 0,
-			nonce, sizeof(nonce), nonce_r->u.nonce.data, nonce_r->u.nonce.length);
+			nonce_i, sizeof(nonce_i), nonce_r->u.nonce.data, nonce_r->u.nonce.length);
 		
 		s->ipsec.tx.key = gen_keymat(s, ISAKMP_IPSEC_PROTO_IPSEC_ESP, s->ipsec.tx.spi,
 			dh_shared_secret, dh_grp ? dh_getlen(dh_grp) : 0,
-			nonce, sizeof(nonce), nonce_r->u.nonce.data, nonce_r->u.nonce.length);
+			nonce_i, sizeof(nonce_i), nonce_r->u.nonce.data, nonce_r->u.nonce.length);
 		
 		if (dh_grp)
 			group_free(dh_grp);
@@ -2266,6 +2263,189 @@ static void setup_link(struct sa_block *s)
 	}
 }
 
+static int do_rekey(struct sa_block *s, struct isakmp_packet *r)
+{
+	struct isakmp_payload *rp, *ke = NULL, *nonce_i = NULL;
+	struct isakmp_attribute *a;
+	int seen_enc;
+	int seen_auth = 0, seen_encap = 0, seen_group = 0, seen_keylen = 0;
+	int nonce_i_copy_len;
+	struct group *dh_grp = NULL;
+	uint8_t nonce_r[20], *dh_public = NULL, *nonce_i_copy = NULL;
+	
+	if (get_dh_group_ipsec(s->ipsec.do_pfs)->my_id) {
+		dh_grp = group_get(get_dh_group_ipsec(s->ipsec.do_pfs)->my_id);
+		DEBUG(3, printf("len = %d\n", dh_getlen(dh_grp)));
+		dh_public = xallocc(dh_getlen(dh_grp));
+		dh_create_exchange(dh_grp, dh_public);
+		hex_dump("dh_public", dh_public, dh_getlen(dh_grp), NULL);
+	}
+	
+	rp = r->payload->next;
+	/* rp->type == ISAKMP_PAYLOAD_SA, verified by caller */
+	
+	if (rp->u.sa.doi != ISAKMP_DOI_IPSEC)
+		return ISAKMP_N_DOI_NOT_SUPPORTED;
+	if (rp->u.sa.situation != ISAKMP_IPSEC_SIT_IDENTITY_ONLY)
+		return ISAKMP_N_SITUATION_NOT_SUPPORTED;
+	if (rp->u.sa.proposals == NULL || rp->u.sa.proposals->next != NULL) /* rekeying should only have one proposal */
+		return ISAKMP_N_BAD_PROPOSAL_SYNTAX;
+	if (rp->u.sa.proposals->u.p.prot_id != ISAKMP_IPSEC_PROTO_IPSEC_ESP)
+		return ISAKMP_N_INVALID_PROTOCOL_ID;
+	if (rp->u.sa.proposals->u.p.spi_size != 4)
+		return ISAKMP_N_INVALID_SPI;
+	if (rp->u.sa.proposals->u.p.transforms == NULL || rp->u.sa.proposals->u.p.transforms->next != NULL)
+		return ISAKMP_N_BAD_PROPOSAL_SYNTAX;
+	
+	seen_enc = rp->u.sa.proposals->u.p.transforms->u.t.id;
+	
+	memcpy(&s->ipsec.tx.spi, rp->u.sa.proposals->u.p.spi, 4);
+	
+	for (a = rp->u.sa.proposals->u.p.transforms->u.t.attributes; a; a = a->next)
+		switch (a->type) {
+		case ISAKMP_IPSEC_ATTRIB_AUTH_ALG:
+			if (a->af == isakmp_attr_16)
+				seen_auth = a->u.attr_16;
+			else
+				return ISAKMP_N_BAD_PROPOSAL_SYNTAX;
+			break;
+		case ISAKMP_IPSEC_ATTRIB_ENCAP_MODE:
+			if (a->af == isakmp_attr_16 &&
+				a->u.attr_16 == s->ipsec.encap_mode)
+				seen_encap = 1;
+			else
+				return ISAKMP_N_BAD_PROPOSAL_SYNTAX;
+			break;
+		case ISAKMP_IPSEC_ATTRIB_GROUP_DESC:
+			if (dh_grp && a->af == isakmp_attr_16 &&
+				a->u.attr_16 == get_dh_group_ipsec(s->ipsec.do_pfs)->ipsec_sa_id)
+				seen_group = 1;
+			else
+				return ISAKMP_N_BAD_PROPOSAL_SYNTAX;
+			break;
+		case ISAKMP_IPSEC_ATTRIB_KEY_LENGTH:
+			if (a->af == isakmp_attr_16)
+				seen_keylen = a->u.attr_16;
+			else
+				return ISAKMP_N_BAD_PROPOSAL_SYNTAX;
+			break;
+		case ISAKMP_IPSEC_ATTRIB_SA_LIFE_TYPE:
+			/* lifetime duration MUST follow lifetype attribute */
+			if (a->next->type == ISAKMP_IPSEC_ATTRIB_SA_LIFE_DURATION) {
+				lifetime_ipsec_process(s, a);
+			} else
+				return ISAKMP_N_BAD_PROPOSAL_SYNTAX;
+			break;
+		case ISAKMP_IPSEC_ATTRIB_SA_LIFE_DURATION:
+			/* already processed above in ISAKMP_IPSEC_ATTRIB_SA_LIFE_TYPE: */
+			break;
+		default:
+			return ISAKMP_N_ATTRIBUTES_NOT_SUPPORTED;
+			break;
+		}
+	if (!seen_auth || !seen_encap || (dh_grp && !seen_group))
+		return ISAKMP_N_BAD_PROPOSAL_SYNTAX;
+	
+	if (get_algo(SUPP_ALGO_HASH, SUPP_ALGO_IPSEC_SA, seen_auth, NULL, 0) == NULL)
+		return ISAKMP_N_BAD_PROPOSAL_SYNTAX;
+	if (get_algo(SUPP_ALGO_CRYPT, SUPP_ALGO_IPSEC_SA, seen_enc, NULL, seen_keylen) == NULL)
+		return ISAKMP_N_BAD_PROPOSAL_SYNTAX;
+	
+	/* we don't want to change ciphers during rekeying */
+	if (s->ipsec.cry_algo != get_algo(SUPP_ALGO_CRYPT, SUPP_ALGO_IPSEC_SA, seen_enc,  NULL, seen_keylen)->my_id)
+		return ISAKMP_N_BAD_PROPOSAL_SYNTAX;
+	if (s->ipsec.md_algo  != get_algo(SUPP_ALGO_HASH,  SUPP_ALGO_IPSEC_SA, seen_auth, NULL, 0)->my_id)
+		return ISAKMP_N_BAD_PROPOSAL_SYNTAX;
+	
+	for (rp = rp->next; rp; rp = rp->next)
+		switch (rp->type) {
+		case ISAKMP_PAYLOAD_ID:
+			break;
+		case ISAKMP_PAYLOAD_KE:
+			ke = rp;
+			break;
+		case ISAKMP_PAYLOAD_NONCE:
+			nonce_i = rp;
+			break;
+		default:
+			return ISAKMP_N_INVALID_PAYLOAD_TYPE;
+			break;
+		}
+	
+	if ((dh_grp && ke == NULL) || nonce_i == NULL)
+		return ISAKMP_N_BAD_PROPOSAL_SYNTAX;
+	
+	DEBUG(3, printf("everything fine so far...\n"));
+	gcry_create_nonce((uint8_t *) nonce_r, sizeof(nonce_r));
+	gcry_create_nonce((uint8_t *) & s->ipsec.rx.spi, sizeof(s->ipsec.rx.spi));
+	
+	unsigned char *dh_shared_secret = NULL;
+	
+	if (dh_grp) {
+		/* Determine the shared secret.  */
+		dh_shared_secret = xallocc(dh_getlen(dh_grp));
+		dh_create_shared(dh_grp, dh_shared_secret, ke->u.ke.data);
+		hex_dump("dh_shared_secret", dh_shared_secret, dh_getlen(dh_grp), NULL);
+	}
+	
+	free(s->ipsec.rx.key);
+	free(s->ipsec.tx.key);
+		
+	s->ipsec.rx.key = gen_keymat(s, ISAKMP_IPSEC_PROTO_IPSEC_ESP, s->ipsec.rx.spi,
+		dh_shared_secret, dh_grp ? dh_getlen(dh_grp) : 0,
+		nonce_i->u.nonce.data, nonce_i->u.nonce.length, nonce_r, sizeof(nonce_r));
+	
+	s->ipsec.tx.key = gen_keymat(s, ISAKMP_IPSEC_PROTO_IPSEC_ESP, s->ipsec.tx.spi,
+		dh_shared_secret, dh_grp ? dh_getlen(dh_grp) : 0,
+		nonce_i->u.nonce.data, nonce_i->u.nonce.length, nonce_r, sizeof(nonce_r));
+	
+	s->ipsec.rx.key_cry = s->ipsec.rx.key;
+	s->ipsec.rx.key_md  = s->ipsec.rx.key + s->ipsec.key_len;
+	s->ipsec.tx.key_cry = s->ipsec.tx.key;
+	s->ipsec.tx.key_md  = s->ipsec.tx.key + s->ipsec.key_len;
+	
+	nonce_i_copy_len = nonce_i->u.nonce.length;
+	nonce_i_copy = xallocc(nonce_i_copy_len);
+	memcpy(nonce_i_copy, nonce_i->u.nonce.data, nonce_i_copy_len);
+	
+	s->ipsec.rx.seq_id = s->ipsec.tx.seq_id = 0;
+	s->ipsec.life.start = time(NULL);
+	
+	if (s->ipsec.cry_algo) {
+		gcry_cipher_setkey(s->ipsec.rx.cry_ctx, s->ipsec.rx.key_cry, s->ipsec.key_len);
+		gcry_cipher_setkey(s->ipsec.tx.cry_ctx, s->ipsec.tx.key_cry, s->ipsec.key_len);
+	}
+	
+	/* use request as template and just exchange some values */
+	/* this overwrites data in nonce_i, ke! */
+	rp = r->payload->next;
+	/* SA, change the SPI */
+	memcpy(rp->u.sa.proposals->u.p.spi, &s->ipsec.rx.spi, 4);
+	
+	for (rp = rp->next; rp; rp = rp->next)
+		switch (rp->type) {
+		case ISAKMP_PAYLOAD_ID:
+			break;
+		case ISAKMP_PAYLOAD_KE:
+			memcpy(rp->u.ke.data, dh_public, dh_getlen(dh_grp));
+			break;
+		case ISAKMP_PAYLOAD_NONCE:
+			memcpy(rp->u.nonce.data, nonce_r, sizeof(nonce_r));
+			break;
+		default:
+			assert(0);
+			break;
+		}
+	
+	sendrecv_phase2(s, r->payload->next, ISAKMP_EXCHANGE_IKE_QUICK,
+		r->message_id, 0, 0, 0, nonce_i_copy, nonce_i_copy_len, 0,0);
+	unpack_verify_phase2(s, r_packet, r_length, &r, NULL, 0);
+	free(nonce_i_copy);
+	/* don't care about answer ... */
+	
+	return 0;
+}
+
 void process_late_ike(struct sa_block *s, uint8_t *r_packet, ssize_t r_length)
 {
 	int reject;
@@ -2273,6 +2453,8 @@ void process_late_ike(struct sa_block *s, uint8_t *r_packet, ssize_t r_length)
 	struct isakmp_payload *rp;
 	
 	DEBUG(2,printf("got late ike paket: %d bytes\n", r_length));
+	/* we should ignore resend pakets here.
+	 * unpack_verify_phase2 will fail to decode them probably */
 	reject = unpack_verify_phase2(s, r_packet, r_length, &r, NULL, 0);
 	
 	/* just ignore broken stuff for now */
@@ -2286,6 +2468,14 @@ void process_late_ike(struct sa_block *s, uint8_t *r_packet, ssize_t r_length)
 	/* empty packet? well, nothing to see here */
 	if (r->payload->next == NULL)
 		return;
+	
+	/* do we get an SA proposal for rekeying? */
+	if (r->exchange_type == ISAKMP_EXCHANGE_IKE_QUICK &&
+		r->payload->next->type == ISAKMP_PAYLOAD_SA) {
+		reject = do_rekey(s, r);
+		DEBUG(3, printf("do_rekey returned: %d\n", reject));
+		return;
+	}
 	
 	/* check if our isakmp sa gets deleted */
 	for (rp = r->payload->next; rp; rp = rp->next) {
