@@ -323,7 +323,7 @@ static void encap_esp_encapsulate(struct sa_block *s)
 	while (pad_blksz & 3) /* must be multiple of 4 */
 		pad_blksz <<= 1;
 	padding = pad_blksz - ((s->ipsec.tx.buflen + 2 - s->ipsec.tx.var_header_size - s->ipsec.tx.bufpayload) % pad_blksz);
-	DEBUG(2, printf("sending packet: len = %d, padding = %lu\n", s->ipsec.tx.buflen, (unsigned long)padding));
+	DEBUG(3, printf("sending packet: len = %d, padding = %lu\n", s->ipsec.tx.buflen, (unsigned long)padding));
 	if (padding == pad_blksz)
 		padding = 0;
 
@@ -832,10 +832,11 @@ static void vpnc_main_loop(struct sa_block *s)
 					syslog(LOG_ERR, "sendto: %m");
 				}
 			}
-			DEBUG(3,printf("lifetime status: %ld of %u seconds used, %u of %u kbytes used\n",
+			DEBUG(2,printf("lifetime status: %ld of %u seconds used, %u|%u of %u kbytes used\n",
 				time(NULL) - s->ipsec.life.start,
 				s->ipsec.life.seconds,
-				s->ipsec.life.rx/1024 + s->ipsec.life.tx/1024,
+				s->ipsec.life.rx/1024,
+				s->ipsec.life.tx/1024,
 				s->ipsec.life.kbytes));
 		} while ((presult == 0 || (presult == -1 && errno == EINTR)) && !do_kill);
 		if (presult == -1) {

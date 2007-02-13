@@ -241,7 +241,7 @@ static ssize_t sendrecv(struct sa_block *s, void *recvbuf, size_t recvbufsize, v
 			continue;
 		}
 		
-		if (tries > 5)
+		if (tries > 2)
 			error(1, 0, "no response from target");
 		tries++;
 	}
@@ -2410,6 +2410,8 @@ static int do_rekey(struct sa_block *s, struct isakmp_packet *r)
 	
 	s->ipsec.rx.seq_id = s->ipsec.tx.seq_id = 0;
 	s->ipsec.life.start = time(NULL);
+	s->ipsec.life.tx = 0;
+	s->ipsec.life.rx = 0;
 	
 	if (s->ipsec.cry_algo) {
 		gcry_cipher_setkey(s->ipsec.rx.cry_ctx, s->ipsec.rx.key_cry, s->ipsec.key_len);
