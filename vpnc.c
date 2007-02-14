@@ -2224,6 +2224,7 @@ static void setup_link(struct sa_block *s)
 #endif
 		}
 		
+		s->ipsec.rx.seq_id = s->ipsec.tx.seq_id = 1;
 		DEBUG(2, printf("S7.9\n"));
 		vpnc_doit(s);
 	}
@@ -2408,7 +2409,7 @@ static int do_rekey(struct sa_block *s, struct isakmp_packet *r)
 	nonce_i_copy = xallocc(nonce_i_copy_len);
 	memcpy(nonce_i_copy, nonce_i->u.nonce.data, nonce_i_copy_len);
 	
-	s->ipsec.rx.seq_id = s->ipsec.tx.seq_id = 0;
+	s->ipsec.rx.seq_id = s->ipsec.tx.seq_id = 1;
 	s->ipsec.life.start = time(NULL);
 	s->ipsec.life.tx = 0;
 	s->ipsec.life.rx = 0;
