@@ -481,6 +481,14 @@ static const struct config_names_s {
 	}
 };
 
+static char *get_config_filename(const char *name, int add_dot_conf)
+{
+	char *realname;
+	
+	asprintf(&realname, index(name, '/') ? "" : "/etc/vpnc/", name, add_dot_conf ? ".conf" : "");
+	return realname;
+}
+
 static void read_config_file(const char *name, const char **configs, int missingok)
 {
 	FILE *f;
@@ -493,11 +501,13 @@ static void read_config_file(const char *name, const char **configs, int missing
 		f = stdin;
 		realname = strdup("stdin");
 	} else {
-		if (index(name, '/'))
-			realname = strdup(name);
-		else
-			asprintf(&realname, "/etc/vpnc/%s", name);
+		realname = get_config_filename(name, 0);
 		f = fopen(realname, "r");
+		if (f == NULL && errno == ENOENT) {
+			free(realname);
+			realname = get_config_filename(name, 1);
+			f = fopen(realname, "r");
+		}
 		if (missingok && f == NULL && errno == ENOENT) {
 			free(realname);
 			return;

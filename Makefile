@@ -89,14 +89,14 @@ realclean :
 install : all
 	install -d $(DESTDIR)$(ETCDIR) $(DESTDIR)$(SBINDIR) $(DESTDIR)$(MANDIR)/man8
 	install vpnc-script $(DESTDIR)$(ETCDIR)
-	install -m 600 vpnc.conf $(DESTDIR)$(ETCDIR)
+	install -m 600 vpnc.conf $(DESTDIR)$(ETCDIR)/default.conf
 	install vpnc vpnc-disconnect $(DESTDIR)$(SBINDIR)
 	install vpnc.8 $(DESTDIR)$(MANDIR)/man8
 
 install-strip : all
 	install -d $(DESTDIR)$(ETCDIR) $(DESTDIR)$(SBINDIR) $(DESTDIR)$(MANDIR)/man8
 	install vpnc-script $(DESTDIR)$(ETCDIR)
-	install -m 600 vpnc.conf $(DESTDIR)$(ETCDIR)
+	install -m 600 vpnc.conf $(DESTDIR)$(ETCDIR)/default.conf
 	install -s vpnc $(DESTDIR)$(SBINDIR)
 	install vpnc-disconnect $(DESTDIR)$(SBINDIR)
 	install vpnc.8 $(DESTDIR)$(MANDIR)/man8
