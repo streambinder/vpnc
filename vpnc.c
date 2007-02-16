@@ -1511,6 +1511,7 @@ static int do_phase2_notice_check(struct sa_block *s, struct isakmp_packet **r_p
 					s->dst = *(struct in_addr *)r->payload->next->u.n.data;
 					s->ike.dst_port = ISAKMP_PORT;
 					s->ipsec.encap_mode = IPSEC_ENCAP_TUNNEL;
+					s->ipsec.natt_active_mode = NATT_ACTIVE_NONE;
 					if (s->ike.src_port == 4500)
 						s->ike.src_port = 500;
 					close(s->ike_fd);
