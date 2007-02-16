@@ -204,7 +204,7 @@ static int encap_udp_recv(struct sa_block *s, unsigned char *buf, unsigned int b
 		syslog(LOG_ERR, "recvfrom: %m");
 		return -1;
 	}
-	if (s->ipsec.natt_draft < 2 && r > 8) {
+	if (s->ipsec.natt_active_mode == NATT_ACTIVE_DRAFT_OLD && r > 8) {
 		r -= 8;
 		memmove(buf, buf + 8, r);
 	}
@@ -463,7 +463,7 @@ static void encap_udp_send_peer(struct sa_block *s, unsigned char *buf, unsigned
 	
 	encap_esp_encapsulate(s);
 	
-	if (s->ipsec.natt_draft < 2) {
+	if (s->ipsec.natt_active_mode == NATT_ACTIVE_DRAFT_OLD) {
 		s->ipsec.tx.buf -= 8;
 		s->ipsec.tx.buflen += 8;
 		memset(s->ipsec.tx.buf, 0, 8);
@@ -783,10 +783,10 @@ static void vpnc_main_loop(struct sa_block *s)
 	char *keepalive;
 	size_t keepalive_size;
 	
-	if (s->ipsec.natt_draft < 2) {
+	if (s->ipsec.natt_active_mode == NATT_ACTIVE_DRAFT_OLD) {
 		keepalive = keepalive_v1;
 		keepalive_size = sizeof(keepalive_v1);
-	} else {
+	} else { /* active_mode is either RFC or CISCO_UDP */
 		keepalive = keepalive_v2;
 		keepalive_size = sizeof(keepalive_v2);
 	}

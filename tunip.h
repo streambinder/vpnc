@@ -50,6 +50,13 @@ struct ike_sa {
 
 struct encap_method; /* private to tunip.c */
 
+enum natt_active_mode_enum{
+	NATT_ACTIVE_NONE,
+	NATT_ACTIVE_CISCO_UDP, /* isakmp and esp on different ports => never encap */
+	NATT_ACTIVE_DRAFT_OLD, /* as in natt-draft 0 and 1 */
+	NATT_ACTIVE_RFC        /* draft 2 and RFC3947 / RFC3948 */
+};
+
 struct sa_block {
 	const char *pidfile;
 	
@@ -90,7 +97,7 @@ struct sa_block {
 		size_t blk_len, iv_len;
 		uint16_t encap_mode;
 		uint16_t peer_udpencap_port;
-		int natt_draft;
+		enum natt_active_mode_enum natt_active_mode;
 		struct lifetime life;
 		struct ike_sa rx, tx;
 		struct encap_method *em;
