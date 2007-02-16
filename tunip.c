@@ -163,7 +163,7 @@ static int encap_rawip_recv(struct sa_block *s, unsigned char *buf, unsigned int
 	ssize_t r;
 	struct ip *p = (struct ip *)buf;
 	struct sockaddr_in from;
-	size_t fromlen;
+	size_t fromlen = sizeof(from);
 	
 	r = recvfrom(s->esp_fd, buf, bufsize, 0, (struct sockaddr *)&from, &fromlen);
 	if (r == -1) {
