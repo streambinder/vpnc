@@ -1559,6 +1559,7 @@ static int do_phase_2_xauth(struct sa_block *s)
 	struct isakmp_packet *r;
 	int loopcount;
 	int reject;
+	int passwd_used = 0;
 
 	DEBUG(2, printf("S5.1\n"));
 	/* This can go around for a while.  */
@@ -1670,7 +1671,11 @@ static int do_phase_2_xauth(struct sa_block *s)
 			case ISAKMP_XAUTH_ATTRIB_ANSWER:
 			case ISAKMP_XAUTH_ATTRIB_USER_PASSWORD:
 			case ISAKMP_XAUTH_ATTRIB_PASSCODE:
-				if (seen_answer || config[CONFIG_XAUTH_INTERACTIVE]) {
+				if (passwd_used && config[CONFIG_NON_INTERACTIVE]) {
+					reject = ISAKMP_N_AUTHENTICATION_FAILED;
+					phase2_fatal(s, "noninteractive can't reuse password", reject);
+					error(2, 0, "authentication unsuccessful");
+				} else if (seen_answer || passwd_used || config[CONFIG_XAUTH_INTERACTIVE]) {
 					char *pass, *prompt = NULL;
 					struct isakmp_attribute *na;
 
@@ -1697,6 +1702,7 @@ static int do_phase_2_xauth(struct sa_block *s)
 					na->u.lots.data = xallocc(na->u.lots.length);
 					memcpy(na->u.lots.data, config[CONFIG_XAUTH_PASSWORD],
 						na->u.lots.length);
+					passwd_used = 1; /* Provide canned password at most once */
 				}
 				break;
 			default:
