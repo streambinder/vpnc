@@ -28,7 +28,6 @@ MANDIR=$(PREFIX)/share/man
 SRCS = sysdep.c vpnc-debug.c isakmp-pkt.c tunip.c config.c dh.c math_group.c supp.c
 BINS = vpnc cisco-decrypt
 OBJS = $(addsuffix .o,$(basename $(SRCS)))
-HDRS := $(addsuffix .h,$(basename $(SRCS))) isakmp.h
 BINOBJS = $(addsuffix .o,$(BINS))
 BINSRCS = $(addsuffix .c,$(BINS))
 VERSION := $(shell sh mk-version)
@@ -44,10 +43,6 @@ ifeq ($(shell uname -s), SunOS)
 LDFLAGS += -lnsl -lresolv -lsocket
 endif
 
-FILELIST := $(SRCS) $(HDRS) $(BINSRCS) vpnc-script vpnc-disconnect \
-	enum2debug.pl Makefile README ChangeLog COPYING TODO VERSION vpnc.conf \
-	vpnc.8 pcf2vpnc
-
 all : $(BINS)
 
 vpnc : $(OBJS) vpnc.o
@@ -56,8 +51,8 @@ vpnc : $(OBJS) vpnc.o
 cisco-decrypt : cisco-decrypt.o config.o supp.o sysdep.o vpnc-debug.o
 	$(CC) -o $@ $^ $(LDFLAGS)
 
-.depend: $(SRCS)
-	$(CC) -MM $(SRCS) $(CFLAGS) $(CPPFLAGS) > $@
+.depend: $(SRCS) $(BINSRCS)
+	$(CC) -MM $(SRCS) $(BINSRCS) $(CFLAGS) $(CPPFLAGS) > $@
 
 vpnc-debug.c vpnc-debug.h : isakmp.h enum2debug.pl
 	./enum2debug.pl isakmp.h >vpnc-debug.c 2>vpnc-debug.h
@@ -72,19 +67,20 @@ etags :
 ctags :
 	ctags *.[ch]
 
-vpnc-%.tgz : $(FILELIST)
+vpnc-%.tgz :
 	mkdir vpnc-$*
-	tar c $(FILELIST) | tar xC vpnc-$*/
+	svn info -R | awk -v RS='\n\n' -v FS='\n' '/Node Kind: file/ {print substr($$1,7)}' | \
+		tar cT - | tar xC vpnc-$*/
 	tar zcf ../$@ vpnc-$*
 	rm -rf vpnc-$*
 
 dist : VERSION vpnc-$(RELEASE_VERSION).tgz
 
 clean :
-	-rm -f tags $(OBJS) $(BINOBJS) $(BINS)
+	-rm -f $(OBJS) $(BINOBJS) $(BINS) tags
 
-realclean :
-	-rm -f $(BINS) $(BINOBJS) $(OBJS) tags vpnc-debug.c vpnc-debug.h .depend
+distclean : clean
+	-rm -f vpnc-debug.c vpnc-debug.h vpnc.ps .depend
 
 install : all
 	install -d $(DESTDIR)$(ETCDIR) $(DESTDIR)$(SBINDIR) $(DESTDIR)$(MANDIR)/man8
@@ -107,7 +103,7 @@ uninstall :
 		$(DESTDIR)$(MANDIR)/man8/vpnc.8
 	@echo NOTE: remove $(DESTDIR)$(ETCDIR) manually
 
-.PHONY : clean dist all install install-strip uninstall
+.PHONY : clean distclean dist all install install-strip uninstall
 
 #
 -include .depend
