@@ -22,6 +22,7 @@
 DESTDIR=
 PREFIX=/usr/local
 ETCDIR=/etc/vpnc
+BINDIR=$(PREFIX)/bin
 SBINDIR=$(PREFIX)/sbin
 MANDIR=$(PREFIX)/share/man
 
@@ -83,16 +84,18 @@ distclean : clean
 	-rm -f vpnc-debug.c vpnc-debug.h vpnc.ps .depend
 
 install : all
-	install -d $(DESTDIR)$(ETCDIR) $(DESTDIR)$(SBINDIR) $(DESTDIR)$(MANDIR)/man8
+	install -d $(DESTDIR)$(ETCDIR) $(DESTDIR)$(BINDIR) $(DESTDIR)$(SBINDIR) $(DESTDIR)$(MANDIR)/man8
 	install vpnc-script $(DESTDIR)$(ETCDIR)
 	install -m 600 vpnc.conf $(DESTDIR)$(ETCDIR)/default.conf
 	install vpnc vpnc-disconnect $(DESTDIR)$(SBINDIR)
+	install pcf2vpnc $(DESTDIR)$(BINDIR)
 	install vpnc.8 $(DESTDIR)$(MANDIR)/man8
 
 install-strip : all
 	install -d $(DESTDIR)$(ETCDIR) $(DESTDIR)$(SBINDIR) $(DESTDIR)$(MANDIR)/man8
 	install vpnc-script $(DESTDIR)$(ETCDIR)
 	install -m 600 vpnc.conf $(DESTDIR)$(ETCDIR)/default.conf
+	install pcf2vpnc $(DESTDIR)$(BINDIR)
 	install -s vpnc $(DESTDIR)$(SBINDIR)
 	install vpnc-disconnect $(DESTDIR)$(SBINDIR)
 	install vpnc.8 $(DESTDIR)$(MANDIR)/man8
@@ -100,6 +103,7 @@ install-strip : all
 uninstall :
 	rm -f $(DESTDIR)$(SBINDIR)/vpnc \
 		$(DESTDIR)$(SBINDIR)/vpnc-disconnect \
+		$(DESTDIR)$(BINDIR)/pcf2vpnc \
 		$(DESTDIR)$(MANDIR)/man8/vpnc.8
 	@echo NOTE: remove $(DESTDIR)$(ETCDIR) manually
 
