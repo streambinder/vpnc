@@ -56,6 +56,17 @@ fi
 
 ####
 
+kernel_is_2_6_or_above() {
+	case `uname -r` in
+		1.*|2.[012345]*)
+			return 1
+			;;
+		*)
+			return 0
+			;;
+	esac
+}
+
 do_pre_init() {
 	if [ "$OS" = "Linux" ]; then
 		if (exec 6<> /dev/net/tun) > /dev/null 2>&1 ; then
@@ -71,6 +82,13 @@ do_pre_init() {
 			if [ ! -e /dev/net/tun ]; then
 				mkdir -p /dev/net
 				mknod -m 0640 /dev/net/tun c 10 200
+			fi
+			# workaround for a possible latency caused by udev, sleep max. 10s
+			if kernel_is_2_6_or_above ; then
+				for x in `seq 100` ; do
+					(exec 6<> /dev/net/tun) > /dev/null 2>&1 && break;
+					sleep 0.1
+				done
 			fi
 		fi
 	elif [ "$OS" = "FreeBSD" ]; then
