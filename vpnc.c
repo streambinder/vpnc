@@ -2341,7 +2341,11 @@ static int do_rekey(struct sa_block *s, struct isakmp_packet *r)
 			break;
 		case ISAKMP_IPSEC_ATTRIB_ENCAP_MODE:
 			if (a->af == isakmp_attr_16 &&
-				a->u.attr_16 == s->ipsec.encap_mode)
+				a->u.attr_16 == (
+					(s->ipsec.natt_active_mode != NATT_ACTIVE_CISCO_UDP) ?
+					s->ipsec.encap_mode :
+					IPSEC_ENCAP_TUNNEL /* cisco-udp claims to use encap tunnel... */
+				))
 				seen_encap = 1;
 			else
 				return ISAKMP_N_BAD_PROPOSAL_SYNTAX;
