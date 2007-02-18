@@ -773,6 +773,7 @@ static void vpnc_main_loop(struct sa_block *s)
 	int nfds=0;
 	int enable_keepalives;
 	ssize_t len;
+	struct timeval select_timeout = { .tv_sec = 9, .tv_usec = 500000 };
 	time_t next_ike_keepalive=0;
 #if defined(__CYGWIN__)
 	pthread_t tid;
@@ -827,7 +828,6 @@ static void vpnc_main_loop(struct sa_block *s)
 		int presult;
 		
 		do {
-			struct timeval select_timeout = { .tv_sec = 9, .tv_usec = 500000 };
 			struct timeval *tvp = NULL;
 			FD_COPY(&rfds, &refds);
 			if (enable_keepalives)
@@ -843,6 +843,9 @@ static void vpnc_main_loop(struct sa_block *s)
 				if (send(s->esp_fd, keepalive, keepalive_size, 0) == -1) {
 					syslog(LOG_ERR, "sendto: %m");
 				}
+				/* reset to max timeout */
+				select_timeout.tv_sec = 9;
+				select_timeout.tv_usec = 500000;
 			}
 			DEBUG(2,printf("lifetime status: %ld of %u seconds used, %u|%u of %u kbytes used\n",
 				time(NULL) - s->ipsec.life.start,
@@ -856,15 +859,6 @@ static void vpnc_main_loop(struct sa_block *s)
 			continue;
 		}
 		
-		if (enable_keepalives && s->ike_fd != s->esp_fd) {
-			time_t cur_time = time(NULL);
-			if (cur_time >= next_ike_keepalive) {
-				/* send nat ike keepalive packet */
-				next_ike_keepalive = cur_time + 9;
-				keepalive_ike(s);
-			}
-		}
-
 #if !defined(__CYGWIN__)
 		if (FD_ISSET(s->tun_fd, &refds)) {
 			process_tun(s);
@@ -889,6 +883,24 @@ static void vpnc_main_loop(struct sa_block *s)
 			pthread_mutex_unlock(&mutex);
 #endif
 		}
+
+		if (enable_keepalives && s->ike_fd != s->esp_fd) {
+			time_t cur_time = time(NULL);
+			if (cur_time >= next_ike_keepalive) {
+				/* send nat ike keepalive packet now */
+				next_ike_keepalive = cur_time + 9;
+				keepalive_ike(s);
+				/* reset to max timeout */
+				select_timeout.tv_sec = 9;
+				select_timeout.tv_usec = 500000;
+			}
+			else {
+				/* Reduce timeout so next ike keepalive goes on schedule */
+				select_timeout.tv_sec = next_ike_keepalive - cur_time;
+				select_timeout.tv_usec = 0;
+			}
+		}
+
 	}
 	
 	tun_close(s->tun_fd, s->tun_name);

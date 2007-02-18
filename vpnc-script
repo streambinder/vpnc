@@ -219,7 +219,7 @@ write_resolvconf() {
 
 	# Don't step on INTERNAL_IP4_DNS value, use a temporary variable
 	INTERNAL_IP4_DNS_TEMP="$INTERNAL_IP4_DNS"
-	exec 6< /tmp/resolv.conf
+	exec 6< /etc/resolv.conf
 	while read LINE <&6 ; do
 		case "$LINE" in
 			nameserver*)

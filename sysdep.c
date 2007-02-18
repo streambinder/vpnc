@@ -729,6 +729,8 @@ void error(int status, int errornum, const char *fmt, ...)
 	fprintf(stderr, "%s", buf2);
 	if (errornum)
 		fprintf(stderr, ": %s\n", strerror(errornum));
+	else
+		fprintf(stderr, "\n");
 	free(buf2);
 
 	if (status)
