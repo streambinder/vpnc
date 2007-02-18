@@ -500,6 +500,14 @@ static void sendrecv_phase2(struct sa_block *s, struct isakmp_payload *pl,
 	}
 }
 
+void keepalive_ike(struct sa_block *s)
+{
+	uint32_t msgid;
+
+	gcry_create_nonce((uint8_t *) & msgid, sizeof(msgid));
+	sendrecv_phase2(s, NULL, ISAKMP_EXCHANGE_INFORMATIONAL, msgid, 1, 0, 0, 0, 0, 0, 0);
+}
+
 static void phase2_fatal(struct sa_block *s, const char *msg, int id)
 {
 	struct isakmp_payload *pl;
