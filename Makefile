@@ -56,7 +56,7 @@ cisco-decrypt : cisco-decrypt.o config.o supp.o sysdep.o vpnc-debug.o
 	$(CC) -MM $(SRCS) $(BINSRCS) $(CFLAGS) $(CPPFLAGS) > $@
 
 vpnc-debug.c vpnc-debug.h : isakmp.h enum2debug.pl
-	./enum2debug.pl isakmp.h >vpnc-debug.c 2>vpnc-debug.h
+	perl -w ./enum2debug.pl isakmp.h >vpnc-debug.c 2>vpnc-debug.h
 
 vpnc.ps : vpnc.c
 	enscript -E -G -T 4 --word-wrap -o- $^ | psnup -2 /dev/stdin $@
