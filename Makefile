@@ -61,21 +61,21 @@ vpnc-debug.c vpnc-debug.h : isakmp.h enum2debug.pl
 vpnc.ps : vpnc.c
 	enscript -E -G -T 4 --word-wrap -o- $^ | psnup -2 /dev/stdin $@
 
-../vpnc-%.tgz : vpnc-$*.tgz
+../vpnc-%.tar.gz : vpnc-$*.tar.gz
 
 etags :
 	etags *.[ch]
 ctags :
 	ctags *.[ch]
 
-vpnc-%.tgz :
+vpnc-%.tar.gz :
 	mkdir vpnc-$*
 	svn info -R | awk -v RS='\n\n' -v FS='\n' '/Node Kind: file/ {print substr($$1,7)}' | \
 		tar cT - | tar xC vpnc-$*/
 	tar zcf ../$@ vpnc-$*
 	rm -rf vpnc-$*
 
-dist : VERSION vpnc-$(RELEASE_VERSION).tgz
+dist : VERSION vpnc-$(RELEASE_VERSION).tar.gz
 
 clean :
 	-rm -f $(OBJS) $(BINOBJS) $(BINS) tags
