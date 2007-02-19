@@ -208,6 +208,7 @@ extern void error(int fd, int errorno, const char *fmt, ...);
 extern int getline(char **line, size_t * length, FILE * stream);
 #endif
 #ifndef HAVE_VASPRINTF
+#include <stdarg.h>
 extern int vasprintf(char **strp, const char *fmt, va_list ap);
 #endif
 #ifndef HAVE_ASPRINTF

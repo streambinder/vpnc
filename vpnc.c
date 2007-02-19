@@ -2302,6 +2302,7 @@ static int do_rekey(struct sa_block *s, struct isakmp_packet *r)
 	int nonce_i_copy_len;
 	struct group *dh_grp = NULL;
 	uint8_t nonce_r[20], *dh_public = NULL, *nonce_i_copy = NULL;
+	unsigned char *dh_shared_secret = NULL;
 	
 	if (get_dh_group_ipsec(s->ipsec.do_pfs)->my_id) {
 		dh_grp = group_get(get_dh_group_ipsec(s->ipsec.do_pfs)->my_id);
@@ -2412,8 +2413,6 @@ static int do_rekey(struct sa_block *s, struct isakmp_packet *r)
 	DEBUG(3, printf("everything fine so far...\n"));
 	gcry_create_nonce((uint8_t *) nonce_r, sizeof(nonce_r));
 	gcry_create_nonce((uint8_t *) & s->ipsec.rx.spi, sizeof(s->ipsec.rx.spi));
-	
-	unsigned char *dh_shared_secret = NULL;
 	
 	if (dh_grp) {
 		/* Determine the shared secret.  */

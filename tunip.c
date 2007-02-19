@@ -67,6 +67,7 @@
 #include <arpa/inet.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 #include <syslog.h>
 #include <time.h>
 #include <sys/select.h>
@@ -245,6 +246,7 @@ static int tun_send_ip(struct sa_block *s)
 	len   = s->ipsec.rx.buflen;
 	
 	if (opt_if_mode == IF_MODE_TAP) {
+#ifndef __sun__
 		/*
 		 * Add ethernet header before s->ipsec.rx.buf where
 		 * at least ETH_HLEN bytes should be available.
@@ -260,6 +262,7 @@ static int tun_send_ip(struct sa_block *s)
 		
 		start = (uint8_t *) eth_hdr;
 		len += ETH_HLEN;
+#endif
 	}
 	
 	sent = tun_write(s->tun_fd, start, len);
@@ -604,6 +607,7 @@ static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
  */
 static int process_arp(struct sa_block *s, uint8_t *frame)
 {
+#ifndef __sun__
 	int frame_size;
 	uint8_t tmp[4];
 	struct ether_header *eth = (struct ether_header *) frame;
@@ -644,6 +648,11 @@ static int process_arp(struct sa_block *s, uint8_t *frame)
 	hex_dump("ARP reply", frame, frame_size, NULL);
 	
 	return 1;
+#else
+	s = 0;
+	frame = 0;
+	return 0;
+#endif
 }
 
 /*

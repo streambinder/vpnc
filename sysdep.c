@@ -677,6 +677,9 @@ int tun_get_hwaddr(int fd, char *dev, uint8_t *hwaddr)
 	return 0;
 #else
 	/* todo: implement using SIOCGLIFADDR */
+	fd = 0;
+	dev = 0;
+	hwaddr = 0;
 	errno = ENOSYS;
 	return -1;
 #endif
