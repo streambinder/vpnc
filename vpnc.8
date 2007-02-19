@@ -10,7 +10,7 @@ see
 .SH "DESCRIPTION"
 .PP
 This manual page documents briefly the
-\fBvpnc\fR, \fBvpnc\-connect\fR and
+\fBvpnc\fR and
 \fBvpnc\-disconnect\fR commands.
 .PP
 \fBvpnc\fR is a 
@@ -20,27 +20,17 @@ the TUN/TAP driver in  Linux  kernel  2.4  and  above  and device tun(4)
 on BSD. The created connection is presented as a tunneling network
 device to the local system.
 .PP
-The vpnc daemon by it self does not set any routes, the user (or
-the connect script, see below) has to do it on its own, e.g. for a full
-tunnel with IP routing under Linux. Further, the user must care about
-setting a minimal route to the gateway to not cut the essential
-connection.
-.PP
-However, when connection has been established, vpnc will run a simple
-command (see \-\-script) to configure the interface and care about the
-route setup. By default, only a simple ifconfig command is executed.
-.PP
-The command \fBvpnc\-connect\fR is a helper script that will assist on
-connection invocation and routing configuration. It can also be used to manage configuration files
-for multiple VPN connections. The script can be started by the user or
-from the daemon (see \-\-script) when the connection is established. In
-the first case, it will simply run the daemon after some environment
-checks. When executed by the daemon later, it will create a minimalistic
-host route to the gateway and configures the default gateway
-configuration of Linux to run over the VPN tunnel.
+The vpnc daemon by itself does not set any routes, but it calls
+\fBvpnc\-script\fR to do this job. \fBvpnc\-script\fR displays
+a connect banner. If the concentrator supplies a network list
+for split-tunneling these networks are added to the routing table.
+Otherwise the default-route will be modified to point to the tunnel.
+Further a host route to the concentrator is added in the later case.
+If the client host needs DHCP, care must be taken to add another
+host route to the DHCP-Server around the tunnel.
 .PP
 The \fBvpnc\-disconnect\fR command is used to terminate
-the connection previously created by \fBvpnc\-connect\fR
+the connection previously created by \fBvpnc\fR
 and restore the previous routing configuration.
 
 .SH CONFIGURATION
@@ -54,19 +44,28 @@ The daemon reads configuration data from the following places:
 
 .PP
 
-The vpnc-connect script expects the 
-.B configuration file
-as the first parameter. This
-can either be an absolute path or the name
-of a config file located in 
+vpnc can parse options and
+.B configuration files
+in any order. However the first
+place to set an option wins.
+configuration filenames
+which do not contain a /
+will be searched at
+.B /etc/vpnc/<filename>
+and
 .B /etc/vpnc/<filename>.conf.
-If no config is specified, 
-.B vpnc\-connect
-will try
-to load 
+Otherwise
+.B <filename>
+and
+.B <filename>.conf
+will be used.
+If no configuration file
+is specified on the command-line
+at all, both
 .B /etc/vpnc/default.conf
-or as a last resort
-.B /etc/vpnc.conf.
+and
+.B /etc/vpnc.conf
+will be loaded.
 
 .SH OPTIONS
 The program options can be either given as argument (but not all of them
@@ -82,6 +81,7 @@ for a complete description
 
 .SH FILES
 .I /etc/vpnc.conf
+.I /etc/vpnc/default.conf
 .RS
 The default configuration file. You can specify the same config
 directives as with command line options and additionaly
@@ -89,7 +89,10 @@ directives as with command line options and additionaly
 and
 .B Xauth password
 both supplying a cleartext password. Scrambled passwords from the Cisco
-configuration profiles are not supported.
+configuration profiles can be used with
+.B IPSec obfuscated secret
+and
+.B Xauth obfuscated password.
 
 See
 .BR EXAMPLES
@@ -98,8 +101,8 @@ for further details.
 
 .I /etc/vpnc/*.conf
 .RS
-The vpnc\-connect will read configuration files in this directory when
-the config script name (without .conf) is specified on the command line.
+vpnc will read configuration files in this directory when
+the config filename (with or without .conf) is specified on the command line.
 .RE
 
 
@@ -131,14 +134,15 @@ See also the
 option to generate a config file, and the example file in the package
 documentation directory where more advanced usage is demonstrated.
 
-Advanced features like manual setting of multiple target routes is
-documented in the example files of the vpnc package.
+Advanced features like manual setting of multiple target routes and
+disabling /etc/resolv.conf rewriting is documented in the README of the
+vpnc package.
 
 .SH TODO
 .PD 0
-Re-keying is not implemented yet (default rekey-intervall is 8 hours).
-.P
 Certificate support (Pre-Shared-Key + XAUTH is known to be insecure).
+.P
+Further points can be found in the TODO file.
 .PD
 
 .SH AUTHOR
