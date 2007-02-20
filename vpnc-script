@@ -95,6 +95,10 @@ do_pre_init() {
 		if [ ! -e /dev/tun ]; then
 			kldload if_tun
 		fi
+	elif [ "$OS" = "GNU/kFreeBSD" ]; then
+		if [ ! -e /dev/tun ]; then
+			kldload if_tun
+		fi
 	elif [ "$OS" = "NetBSD" ]; then
 		:
 	elif [ "$OS" = "OpenBSD" ]; then
