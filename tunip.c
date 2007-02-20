@@ -789,9 +789,9 @@ static void vpnc_main_loop(struct sa_block *s)
 #endif
 	
 	/* non-esp marker, nat keepalive payload (0xFF) */
-	char keepalive_v2[5] = { 0x00, 0x00, 0x00, 0x00, 0xFF };
-	char keepalive_v1[1] = { 0xFF };
-	char *keepalive;
+	uint8_t keepalive_v2[5] = { 0x00, 0x00, 0x00, 0x00, 0xFF };
+	uint8_t keepalive_v1[1] = { 0xFF };
+	uint8_t *keepalive;
 	size_t keepalive_size;
 	
 	if (s->ipsec.natt_active_mode == NATT_ACTIVE_DRAFT_OLD) {
