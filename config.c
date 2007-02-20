@@ -219,6 +219,11 @@ static const char *config_def_pfs(void)
 	return "server";
 }
 
+static const char *config_def_local_addr(void)
+{
+	return "0.0.0.0";
+}
+
 static const char *config_def_local_port(void)
 {
 	return "500";
@@ -452,6 +457,13 @@ static const struct config_names_s {
 		"<filename>",
 		"store the pid of background process in <filename>",
 		config_def_pid_file
+	}, {
+		CONFIG_LOCAL_ADDR, 1, 1,
+		"--local-addr",
+		"Local Addr ",
+		"<ip/hostname>",
+		"local IP to use for ISAKMP / ESP / ... (0.0.0.0 == automatically assign)",
+		config_def_local_addr
 	}, {
 		CONFIG_LOCAL_PORT, 1, 1,
 		"--local-port",

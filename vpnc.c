@@ -2560,6 +2560,7 @@ int main(int argc, char **argv)
 	DEBUG(1, printf("vpnc version " VERSION "\n"));
 	DEBUG(2, printf("S1\n"));
 	init_sockaddr(&s->dst, config[CONFIG_IPSEC_GATEWAY]);
+	init_sockaddr(&s->opt_src_ip, config[CONFIG_LOCAL_ADDR]);
 	DEBUG(2, printf("S2\n"));
 	s->ike.src_port = atoi(config[CONFIG_LOCAL_PORT]);
 	s->ike.dst_port = ISAKMP_PORT;

@@ -1,7 +1,5 @@
 TODO list
 
-* --local-address
-
 * clean up scripts
   - config-support for vpnc-script
   - customizable handling of routing
@@ -51,6 +49,7 @@ TODO list
 
 ----
 
+* DONE --local-address
 * DONE implement phase2 rekeying
 * DONE support rsa-SecurID token which sometimes needs 2 IDs
 * DONE add macosx support
