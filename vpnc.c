@@ -50,6 +50,7 @@
 #include "supp.h"
 
 #define ISAKMP_PORT (500)
+#define ISAKMP_PORT_NATT (4500)
 
 static int timeout = 1000; /* 1 second */
 static uint8_t *resend_hash = NULL;
@@ -927,7 +928,7 @@ static void do_phase_1(const char *key_id, const char *shared_key, struct sa_blo
 		else
 			l->u.id.type = ISAKMP_IPSEC_ID_USER_FQDN;
 		l->u.id.protocol = IPPROTO_UDP;
-		l->u.id.port = 500; /* this must be 500, not local_port */
+		l->u.id.port = ISAKMP_PORT; /* this must be 500, not local_port */
 		l->u.id.length = strlen(key_id);
 		l->u.id.data = xallocc(l->u.id.length);
 		memcpy(l->u.id.data, key_id, strlen(key_id));
@@ -1457,9 +1458,9 @@ static void do_phase_1(const char *key_id, const char *shared_key, struct sa_blo
 				if (natt_draft >= 2) {
 					s->ipsec.natt_active_mode = NATT_ACTIVE_RFC;
 					close(s->ike_fd);
-					if (s->ike.src_port == 500)
-						s->ike.src_port = 4500;
-					s->ike_fd = make_socket(s, s->ike.src_port, s->ike.dst_port = 4500);
+					if (s->ike.src_port == ISAKMP_PORT)
+						s->ike.src_port = ISAKMP_PORT_NATT;
+					s->ike_fd = make_socket(s, s->ike.src_port, s->ike.dst_port = ISAKMP_PORT_NATT);
 				} else {
 					s->ipsec.natt_active_mode = NATT_ACTIVE_DRAFT_OLD;
 				}
@@ -1520,8 +1521,8 @@ static int do_phase2_notice_check(struct sa_block *s, struct isakmp_packet **r_p
 					s->ike.dst_port = ISAKMP_PORT;
 					s->ipsec.encap_mode = IPSEC_ENCAP_TUNNEL;
 					s->ipsec.natt_active_mode = NATT_ACTIVE_NONE;
-					if (s->ike.src_port == 4500)
-						s->ike.src_port = 500;
+					if (s->ike.src_port == ISAKMP_PORT_NATT)
+						s->ike.src_port = ISAKMP_PORT;
 					close(s->ike_fd);
 					s->ike_fd = make_socket(s, s->ike.src_port, s->ike.dst_port);
 					DEBUG(2, printf("got cisco loadbalancing notice, diverting to %s\n",
