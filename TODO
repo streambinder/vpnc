@@ -15,7 +15,7 @@ TODO list
   - get a rid of remaining (non-const) global variables
 
 * implement phase1 rekeying (with or without xauth-reauthentication)
-* implement DPD, RFC3 706 Dead Peer Detection
+* implement DPD, RFC 3706 Dead Peer Detection
 * implement compression
 * try a list of gateways (backup server)
 

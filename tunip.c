@@ -782,7 +782,7 @@ static void vpnc_main_loop(struct sa_block *s)
 	int nfds=0;
 	int enable_keepalives;
 	ssize_t len;
-	struct timeval select_timeout = { .tv_sec = 9, .tv_usec = 500000 };
+	struct timeval select_timeout;
 	time_t next_ike_keepalive=0;
 #if defined(__CYGWIN__)
 	pthread_t tid;
@@ -793,6 +793,9 @@ static void vpnc_main_loop(struct sa_block *s)
 	uint8_t keepalive_v1[1] = { 0xFF };
 	uint8_t *keepalive;
 	size_t keepalive_size;
+	
+	select_timeout.tv_sec = 9;
+	select_timeout.tv_usec = 500000;
 	
 	if (s->ipsec.natt_active_mode == NATT_ACTIVE_DRAFT_OLD) {
 		keepalive = keepalive_v1;
