@@ -89,9 +89,6 @@ const unsigned char VID_NATT_RFC[] = { /* RFC 3947 */
 };
 
 
-static int timeout = 1000; /* 1 second */
-static uint8_t *resend_hash = NULL;
-
 static uint8_t r_packet[2048];
 static ssize_t r_length;
 
@@ -215,14 +212,14 @@ static int recv_ignore_dup(struct sa_block *s, void *recvbuf, size_t recvbufsize
 	hash_len = gcry_md_get_algo_dlen(GCRY_MD_SHA1);
 	resend_check_hash = malloc(hash_len);
 	gcry_md_hash_buffer(GCRY_MD_SHA1, resend_check_hash, recvbuf, recvsize);
-	if (resend_hash && memcmp(resend_hash, resend_check_hash, hash_len) == 0) {
+	if (s->ike.resend_hash && memcmp(s->ike.resend_hash, resend_check_hash, hash_len) == 0) {
 		free(resend_check_hash);
 		return -1;
 	}
-	if (!resend_hash) {
-		resend_hash = resend_check_hash;
+	if (!s->ike.resend_hash) {
+		s->ike.resend_hash = resend_check_hash;
 	} else {
-		memcpy(resend_hash, resend_check_hash, hash_len);
+		memcpy(s->ike.resend_hash, resend_check_hash, hash_len);
 		free(resend_check_hash);
 	}
 	
@@ -266,7 +263,7 @@ static ssize_t sendrecv(struct sa_block *s, void *recvbuf, size_t recvbufsize, v
 			break;
 		
 		do {
-			pollresult = poll(&pfd, 1, timeout << tries);
+			pollresult = poll(&pfd, 1, s->ike.timeout << tries);
 		} while (pollresult == -1 && errno == EINTR);
 		
 		if (pollresult == -1)
@@ -297,10 +294,10 @@ static ssize_t sendrecv(struct sa_block *s, void *recvbuf, size_t recvbufsize, v
 
 	/* Wait at least 2s for a response or 4 times the time it took
 	 * last time.  */
-	if (start == end)
-		timeout = 2000;
+	if (start >= end)
+		s->ike.timeout = 2000;
 	else
-		timeout = 4000 * (end - start);
+		s->ike.timeout = 4000 * (end - start);
 
 	return recvsize;
 }
@@ -2572,8 +2569,10 @@ int main(int argc, char **argv)
 	gcry_check_version("1.1.90");
 	gcry_control(GCRYCTL_INIT_SECMEM, 16384, 0);
 	group_init();
+	
 	memset(s, 0, sizeof(*s));
 	s->ipsec.encap_mode = IPSEC_ENCAP_TUNNEL;
+	s->ike.timeout = 1000; /* 1 second */
 
 	do_config(argc, argv);
 	

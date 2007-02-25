@@ -74,6 +74,8 @@ struct sa_block {
 	int esp_fd; /* raw socket for ip-esp or Cisco-UDP or ike_fd (NAT-T) */
 	
 	struct {
+		int timeout;
+		uint8_t *resend_hash;
 		uint16_t src_port, dst_port;
 		uint8_t i_cookie[ISAKMP_COOKIE_LENGTH];
 		uint8_t r_cookie[ISAKMP_COOKIE_LENGTH];
