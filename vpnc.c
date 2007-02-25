@@ -52,6 +52,43 @@
 #define ISAKMP_PORT (500)
 #define ISAKMP_PORT_NATT (4500)
 
+const unsigned char VID_XAUTH[] = { /* draft-ietf-ipsec-isakmp-xauth-06.txt */
+	0x09, 0x00, 0x26, 0x89, 0xDF, 0xD6, 0xB7, 0x12
+};
+const unsigned char VID_DPD[] = { /* Dead Peer Detection, RFC 3706 */
+	0xAF, 0xCA, 0xD7, 0x13, 0x68, 0xA1, 0xF1, 0xC9,
+	0x6B, 0x86, 0x96, 0xFC, 0x77, 0x57, 0x01, 0x00
+};
+const unsigned char VID_UNITY[] = {
+	0x12, 0xF5, 0xF2, 0x8C, 0x45, 0x71, 0x68, 0xA9,
+	0x70, 0x2D, 0x9F, 0xE2, 0x74, 0xCC, 0x01, 0x00
+};
+const unsigned char VID_UNKNOWN[] = {
+	0x12, 0x6E, 0x1F, 0x57, 0x72, 0x91, 0x15, 0x3B,
+	0x20, 0x48, 0x5F, 0x7F, 0x15, 0x5B, 0x4B, 0xC8
+};
+const unsigned char VID_NATT_00[] = { /* draft-ietf-ipsec-nat-t-ike-00 */
+	0x44, 0x85, 0x15, 0x2d, 0x18, 0xb6, 0xbb, 0xcd,
+	0x0b, 0xe8, 0xa8, 0x46, 0x95, 0x79, 0xdd, 0xcc
+};
+const unsigned char VID_NATT_01[] = { /* draft-ietf-ipsec-nat-t-ike-01 */
+	0x16, 0xf6, 0xca, 0x16, 0xe4, 0xa4, 0x06, 0x6d,
+	0x83, 0x82, 0x1a, 0x0f, 0x0a, 0xea, 0xa8, 0x62
+};
+const unsigned char VID_NATT_02[] = { /* draft-ietf-ipsec-nat-t-ike-02 */
+	0xcd, 0x60, 0x46, 0x43, 0x35, 0xdf, 0x21, 0xf8,
+	0x7c, 0xfd, 0xb2, 0xfc, 0x68, 0xb6, 0xa4, 0x48
+};
+const unsigned char VID_NATT_02N[] = { /* draft-ietf-ipsec-nat-t-ike-02\n */
+	0x90, 0xCB, 0x80, 0x91, 0x3E, 0xBB, 0x69, 0x6E,
+	0x08, 0x63, 0x81, 0xB5, 0xEC, 0x42, 0x7B, 0x1F
+};
+const unsigned char VID_NATT_RFC[] = { /* RFC 3947 */
+	0x4A, 0x13, 0x1C, 0x81, 0x07, 0x03, 0x58, 0x45,
+	0x5C, 0x57, 0x28, 0xF2, 0x0E, 0x95, 0x45, 0x2F
+};
+
+
 static int timeout = 1000; /* 1 second */
 static uint8_t *resend_hash = NULL;
 
@@ -865,22 +902,6 @@ static void do_phase_1(const char *key_id, const char *shared_key, struct sa_blo
 	struct group *dh_grp;
 	unsigned char *dh_public;
 	unsigned char *returned_hash;
-	static const uint8_t xauth_vid[] = XAUTH_VENDOR_ID;
-	static const uint8_t unity_vid[] = UNITY_VENDOR_ID;
-	static const uint8_t unknown_vid[] = UNKNOWN_VENDOR_ID;
-	/* NAT traversal */
-	static const uint8_t natt_vid_00[] = NATT_VENDOR_ID_00;
-	static const uint8_t natt_vid_01[] = NATT_VENDOR_ID_01;
-	static const uint8_t natt_vid_02[] = NATT_VENDOR_ID_02;
-	static const uint8_t natt_vid_02n[] = NATT_VENDOR_ID_02n;
-	static const uint8_t natt_vid_rfc[] = NATT_VENDOR_ID_RFC;
-#if 0
-	static const uint8_t dpd_vid[] = DPD_VENDOR_ID; /* dead peer detection */
-	static const uint8_t my_vid[] = {
-		0x35, 0x53, 0x07, 0x6c, 0x4f, 0x65, 0x12, 0x68, 0x02, 0x82, 0xf2, 0x15,
-		0x8a, 0xa8, 0xa0, 0x9e
-	};
-#endif
 
 	struct isakmp_packet *p1;
 	int seen_natt_vid = 0, seen_natd = 0, seen_natd_them = 0, seen_natd_us = 0, natd_type = 0;
@@ -933,24 +954,24 @@ static void do_phase_1(const char *key_id, const char *shared_key, struct sa_blo
 		l->u.id.data = xallocc(l->u.id.length);
 		memcpy(l->u.id.data, key_id, strlen(key_id));
 		l = l->next = new_isakmp_data_payload(ISAKMP_PAYLOAD_VID,
-			xauth_vid, sizeof(xauth_vid));
+			VID_XAUTH, sizeof(VID_XAUTH));
 		l = l->next = new_isakmp_data_payload(ISAKMP_PAYLOAD_VID,
-			unity_vid, sizeof(unity_vid));
+			VID_UNITY, sizeof(VID_UNITY));
 		if ((opt_natt_mode == NATT_NORMAL) || (opt_natt_mode == NATT_FORCE)) {
 			l = l->next = new_isakmp_data_payload(ISAKMP_PAYLOAD_VID,
-				natt_vid_rfc, sizeof(natt_vid_rfc));
+				VID_NATT_RFC, sizeof(VID_NATT_RFC));
 			l = l->next = new_isakmp_data_payload(ISAKMP_PAYLOAD_VID,
-				natt_vid_02n, sizeof(natt_vid_02n));
+				VID_NATT_02N, sizeof(VID_NATT_02N));
 			l = l->next = new_isakmp_data_payload(ISAKMP_PAYLOAD_VID,
-				natt_vid_02, sizeof(natt_vid_02));
+				VID_NATT_02, sizeof(VID_NATT_02));
 			l = l->next = new_isakmp_data_payload(ISAKMP_PAYLOAD_VID,
-				natt_vid_01, sizeof(natt_vid_01));
+				VID_NATT_01, sizeof(VID_NATT_01));
 			l = l->next = new_isakmp_data_payload(ISAKMP_PAYLOAD_VID,
-				natt_vid_00, sizeof(natt_vid_00));
+				VID_NATT_00, sizeof(VID_NATT_00));
 		}
 #if 0
 		l = l->next = new_isakmp_data_payload(ISAKMP_PAYLOAD_VID,
-			dpd_vid, sizeof(dpd_vid));
+			VID_DPD, sizeof(VID_DPD));
 #endif
 		flatten_isakmp_packet(p1, &pkt, &pkt_len, 0);
 
@@ -1128,37 +1149,37 @@ static void do_phase_1(const char *key_id, const char *shared_key, struct sa_blo
 				hash = rp;
 				break;
 			case ISAKMP_PAYLOAD_VID:
-				if (rp->u.vid.length == sizeof(xauth_vid)
-					&& memcmp(rp->u.vid.data, xauth_vid,
-						sizeof(xauth_vid)) == 0) {
+				if (rp->u.vid.length == sizeof(VID_XAUTH)
+					&& memcmp(rp->u.vid.data, VID_XAUTH,
+						sizeof(VID_XAUTH)) == 0) {
 					seen_xauth_vid = 1;
-				} else if (rp->u.vid.length == sizeof(natt_vid_rfc)
-					&& memcmp(rp->u.vid.data, natt_vid_rfc,
-						sizeof(natt_vid_rfc)) == 0) {
+				} else if (rp->u.vid.length == sizeof(VID_NATT_RFC)
+					&& memcmp(rp->u.vid.data, VID_NATT_RFC,
+						sizeof(VID_NATT_RFC)) == 0) {
 					seen_natt_vid = 1;
 					if (natt_draft < 1) natt_draft = 2;
 					DEBUG(2, printf("peer is NAT-T capable (RFC 3947)\n"));
-				} else if (rp->u.vid.length == sizeof(natt_vid_02n)
-					&& memcmp(rp->u.vid.data, natt_vid_02n,
-						sizeof(natt_vid_02n)) == 0) {
+				} else if (rp->u.vid.length == sizeof(VID_NATT_02N)
+					&& memcmp(rp->u.vid.data, VID_NATT_02N,
+						sizeof(VID_NATT_02N)) == 0) {
 					seen_natt_vid = 1;
 					if (natt_draft < 1) natt_draft = 2;
 					DEBUG(2, printf("peer is NAT-T capable (draft-02)\n\n"));
-				} else if (rp->u.vid.length == sizeof(natt_vid_02)
-					&& memcmp(rp->u.vid.data, natt_vid_02,
-						sizeof(natt_vid_02)) == 0) {
+				} else if (rp->u.vid.length == sizeof(VID_NATT_02)
+					&& memcmp(rp->u.vid.data, VID_NATT_02,
+						sizeof(VID_NATT_02)) == 0) {
 					seen_natt_vid = 1;
 					if (natt_draft < 1) natt_draft = 2;
 					DEBUG(2, printf("peer is NAT-T capable (draft-02)\n"));
-				} else if (rp->u.vid.length == sizeof(natt_vid_01)
-					&& memcmp(rp->u.vid.data, natt_vid_01,
-						sizeof(natt_vid_01)) == 0) {
+				} else if (rp->u.vid.length == sizeof(VID_NATT_01)
+					&& memcmp(rp->u.vid.data, VID_NATT_01,
+						sizeof(VID_NATT_01)) == 0) {
 					seen_natt_vid = 1;
 					if (natt_draft < 1) natt_draft = 1;
 					DEBUG(2, printf("peer is NAT-T capable (draft-01)\n"));
-				} else if (rp->u.vid.length == sizeof(natt_vid_00)
-					&& memcmp(rp->u.vid.data, natt_vid_00,
-						sizeof(natt_vid_00)) == 0) {
+				} else if (rp->u.vid.length == sizeof(VID_NATT_00)
+					&& memcmp(rp->u.vid.data, VID_NATT_00,
+						sizeof(VID_NATT_00)) == 0) {
 					seen_natt_vid = 1;
 					if (natt_draft < 0) natt_draft = 0;
 					DEBUG(2, printf("peer is NAT-T capable (draft-00)\n"));
@@ -1409,9 +1430,9 @@ static void do_phase_1(const char *key_id, const char *shared_key, struct sa_blo
 		memcpy(pl->u.n.spi + ISAKMP_COOKIE_LENGTH * 0, s->ike.i_cookie, ISAKMP_COOKIE_LENGTH);
 		memcpy(pl->u.n.spi + ISAKMP_COOKIE_LENGTH * 1, s->ike.r_cookie, ISAKMP_COOKIE_LENGTH);
 		pl = pl->next = new_isakmp_data_payload(ISAKMP_PAYLOAD_VID,
-			unknown_vid, sizeof(unknown_vid));
+			VID_UNKNOWN, sizeof(VID_UNKNOWN));
 		pl = pl->next = new_isakmp_data_payload(ISAKMP_PAYLOAD_VID,
-			unity_vid, sizeof(unity_vid));
+			VID_UNITY, sizeof(VID_UNITY));
 
 		/* include NAT traversal discovery payloads */
 		if (seen_natt_vid) {
