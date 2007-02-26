@@ -23,6 +23,7 @@
 
 #include "isakmp.h"
 
+#include <time.h>
 #include <net/if.h>
 
 struct lifetime {
@@ -90,6 +91,11 @@ struct sa_block {
 		uint8_t current_iv_msgid[4];
 		uint8_t *current_iv;
 		struct lifetime life;
+		int do_dpd;
+		uint32_t dpd_seqno;
+		uint32_t dpd_seqno_ack;
+		time_t dpd_sent;
+		unsigned int dpd_attempts;
 	} ike;
 	uint8_t our_address[4], our_netmask[4];
 	struct {

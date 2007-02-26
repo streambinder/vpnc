@@ -535,12 +535,93 @@ static void sendrecv_phase2(struct sa_block *s, struct isakmp_payload *pl,
 	}
 }
 
+static void send_phase2_late(struct sa_block *s, struct isakmp_payload *pl,
+	uint8_t exchange_type, uint32_t msgid)
+{
+	struct isakmp_packet *p;
+	uint8_t *p_flat;
+	size_t p_size;
+	ssize_t recvlen;
+
+	/* Build up the packet.  */
+	p = new_isakmp_packet();
+	memcpy(p->i_cookie, s->ike.i_cookie, ISAKMP_COOKIE_LENGTH);
+	memcpy(p->r_cookie, s->ike.r_cookie, ISAKMP_COOKIE_LENGTH);
+	p->flags = ISAKMP_FLAG_E;
+	p->isakmp_version = ISAKMP_VERSION;
+	p->exchange_type = exchange_type;
+	p->message_id = msgid;
+	p->payload = pl;
+
+	flatten_isakmp_packet(p, &p_flat, &p_size, s->ike.ivlen);
+	free_isakmp_packet(p);
+	isakmp_crypt(s, p_flat, p_size, 1);
+
+	s->ike.life.tx += p_size;
+
+	recvlen = sendrecv(s, NULL, 0, p_flat, p_size, 1);
+	free(p_flat);
+}
+
 void keepalive_ike(struct sa_block *s)
 {
 	uint32_t msgid;
 
 	gcry_create_nonce((uint8_t *) & msgid, sizeof(msgid));
-	sendrecv_phase2(s, NULL, ISAKMP_EXCHANGE_INFORMATIONAL, msgid, 1, 0, 0, 0, 0, 0, 0);
+	send_phase2_late(s, NULL, ISAKMP_EXCHANGE_INFORMATIONAL, msgid);
+}
+
+static void send_dpd(struct sa_block *s, int isack, uint32_t seqno)
+{
+	struct isakmp_payload *pl;
+	uint32_t msgid;
+	
+	pl = new_isakmp_payload(ISAKMP_PAYLOAD_N);
+	pl->u.n.doi = ISAKMP_DOI_IPSEC;
+	pl->u.n.protocol = ISAKMP_IPSEC_PROTO_ISAKMP;
+	pl->u.n.type = isack ? ISAKMP_N_R_U_THERE_ACK : ISAKMP_N_R_U_THERE;
+	pl->u.n.spi_length = 2 * ISAKMP_COOKIE_LENGTH;
+	pl->u.n.spi = xallocc(2 * ISAKMP_COOKIE_LENGTH);
+	memcpy(pl->u.n.spi + ISAKMP_COOKIE_LENGTH * 0, s->ike.i_cookie, ISAKMP_COOKIE_LENGTH);
+	memcpy(pl->u.n.spi + ISAKMP_COOKIE_LENGTH * 1, s->ike.r_cookie, ISAKMP_COOKIE_LENGTH);
+	pl->u.n.data_length = 4;
+	pl->u.n.data = xallocc(4);
+	memcpy(pl->u.n.data, &seqno, 4);
+	gcry_create_nonce((uint8_t *) & msgid, sizeof(msgid));
+	send_phase2_late(s, pl, ISAKMP_EXCHANGE_INFORMATIONAL, msgid);
+}
+
+void dpd_ike(struct sa_block *s)
+{
+	if (!s->ike.do_dpd)
+		return;
+	
+	if (s->ike.dpd_seqno == s->ike.dpd_seqno_ack) {
+		/* Increase the sequence number, reset the attempts to 6, record
+		** the current time and send a dpd request
+		*/
+		s->ike.dpd_attempts = 6;
+		s->ike.dpd_sent = time(NULL);
+		++s->ike.dpd_seqno;
+		send_dpd(s, 0, s->ike.dpd_seqno);
+	} else {
+		/* Our last dpd request has not yet been acked.  If it's been
+		** less than 5 seconds since we sent it do nothing.  Otherwise
+		** decrement dpd_attempts.  If dpd_attempts is 0 dpd fails and we
+		** terminate otherwise we send it again with the same sequence
+		** number and record current time.
+		*/
+		time_t now = time(NULL);
+		if (now < s->ike.dpd_sent + 5)
+			return;
+		if (--s->ike.dpd_attempts == 0) {
+			DEBUG(2, printf("dead peer detected, terminating\n"));
+			do_kill = -2;
+			return;
+		}
+		s->ike.dpd_sent = now;
+		send_dpd(s, 0, s->ike.dpd_seqno);
+	}
 }
 
 static void phase2_fatal(struct sa_block *s, const char *msg, int id)
@@ -966,10 +1047,8 @@ static void do_phase_1(const char *key_id, const char *shared_key, struct sa_blo
 			l = l->next = new_isakmp_data_payload(ISAKMP_PAYLOAD_VID,
 				VID_NATT_00, sizeof(VID_NATT_00));
 		}
-#if 0
 		l = l->next = new_isakmp_data_payload(ISAKMP_PAYLOAD_VID,
 			VID_DPD, sizeof(VID_DPD));
-#endif
 		flatten_isakmp_packet(p1, &pkt, &pkt_len, 0);
 
 		/* Now, send that packet and receive a new one.  */
@@ -1180,6 +1259,14 @@ static void do_phase_1(const char *key_id, const char *shared_key, struct sa_blo
 					seen_natt_vid = 1;
 					if (natt_draft < 0) natt_draft = 0;
 					DEBUG(2, printf("peer is NAT-T capable (draft-00)\n"));
+				} else if (rp->u.vid.length == sizeof(VID_DPD)
+					&& memcmp(rp->u.vid.data, VID_DPD,
+						sizeof(VID_DPD)) == 0) {
+					gcry_create_nonce(&s->ike.dpd_seqno, sizeof(s->ike.dpd_seqno));
+					s->ike.dpd_seqno &= 0x7FFFFFFF;
+					s->ike.dpd_seqno_ack = s->ike.dpd_seqno;
+					s->ike.do_dpd = 1;
+					DEBUG(2, printf("peer is DPD capable (RFC3706)\n"));
 				} else {
 					hex_dump("unknown ISAKMP_PAYLOAD_VID: ",
 						rp->u.vid.data, rp->u.vid.length, NULL);
@@ -2529,6 +2616,44 @@ void process_late_ike(struct sa_block *s, uint8_t *r_packet, ssize_t r_length)
 		reject = do_rekey(s, r);
 		DEBUG(3, printf("do_rekey returned: %d\n", reject));
 		return;
+	}
+
+	if (r->exchange_type == ISAKMP_EXCHANGE_INFORMATIONAL) {
+		/* Search for notify payloads */
+		for (rp = r->payload->next; rp; rp = rp->next) {
+			if (rp->type != ISAKMP_PAYLOAD_N)
+				continue;
+			/* did we get a DPD request or ACK? */
+			if (rp->u.n.protocol != ISAKMP_IPSEC_PROTO_ISAKMP) {
+				DEBUG(2, printf("got non isakmp-notify, ignoring...\n"));
+				continue;
+			}
+			if (rp->u.n.type == ISAKMP_N_R_U_THERE) {
+				uint32_t seq;
+				if (rp->u.n.data_length != 4) {
+					DEBUG(2, printf("ignoring bad data length R-U-THERE request\n"));
+					continue;
+				}
+				memcpy(&seq, rp->u.n.data, 4);
+				send_dpd(s, 1, seq);
+				DEBUG(2, printf("got r-u-there request sent ack\n"));
+				continue;
+			} else if (rp->u.n.type == ISAKMP_N_R_U_THERE_ACK) {
+				uint32_t seqack;
+				if (rp->u.n.data_length != 4) {
+					DEBUG(2, printf("ignoring bad data length R-U-THERE-ACK\n"));
+					continue;
+				}
+				memcpy(&seqack, rp->u.n.data, 4);
+				if (seqack == s->ike.dpd_seqno) {
+					s->ike.dpd_seqno_ack = seqack;
+				} else {
+					DEBUG(2, printf("ignoring r-u-there ack %u (expecting %u)\n", seqack, s->ike.dpd_seqno));
+					continue;
+				}
+				DEBUG(2, printf("got r-u-there ack\n"));
+			}
+		}
 	}
 	
 	/* check if our isakmp sa gets deleted */

@@ -781,9 +781,12 @@ static void vpnc_main_loop(struct sa_block *s)
 	fd_set rfds, refds;
 	int nfds=0;
 	int enable_keepalives;
+	int timed_mode;
 	ssize_t len;
 	struct timeval select_timeout;
+	struct timeval normal_timeout;
 	time_t next_ike_keepalive=0;
+	time_t next_ike_dpd=0;
 #if defined(__CYGWIN__)
 	pthread_t tid;
 #endif
@@ -793,9 +796,6 @@ static void vpnc_main_loop(struct sa_block *s)
 	uint8_t keepalive_v1[1] = { 0xFF };
 	uint8_t *keepalive;
 	size_t keepalive_size;
-	
-	select_timeout.tv_sec = 9;
-	select_timeout.tv_usec = 500000;
 	
 	if (s->ipsec.natt_active_mode == NATT_ACTIVE_DRAFT_OLD) {
 		keepalive = keepalive_v1;
@@ -807,6 +807,9 @@ static void vpnc_main_loop(struct sa_block *s)
 	
 	/* send keepalives if UDP encapsulation is enabled */
 	enable_keepalives = (s->ipsec.encap_mode != IPSEC_ENCAP_TUNNEL);
+	
+	/* regular wakeups if keepalives on ike or dpd active */
+	timed_mode = ((enable_keepalives && s->ike_fd != s->esp_fd) || s->ike.do_dpd);
 	
 	FD_ZERO(&rfds);
 	
@@ -830,34 +833,64 @@ static void vpnc_main_loop(struct sa_block *s)
 	}
 #endif
 	
+	normal_timeout.tv_sec = 86400;
+	normal_timeout.tv_usec = 0;
+	
+	if (s->ike.do_dpd) {
+		/* send initial dpd request */
+		next_ike_dpd = time(NULL) + 300;
+		dpd_ike(s);
+		normal_timeout.tv_sec = 300;
+		normal_timeout.tv_usec = 0;
+	}
+	
 	if (enable_keepalives && s->ike_fd != s->esp_fd) {
 		/* send initial nat ike keepalive packet */
 		next_ike_keepalive = time(NULL) + 9;
 		keepalive_ike(s);
+		normal_timeout.tv_sec = 9;
+		normal_timeout.tv_usec = 500000;
 	}
-
+	
+	select_timeout = normal_timeout;
+	
 	while (!do_kill) {
 		int presult;
 		
 		do {
 			struct timeval *tvp = NULL;
 			FD_COPY(&rfds, &refds);
-			if (enable_keepalives)
+			if (s->ike.do_dpd || enable_keepalives)
 				tvp = &select_timeout;
 			presult = select(nfds, &refds, NULL, NULL, tvp);
-			if (presult == 0 && enable_keepalives) {
-				if (s->ike_fd != s->esp_fd) {
-					/* send nat ike keepalive packet */
-					next_ike_keepalive = time(NULL) + 9;
-					keepalive_ike(s);
-				}
-				/* send nat keepalive packet */
-				if (send(s->esp_fd, keepalive, keepalive_size, 0) == -1) {
-					syslog(LOG_ERR, "sendto: %m");
-				}
+			if (presult == 0 && (s->ike.do_dpd || enable_keepalives)) {
 				/* reset to max timeout */
-				select_timeout.tv_sec = 9;
-				select_timeout.tv_usec = 500000;
+				select_timeout = normal_timeout;
+				if (enable_keepalives) {
+					if (s->ike_fd != s->esp_fd) {
+						/* send nat ike keepalive packet */
+						next_ike_keepalive = time(NULL) + 9;
+						keepalive_ike(s);
+					}
+					/* send nat keepalive packet */
+					if (send(s->esp_fd, keepalive, keepalive_size, 0) == -1) {
+						syslog(LOG_ERR, "sendto: %m");
+					}
+				}
+				if (s->ike.do_dpd) {
+					time_t now = time(NULL);
+					if (s->ike.dpd_seqno != s->ike.dpd_seqno_ack) {
+						/* Wake up more often for dpd attempts */
+						select_timeout.tv_sec = 5;
+						select_timeout.tv_usec = 0;
+						dpd_ike(s);
+						next_ike_dpd = now + 300;
+					}
+					else if (now >= next_ike_dpd) {
+						dpd_ike(s);
+						next_ike_dpd = now + 300;
+					}
+				}
 			}
 			DEBUG(2,printf("lifetime status: %ld of %u seconds used, %u|%u of %u kbytes used\n",
 				time(NULL) - s->ipsec.life.start,
@@ -896,30 +929,52 @@ static void vpnc_main_loop(struct sa_block *s)
 #endif
 		}
 
-		if (enable_keepalives && s->ike_fd != s->esp_fd) {
-			time_t cur_time = time(NULL);
-			if (cur_time >= next_ike_keepalive) {
-				/* send nat ike keepalive packet now */
-				next_ike_keepalive = cur_time + 9;
-				keepalive_ike(s);
-				/* reset to max timeout */
-				select_timeout.tv_sec = 9;
-				select_timeout.tv_usec = 500000;
+		if (timed_mode) {
+			time_t now = time(NULL);
+			time_t next_up = now + 86400;
+			if (enable_keepalives && s->ike_fd != s->esp_fd) {
+				if (now >= next_ike_keepalive) {
+					/* send nat ike keepalive packet now */
+					next_ike_keepalive = now + 9;
+					keepalive_ike(s);
+					select_timeout = normal_timeout;
+				}
+				if (next_ike_keepalive < next_up)
+					next_up = next_ike_keepalive;
 			}
-			else {
-				/* Reduce timeout so next ike keepalive goes on schedule */
-				select_timeout.tv_sec = next_ike_keepalive - cur_time;
-				select_timeout.tv_usec = 0;
+			if (s->ike.do_dpd) {
+				if (s->ike.dpd_seqno != s->ike.dpd_seqno_ack) {
+					dpd_ike(s);
+					next_ike_dpd = now + 300;
+					if (now + 5 < next_up)
+						next_up = now + 5;
+				}
+				else if (now >= next_ike_dpd) {
+					dpd_ike(s);
+					next_ike_dpd = now + 300;
+				}
+				if (next_ike_dpd < next_up)
+					next_up = next_ike_dpd;
 			}
+			/* Reduce timeout so next activity happens on schedule */
+			select_timeout.tv_sec = next_up - now;
+			select_timeout.tv_usec = 0;
 		}
 
 	}
 	
 	tun_close(s->tun_fd, s->tun_name);
-	if (do_kill == -1)
-		syslog(LOG_NOTICE, "connection terminated by peer");
-	else
-		syslog(LOG_NOTICE, "terminated by signal: %d", do_kill);
+	switch (do_kill) {
+		case -2:
+			syslog(LOG_NOTICE, "connection terminated by dead peer detection");
+			break;
+		case -1:
+			syslog(LOG_NOTICE, "connection terminated by peer");
+			break;
+		default:
+			syslog(LOG_NOTICE, "terminated by signal: %d", do_kill);
+			break;
+	}
 }
 
 static void killit(int signum)
