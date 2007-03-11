@@ -136,7 +136,7 @@ static int make_socket(struct sa_block *s, uint16_t src_port, uint16_t dst_port)
 	name.sin_addr = s->opt_src_ip;
 	name.sin_port = htons(src_port);
 	if (bind(sock, (struct sockaddr *)&name, sizeof(name)) < 0)
-		error(1, errno, "binding to %s:%d", inet_ntoa(s->opt_src_ip), ntohs(src_port));
+		error(1, errno, "binding to %s:%d", inet_ntoa(s->opt_src_ip), src_port);
 
 	/* connect the socket */
 	name.sin_family = AF_INET;
@@ -974,7 +974,7 @@ static void lifetime_ipsec_process(struct sa_block *s, struct isakmp_attribute *
 		s->ipsec.life.kbytes = value;
 }
 
-static void do_phase_1(const char *key_id, const char *shared_key, struct sa_block *s)
+static void do_phase1(const char *key_id, const char *shared_key, struct sa_block *s)
 {
 	unsigned char i_nonce[20];
 	struct group *dh_grp;
@@ -1668,7 +1668,7 @@ static int do_phase2_notice_check(struct sa_block *s, struct isakmp_packet **r_p
 	return reject;
 }
 
-static int do_phase_2_xauth(struct sa_block *s)
+static int do_phase2_xauth(struct sa_block *s)
 {
 	struct isakmp_packet *r;
 	int loopcount;
@@ -1884,7 +1884,7 @@ static int do_phase_2_xauth(struct sa_block *s)
 	return 0;
 }
 
-static int do_phase_2_config(struct sa_block *s)
+static int do_phase2_config(struct sa_block *s)
 {
 	struct isakmp_payload *rp;
 	struct isakmp_attribute *a;
@@ -2717,13 +2717,13 @@ int main(int argc, char **argv)
 	do_load_balance = 0;
 	do {
 		DEBUG(2, printf("S4\n"));
-		do_phase_1(config[CONFIG_IPSEC_ID], config[CONFIG_IPSEC_SECRET], s);
+		do_phase1(config[CONFIG_IPSEC_ID], config[CONFIG_IPSEC_SECRET], s);
 		DEBUG(2, printf("S5\n"));
 		if (s->ike.auth_algo == IKE_AUTH_XAUTHInitPreShared)
-			do_load_balance = do_phase_2_xauth(s);
+			do_load_balance = do_phase2_xauth(s);
 		DEBUG(2, printf("S6\n"));
 		if ((opt_vendor != VENDOR_NETSCREEN) && (do_load_balance == 0))
-			do_load_balance = do_phase_2_config(s);
+			do_load_balance = do_phase2_config(s);
 	} while (do_load_balance);
 	DEBUG(2, printf("S7\n"));
 	setup_link(s);
