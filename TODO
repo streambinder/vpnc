@@ -26,9 +26,10 @@ TODO list
 
 * research:
   - usernames containing "@" unable to login
-  - amd64 somehow broken?
   - ipsec over tcp
   - nortel support?
+  - segfault if > 100 routes/acls (to large paket? read size?)
+  - amd64 somehow broken? maybe gcc bugs??
 
 * optional drop root (rekey? reconnect? vpnc-script calls?)
 * implement hybrid-auth
