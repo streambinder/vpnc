@@ -221,6 +221,8 @@ write_resolvconf() {
 # and will be overwritten by vpnc
 # as long as the above mark is intact"
 
+	# Remember the original value of CISCO_DEF_DOMAIN we need it later
+	CISCO_DEF_DOMAIN_ORIG="$CISCO_DEF_DOMAIN"
 	# Don't step on INTERNAL_IP4_DNS value, use a temporary variable
 	INTERNAL_IP4_DNS_TEMP="$INTERNAL_IP4_DNS"
 	exec 6< /etc/resolv.conf
@@ -277,7 +279,7 @@ search $CISCO_DEF_DOMAIN"
 				# DNS matching when available.  When multiple DNS matching
 				# is present, anything reading the /etc/resolv.conf file
 				# directly will probably not work as intended.
-				#if [ -z "$CISCO_DEF_DOMAIN" ]; then
+				#if [ -z "$CISCO_DEF_DOMAIN_ORIG" ]; then
 					# Cannot use multiple DNS matching without a domain
 					OVERRIDE_PRIMARY='d.add OverridePrimary # 1'
 				#fi
@@ -295,13 +297,13 @@ search $CISCO_DEF_DOMAIN"
 					set State:/Network/Service/$TUNDEV/IPv4
 					close
 				EOF
-				if [ -n "$CISCO_DEF_DOMAIN" ]; then
+				if [ -n "$CISCO_DEF_DOMAIN_ORIG" ]; then
 					scutil >/dev/null 2>&1 <<-EOF
 						open
 						get State:/Network/Service/$TUNDEV/DNS
-						d.add DomainName $CISCO_DEF_DOMAIN
-						d.add SearchDomains * $CISCO_DEF_DOMAIN
-						d.add SupplementalMatchDomains * $CISCO_DEF_DOMAIN
+						d.add DomainName $CISCO_DEF_DOMAIN_ORIG
+						d.add SearchDomains * $CISCO_DEF_DOMAIN_ORIG
+						d.add SupplementalMatchDomains * $CISCO_DEF_DOMAIN_ORIG
 						set State:/Network/Service/$TUNDEV/DNS
 						close
 					EOF
