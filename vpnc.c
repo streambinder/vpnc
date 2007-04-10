@@ -1762,7 +1762,7 @@ static int do_phase2_xauth(struct sa_block *s)
 					struct isakmp_attribute *na;
 					na = new_isakmp_attribute(ap->type, reply_attr);
 					reply_attr = na;
-					if (!config[CONFIG_DOMAIN] || strlen(config[CONFIG_DOMAIN]) == 0)
+					if (!config[CONFIG_DOMAIN])
 						error(1, 0,
 							"server requested domain, but none set (use \"Domain ...\" in config or --domain");
 					na->u.lots.length = strlen(config[CONFIG_DOMAIN]);
