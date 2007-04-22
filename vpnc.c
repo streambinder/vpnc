@@ -49,6 +49,10 @@
 #include "tunip.h"
 #include "supp.h"
 
+#if defined(__CYGWIN__)
+        GCRY_THREAD_OPTION_PTHREAD_IMPL;
+#endif
+
 #define ISAKMP_PORT (500)
 #define ISAKMP_PORT_NATT (4500)
 
@@ -2691,6 +2695,9 @@ int main(int argc, char **argv)
 	struct sa_block *s = oursa;
 
 	test_pack_unpack();
+#if defined(__CYGWIN__)
+        gcry_control(GCRYCTL_SET_THREAD_CBS, &gcry_threads_pthread);
+#endif
 	gcry_check_version("1.1.90");
 	gcry_control(GCRYCTL_INIT_SECMEM, 16384, 0);
 	group_init();

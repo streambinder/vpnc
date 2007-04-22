@@ -83,22 +83,24 @@ clean :
 distclean : clean
 	-rm -f vpnc-debug.c vpnc-debug.h vpnc.ps .depend
 
-install : all
+install-common: all
 	install -d $(DESTDIR)$(ETCDIR) $(DESTDIR)$(BINDIR) $(DESTDIR)$(SBINDIR) $(DESTDIR)$(MANDIR)/man8
-	install vpnc-script $(DESTDIR)$(ETCDIR)
+	if [ "`uname -s | cut -c-6`" = "CYGWIN" ]; then \
+		install vpnc-script-win $(DESTDIR)$(ETCDIR)/vpnc-script; \
+		install vpnc-script-win.js $(DESTDIR)$(ETCDIR); \
+	else \
+		install vpnc-script $(DESTDIR)$(ETCDIR); \
+	fi
 	install -m 600 vpnc.conf $(DESTDIR)$(ETCDIR)/default.conf
-	install vpnc vpnc-disconnect $(DESTDIR)$(SBINDIR)
+	install vpnc-disconnect $(DESTDIR)$(SBINDIR)
 	install pcf2vpnc $(DESTDIR)$(BINDIR)
 	install vpnc.8 $(DESTDIR)$(MANDIR)/man8
 
-install-strip : all
-	install -d $(DESTDIR)$(ETCDIR) $(DESTDIR)$(SBINDIR) $(DESTDIR)$(MANDIR)/man8
-	install vpnc-script $(DESTDIR)$(ETCDIR)
-	install -m 600 vpnc.conf $(DESTDIR)$(ETCDIR)/default.conf
-	install pcf2vpnc $(DESTDIR)$(BINDIR)
+install : install-common
+	install vpnc $(DESTDIR)$(SBINDIR)
+
+install-strip : install-common
 	install -s vpnc $(DESTDIR)$(SBINDIR)
-	install vpnc-disconnect $(DESTDIR)$(SBINDIR)
-	install vpnc.8 $(DESTDIR)$(MANDIR)/man8
 
 uninstall :
 	rm -f $(DESTDIR)$(SBINDIR)/vpnc \

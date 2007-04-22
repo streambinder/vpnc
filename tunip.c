@@ -118,7 +118,8 @@ struct encap_method {
 #define MAX_HEADER 72
 #define MAX_PACKET 4096
 int volatile do_kill;
-static uint8_t global_buffer[MAX_HEADER + MAX_PACKET + ETH_HLEN];
+static uint8_t global_buffer_rx[MAX_HEADER + MAX_PACKET + ETH_HLEN];
+static uint8_t global_buffer_tx[MAX_HEADER + MAX_PACKET + ETH_HLEN];
 
 /*
  * in_cksum --
@@ -593,14 +594,6 @@ static void encap_udp_new(struct encap_method *encap)
 	encap->fixed_header_size = sizeof(esp_encap_header_t);
 }
 
-#ifdef __CYGWIN__
-/*
- * TODO: use libgcrypt init to make it thread-safe
- *       instead of this mutex
- */
-static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-#endif
-
 /*
  * Process ARP 
  * Return 1 if packet has been processed, 0 otherwise
@@ -677,7 +670,7 @@ static void process_tun(struct sa_block *s)
 {
 	int pack;
 	int size = MAX_PACKET;
-	uint8_t *start = global_buffer + MAX_HEADER;
+	uint8_t *start = global_buffer_rx + MAX_HEADER;
 	
 	if (opt_if_mode == IF_MODE_TAP) {
 		/* Make sure IP packet starts at buf + MAX_HEADER */
@@ -687,10 +680,6 @@ static void process_tun(struct sa_block *s)
 	
 	/* Receive a packet from the tunnel interface */
 	pack = tun_read(s->tun_fd, start, size);
-	
-#if defined(__CYGWIN__)
-	pthread_mutex_lock(&mutex);
-#endif
 	
 	hex_dump("Rx pkt", start, pack, NULL);
 	
@@ -709,7 +698,7 @@ static void process_tun(struct sa_block *s)
 		return;
 	}
 	
-	if (((struct ip *)(global_buffer + MAX_HEADER))->ip_dst.s_addr == s->dst.s_addr) {
+	if (((struct ip *)(global_buffer_rx + MAX_HEADER))->ip_dst.s_addr == s->dst.s_addr) {
 		syslog(LOG_ALERT, "routing loop to %s",
 			inet_ntoa(s->dst));
 		return;
@@ -717,21 +706,16 @@ static void process_tun(struct sa_block *s)
 	
 	/* Encapsulate and send to the other end of the tunnel */
 	s->ipsec.life.tx += pack;
-	s->ipsec.em->send_peer(s, global_buffer, pack);
+	s->ipsec.em->send_peer(s, global_buffer_rx, pack);
 }
 
 static void process_socket(struct sa_block *s)
 {
 	/* Receive a packet from a socket */
 	int pack;
-	uint8_t *start = global_buffer;
+	uint8_t *start = global_buffer_tx;
 	esp_encap_header_t *eh;
 
-	
-#if defined(__CYGWIN__)
-	pthread_mutex_lock(&mutex);
-#endif
-	
 	if (opt_if_mode == IF_MODE_TAP) {
 		start += ETH_HLEN;
 	}
@@ -770,7 +754,6 @@ static void *tun_thread (void *arg)
 	
 	while (!do_kill) {
 		process_tun(s);
-		pthread_mutex_unlock(&mutex);
 	}
 	return NULL;
 }
@@ -912,21 +895,12 @@ static void vpnc_main_loop(struct sa_block *s)
 		
 		if (FD_ISSET(s->esp_fd, &refds) ) {
 			process_socket(s);
-#if defined(__CYGWIN__)
-			pthread_mutex_unlock(&mutex);
-#endif
 		}
 		
 		if (s->ike_fd != s->esp_fd && FD_ISSET(s->ike_fd, &refds) ) {
 			DEBUG(3,printf("received something on ike fd..\n"));
-#if defined(__CYGWIN__)
-			pthread_mutex_lock(&mutex);
-#endif
-			len = recv(s->ike_fd, global_buffer, MAX_HEADER + MAX_PACKET, 0);
-			process_late_ike(s, global_buffer, len);
-#if defined(__CYGWIN__)
-			pthread_mutex_unlock(&mutex);
-#endif
+			len = recv(s->ike_fd, global_buffer_tx, MAX_HEADER + MAX_PACKET, 0);
+			process_late_ike(s, global_buffer_tx, len);
 		}
 
 		if (timed_mode) {
