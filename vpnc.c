@@ -135,6 +135,11 @@ static int make_socket(struct sa_block *s, uint16_t src_port, uint16_t dst_port)
 	if (sock < 0)
 		error(1, errno, "making socket");
 
+#ifdef FD_CLOEXEC
+	/* do not pass socket to vpnc-script, etc. */
+	fcntl(sock, F_SETFD, FD_CLOEXEC);
+#endif
+
 	/* give the socket a name */
 	name.sin_family = AF_INET;
 	name.sin_addr = s->opt_src_ip;
