@@ -225,7 +225,7 @@ write_resolvconf() {
 	CISCO_DEF_DOMAIN_ORIG="$CISCO_DEF_DOMAIN"
 	# Don't step on INTERNAL_IP4_DNS value, use a temporary variable
 	INTERNAL_IP4_DNS_TEMP="$INTERNAL_IP4_DNS"
-	exec 6< /etc/resolv.conf
+	exec 6< "$RESOLV_CONF_BACKUP"
 	while read LINE <&6 ; do
 		case "$LINE" in
 			nameserver*)

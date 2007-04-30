@@ -821,9 +821,9 @@ static void vpnc_main_loop(struct sa_block *s)
 	
 	if (s->ike.do_dpd) {
 		/* send initial dpd request */
-		next_ike_dpd = time(NULL) + 300;
+		next_ike_dpd = time(NULL) + s->ike.dpd_idle;
 		dpd_ike(s);
-		normal_timeout.tv_sec = 300;
+		normal_timeout.tv_sec = s->ike.dpd_idle;
 		normal_timeout.tv_usec = 0;
 	}
 	
@@ -867,11 +867,11 @@ static void vpnc_main_loop(struct sa_block *s)
 						select_timeout.tv_sec = 5;
 						select_timeout.tv_usec = 0;
 						dpd_ike(s);
-						next_ike_dpd = now + 300;
+						next_ike_dpd = now + s->ike.dpd_idle;
 					}
 					else if (now >= next_ike_dpd) {
 						dpd_ike(s);
-						next_ike_dpd = now + 300;
+						next_ike_dpd = now + s->ike.dpd_idle;
 					}
 				}
 			}
@@ -919,13 +919,13 @@ static void vpnc_main_loop(struct sa_block *s)
 			if (s->ike.do_dpd) {
 				if (s->ike.dpd_seqno != s->ike.dpd_seqno_ack) {
 					dpd_ike(s);
-					next_ike_dpd = now + 300;
+					next_ike_dpd = now + s->ike.dpd_idle;
 					if (now + 5 < next_up)
 						next_up = now + 5;
 				}
 				else if (now >= next_ike_dpd) {
 					dpd_ike(s);
-					next_ike_dpd = now + 300;
+					next_ike_dpd = now + s->ike.dpd_idle;
 				}
 				if (next_ike_dpd < next_up)
 					next_up = next_ike_dpd;

@@ -92,6 +92,7 @@ struct sa_block {
 		uint8_t *current_iv;
 		struct lifetime life;
 		int do_dpd;
+		int dpd_idle;
 		uint32_t dpd_seqno;
 		uint32_t dpd_seqno_ack;
 		time_t dpd_sent;

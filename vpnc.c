@@ -1051,8 +1051,15 @@ static void do_phase1(const char *key_id, const char *shared_key, struct sa_bloc
 			l = l->next = new_isakmp_data_payload(ISAKMP_PAYLOAD_VID,
 				VID_NATT_00, sizeof(VID_NATT_00));
 		}
-		l = l->next = new_isakmp_data_payload(ISAKMP_PAYLOAD_VID,
-			VID_DPD, sizeof(VID_DPD));
+		s->ike.dpd_idle = atoi(config[CONFIG_DPD_IDLE]);
+		if (s->ike.dpd_idle != 0) {
+			if (s->ike.dpd_idle < 10)
+				s->ike.dpd_idle = 10;
+			if (s->ike.dpd_idle > 86400)
+				s->ike.dpd_idle = 86400;
+			l = l->next = new_isakmp_data_payload(ISAKMP_PAYLOAD_VID,
+				VID_DPD, sizeof(VID_DPD));
+		}
 		flatten_isakmp_packet(p1, &pkt, &pkt_len, 0);
 
 		/* Now, send that packet and receive a new one.  */
@@ -1266,11 +1273,15 @@ static void do_phase1(const char *key_id, const char *shared_key, struct sa_bloc
 				} else if (rp->u.vid.length == sizeof(VID_DPD)
 					&& memcmp(rp->u.vid.data, VID_DPD,
 						sizeof(VID_DPD)) == 0) {
-					gcry_create_nonce(&s->ike.dpd_seqno, sizeof(s->ike.dpd_seqno));
-					s->ike.dpd_seqno &= 0x7FFFFFFF;
-					s->ike.dpd_seqno_ack = s->ike.dpd_seqno;
-					s->ike.do_dpd = 1;
-					DEBUG(2, printf("peer is DPD capable (RFC3706)\n"));
+					if (s->ike.dpd_idle != 0) {
+						gcry_create_nonce(&s->ike.dpd_seqno, sizeof(s->ike.dpd_seqno));
+						s->ike.dpd_seqno &= 0x7FFFFFFF;
+						s->ike.dpd_seqno_ack = s->ike.dpd_seqno;
+						s->ike.do_dpd = 1;
+						DEBUG(2, printf("peer is DPD capable (RFC3706)\n"));
+					} else {
+						DEBUG(2, printf("ignoring that peer is DPD capable (RFC3706)\n"));
+					}
 				} else {
 					hex_dump("unknown ISAKMP_PAYLOAD_VID: ",
 						rp->u.vid.data, rp->u.vid.length, NULL);
