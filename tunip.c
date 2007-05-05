@@ -698,7 +698,10 @@ static void process_tun(struct sa_block *s)
 		return;
 	}
 	
-	if (((struct ip *)(global_buffer_rx + MAX_HEADER))->ip_dst.s_addr == s->dst.s_addr) {
+	/* Don't access the contents of the buffer other than byte aligned.
+	 * 12: Offset of ip source address in ip header,
+	 *  4: Length of IP address */
+	if (!memcmp(global_buffer_rx + MAX_HEADER + 12, &s->dst.s_addr, 4)) {
 		syslog(LOG_ALERT, "routing loop to %s",
 			inet_ntoa(s->dst));
 		return;
