@@ -128,7 +128,7 @@ static int make_socket(struct sa_block *s, uint16_t src_port, uint16_t dst_port)
 {
 	int sock;
 	struct sockaddr_in name;
-	size_t len = sizeof(name);
+	socklen_t len = sizeof(name);
 
 	/* create the socket */
 	sock = socket(PF_INET, SOCK_DGRAM, 0);
@@ -201,6 +201,12 @@ static void config_tunnel(struct sa_block *s)
 {
 	setenv("VPNGATEWAY", inet_ntoa(s->dst), 1);
 	setenv("reason", "connect", 1);
+	system(config[CONFIG_SCRIPT]);
+}
+
+static void close_tunnel()
+{
+	setenv("reason", "disconnect", 1);
 	system(config[CONFIG_SCRIPT]);
 }
 
@@ -2370,10 +2376,12 @@ static void setup_link(struct sa_block *s)
 		
 			s->esp_fd = socket(PF_INET, SOCK_RAW, IPPROTO_ESP);
 			if (s->esp_fd == -1) {
+                                close_tunnel();
 				error(1, errno, "socket(PF_INET, SOCK_RAW, IPPROTO_ESP)");
 			}
 #ifdef IP_HDRINCL
 			if (setsockopt(s->esp_fd, IPPROTO_IP, IP_HDRINCL, &hincl, sizeof(hincl)) == -1) {
+                                close_tunnel();
 				error(1, errno, "setsockopt(esp_fd, IPPROTO_IP, IP_HDRINCL, 1)");
 			}
 #endif
@@ -2613,7 +2621,7 @@ void process_late_ike(struct sa_block *s, uint8_t *r_packet, ssize_t r_length)
 	struct isakmp_packet *r;
 	struct isakmp_payload *rp;
 	
-	DEBUG(2,printf("got late ike paket: %d bytes\n", r_length));
+	DEBUG(2,printf("got late ike paket: %zd bytes\n", r_length));
 	/* we should ignore resend pakets here.
 	 * unpack_verify_phase2 will fail to decode them probably */
 	reject = unpack_verify_phase2(s, r_packet, r_length, &r, NULL, 0);
@@ -2751,8 +2759,7 @@ int main(int argc, char **argv)
 	DEBUG(2, printf("S7\n"));
 	setup_link(s);
 	DEBUG(2, printf("S8\n"));
-	setenv("reason", "disconnect", 1);
-	system(config[CONFIG_SCRIPT]);
+        close_tunnel();
 
 	return 0;
 }

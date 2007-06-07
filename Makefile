@@ -1,7 +1,7 @@
 # Makefile for an IPSec VPN client compatible with Cisco equipment.
 # Copyright (C) 2002  Geoffrey Keating
 # Copyright (C) 2003-2004  Maurice Massar
-# Copyright (C) 2006 Dan Villiom Podlaski Christiansen
+# Copyright (C) 2006-2007 Dan Villiom Podlaski Christiansen
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -42,6 +42,10 @@ CFLAGS +=  $(shell libgcrypt-config --cflags)
 
 ifeq ($(shell uname -s), SunOS)
 LDFLAGS += -lnsl -lresolv -lsocket
+endif
+ifneq (,$(findstring Apple,$(shell $(CC) --version)))
+# enabled in FSF GCC, disabled by default in Apple GCC
+CFLAGS += -fstrict-aliasing -freorder-blocks -fsched-interblock
 endif
 
 all : $(BINS)
