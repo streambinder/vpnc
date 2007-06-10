@@ -239,7 +239,7 @@ static const char *config_def_natt_mode(void)
 #ifndef __APPLE__
 	return "natt";
 #else
-        return "cisco-udp";
+	return "cisco-udp";
 #endif
 }
 

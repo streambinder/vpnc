@@ -32,9 +32,10 @@ int main(int argc, char *argv[])
 	
 	gcry_check_version(NULL);
 
-        if (argc == 1)
-          fprintf(stderr, "Usage: %s DEADBEEF...012345678 424242...7261\n",
-                  argv[0]);
+	if (argc == 1)
+		fprintf(stderr,
+			"Usage: %s DEADBEEF...012345678 424242...7261\n",
+			argv[0]);
 	
 	for (i = 1; i < argc; i++) {
 		ret = hex2bin(argv[i], &bin, &len);

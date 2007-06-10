@@ -50,7 +50,7 @@
 #include "supp.h"
 
 #if defined(__CYGWIN__)
-        GCRY_THREAD_OPTION_PTHREAD_IMPL;
+	GCRY_THREAD_OPTION_PTHREAD_IMPL;
 #endif
 
 #define ISAKMP_PORT (500)
@@ -2376,12 +2376,12 @@ static void setup_link(struct sa_block *s)
 		
 			s->esp_fd = socket(PF_INET, SOCK_RAW, IPPROTO_ESP);
 			if (s->esp_fd == -1) {
-                                close_tunnel();
+				close_tunnel();
 				error(1, errno, "socket(PF_INET, SOCK_RAW, IPPROTO_ESP)");
 			}
 #ifdef IP_HDRINCL
 			if (setsockopt(s->esp_fd, IPPROTO_IP, IP_HDRINCL, &hincl, sizeof(hincl)) == -1) {
-                                close_tunnel();
+				close_tunnel();
 				error(1, errno, "setsockopt(esp_fd, IPPROTO_IP, IP_HDRINCL, 1)");
 			}
 #endif
@@ -2720,7 +2720,7 @@ int main(int argc, char **argv)
 
 	test_pack_unpack();
 #if defined(__CYGWIN__)
-        gcry_control(GCRYCTL_SET_THREAD_CBS, &gcry_threads_pthread);
+	gcry_control(GCRYCTL_SET_THREAD_CBS, &gcry_threads_pthread);
 #endif
 	gcry_check_version("1.1.90");
 	gcry_control(GCRYCTL_INIT_SECMEM, 16384, 0);
@@ -2759,7 +2759,7 @@ int main(int argc, char **argv)
 	DEBUG(2, printf("S7\n"));
 	setup_link(s);
 	DEBUG(2, printf("S8\n"));
-        close_tunnel();
+	close_tunnel();
 
 	return 0;
 }
