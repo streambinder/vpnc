@@ -36,7 +36,7 @@ RESOLV_CONF_BACKUP=/var/run/vpnc/resolv.conf-backup
 
 # some systems, eg. Darwin & FreeBSD, prune /var/run on boot
 if ! [ -d "/var/run/vpnc" ]; then
-       mkdir -p /var/run/vpnc
+	mkdir -p /var/run/vpnc
 fi
 
 # stupid SunOS: no blubber in /usr/local/bin ... (on stdout)
