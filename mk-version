@@ -5,8 +5,12 @@
 
 _version="`cat VERSION`"
 
-if [ -d .svn ] && command -v svnversion >/dev/null; then
-	_version="$_version-`svnversion`"
+if [ -d .svn ]; then
+		if command -v svnversion >/dev/null; then
+				_version="$_version-`svnversion`"
+		else
+				_version="$_version-`grep -A1 '^dir$' .svn/entries | tail -n1`"
+		fi
 fi
 
 echo "$_version"
