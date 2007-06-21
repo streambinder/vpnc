@@ -9,7 +9,7 @@ if [ -d .svn ]; then
 		if command -v svnversion >/dev/null; then
 				_version="$_version-`svnversion`"
 		else
-				_version="$_version-`grep -A1 '^dir$' .svn/entries | tail -n1`"
+				_version="$_version-`sed -n '/^dir$/{n;p;q;}' .svn/entries`"
 		fi
 fi
 
