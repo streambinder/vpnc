@@ -32,8 +32,9 @@ TODO list
   - amd64 somehow broken? maybe gcc bugs??
 
 * optional drop root (rekey? reconnect? vpnc-script calls?)
-* implement hybrid-auth
 * implement certificate support
+* Adapt lifetime (when given as time) to certificate lifetime etc
+  (rfc2401, 4.4.3)
 
 * factor out crypto stuff (cipher, hmac, dh)
   - http://libtomcrypt.org/features.html
@@ -51,6 +52,7 @@ TODO list
 
 ----
 
+* DONE implement hybrid-auth
 * DONE implement DPD, RFC 3706 Dead Peer Detection
 * DONE --local-address
 * DONE implement phase2 rekeying
