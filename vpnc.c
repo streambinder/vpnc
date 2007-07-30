@@ -1042,7 +1042,7 @@ static void do_phase1(const char *key_id, const char *shared_key, struct sa_bloc
 		else
 			l->u.id.type = ISAKMP_IPSEC_ID_USER_FQDN;
 		l->u.id.protocol = IPPROTO_UDP;
-		l->u.id.port = ISAKMP_PORT; /* this must be 500, not local_port */
+		l->u.id.port = ISAKMP_PORT; /* this must be 500, see rfc2407, 4.6.2 */
 		l->u.id.length = strlen(key_id);
 		l->u.id.data = xallocc(l->u.id.length);
 		memcpy(l->u.id.data, key_id, strlen(key_id));
