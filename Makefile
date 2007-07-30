@@ -34,10 +34,22 @@ BINSRCS = $(addsuffix .c,$(BINS))
 VERSION := $(shell sh mk-version)
 RELEASE_VERSION := $(shell cat VERSION)
 
+# The license of openssl is incompatible with the openssl license. Openssl
+# is currently used to provide certificate support for vpnc (hybrid only).
+# While it is OK for users to build their own binaries linking in openssl
+# with vpnc, giving the compiled binaries to others isn't.
+# See http://www.gnome.org/~markmc/openssl-and-the-gpl.html for further
+# details.
+
+# Comment this in to obtain a binary with certificate support which is
+# GPL incompliant though.
+#OPENSSL_GPL_VIOLATION = -DOPENSSL_GPL_VIOLATION
+#OPENSSLLIBS = -lssl
+
 CC=gcc
-CFLAGS := -W -Wall -O3 -Wmissing-declarations -Wwrite-strings -g $(CFLAGS)
-CPPFLAGS += -DVERSION=\"$(VERSION)\"
-LDFLAGS := -g $(shell libgcrypt-config --libs) $(LDFLAGS)
+CFLAGS := -pedantic -W -Wall -O3 -Wmissing-declarations -Wwrite-strings -g $(CFLAGS)
+CPPFLAGS += -DVERSION=\"$(VERSION)\" $(OPENSSL_GPL_VIOLATION)
+LDFLAGS := -g $(shell libgcrypt-config --libs) $(OPENSSLLIBS) $(LDFLAGS)
 CFLAGS +=  $(shell libgcrypt-config --cflags)
 
 ifeq ($(shell uname -s), SunOS)

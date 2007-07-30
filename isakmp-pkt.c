@@ -701,6 +701,7 @@ static struct isakmp_payload *parse_isakmp_payload(uint8_t type,
 		r->u.cert.encoding = fetch1();
 		hex_dump("cert.encoding", &r->u.cert.encoding, DUMP_UINT8, NULL);
 		r->u.cert.length = length - 5;
+		r->u.cert.data = xallocc(r->u.cert.length);
 		fetchn(r->u.cert.data, r->u.cert.length);
 		hex_dump("cert.data", r->u.cert.data, r->u.cert.length, NULL);
 		break;
@@ -797,6 +798,7 @@ struct isakmp_packet *parse_isakmp_packet(const uint8_t * data, size_t data_len,
 	}
 
 	DEBUG(3, printf("\nBEGIN_PARSE\n"));
+	DEBUG(3, printf("Recieved Packet Len: %d\n", data_len));
 	fetchn(r->i_cookie, ISAKMP_COOKIE_LENGTH);
 	hex_dump("i_cookie", r->i_cookie, ISAKMP_COOKIE_LENGTH, NULL);
 	fetchn(r->r_cookie, ISAKMP_COOKIE_LENGTH);

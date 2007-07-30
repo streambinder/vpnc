@@ -15,9 +15,9 @@ TODO list
   - get a rid of remaining (non-const) global variables
 
 * implement phase1 rekeying (with or without xauth-reauthentication)
-* implement DPD, RFC 3706 Dead Peer Detection
 * implement compression
 * try a list of gateways (backup server)
+* Generate the manpage command line part directly from vpnc
 
 * optionally use in-kernel-ipsec with pf-key
   - merge patch
@@ -51,6 +51,7 @@ TODO list
 
 ----
 
+* DONE implement DPD, RFC 3706 Dead Peer Detection
 * DONE --local-address
 * DONE implement phase2 rekeying
 * DONE support rsa-SecurID token which sometimes needs 2 IDs

@@ -39,7 +39,7 @@ const char *config[LAST_CONFIG];
 
 int opt_debug = 0;
 int opt_nd;
-int opt_1des, opt_no_encryption;
+int opt_1des, opt_no_encryption, opt_hybrid;
 enum natt_mode_enum opt_natt_mode;
 enum vendor_enum opt_vendor;
 enum if_mode_enum opt_if_mode;
@@ -251,6 +251,11 @@ static const char *config_def_udp_port(void)
 static const char *config_def_dpd_idle(void)
 {
 	return "300";
+}
+
+static const char *config_ca_dir(void)
+{
+	return "/etc/ssl/certs";
 }
 
 static const char *config_def_app_version(void)
@@ -506,6 +511,27 @@ static const struct config_names_s {
 		"Don't ask anything, exit on missing options",
 		NULL
 	}, {
+ 		CONFIG_HYBRID, 0, 1,
+		"--hybrid",
+		"Use Hybrid Auth",
+		NULL,
+		"enables to use the Hybrid-Authentication Mode for IKE",
+		NULL
+	}, {
+		CONFIG_CA_FILE, 1, 1,
+		"--ca-file",
+		"CA-File",
+		"<filename>",
+		"filename and path to the CA-PEM-File",
+		NULL
+	}, {
+		CONFIG_CA_DIR, 1, 1,
+		"--ca-dir",
+		"CA-Dir",
+		NULL,
+		"path of the trusted CA-Directory",
+		config_ca_dir
+	}, {
 		0, 0, 0, NULL, NULL, NULL, NULL, NULL
 	}
 };
@@ -640,6 +666,12 @@ static void print_version(void)
 		"You may redistribute copies of vpnc under the terms of the GNU General\n"
 		"Public License.  For more information about these matters, see the files\n"
 		"named COPYING.\n");
+#ifdef OPENSSL_GPL_VIOLATION
+	printf("Built with openssl (certificate) support. Be aware of the\n"
+		"license implications.\n");
+#else /* OPENSSL_GPL_VIOLATION */
+	printf("Built without openssl (certificate) support.\n");
+#endif /* OPENSSL_GPL_VIOLATION */
 	printf("\n");
 
 	printf("Supported DH-Groups:");
@@ -743,6 +775,11 @@ void do_config(int argc, char **argv)
 		opt_debug = (config[CONFIG_DEBUG]) ? atoi(config[CONFIG_DEBUG]) : 0;
 		opt_nd = (config[CONFIG_ND]) ? 1 : 0;
 		opt_1des = (config[CONFIG_ENABLE_1DES]) ? 1 : 0;
+		opt_hybrid = (config[CONFIG_HYBRID]) ? 1 : 0;
+#ifndef OPENSSL_GPL_VIOLATION
+		printf("%s was built without openssl: Can't do hybrid mode.\n", argv[0]);
+		exit(1);
+#endif
 		opt_no_encryption = (config[CONFIG_ENABLE_NO_ENCRYPTION]) ? 1 : 0;
 		opt_udpencapport=atoi(config[CONFIG_UDP_ENCAP_PORT]);
 		
