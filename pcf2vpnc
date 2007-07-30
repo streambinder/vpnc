@@ -86,5 +86,5 @@ if (defined $ARGV[0]) {
 	$src->close();
     }
 } else {
-    print STDERR "Usage: pcf2vpnc.pl <pcf file> [<vpnc file>]\n";
+    print STDERR "Usage: $0 <pcf file> [<vpnc file>]\n";
 }
