@@ -830,12 +830,15 @@ static void vpnc_main_loop(struct sa_block *s)
 		normal_timeout.tv_usec = 0;
 	}
 	
-	if (enable_keepalives && s->ike_fd != s->esp_fd) {
-		/* send initial nat ike keepalive packet */
-		next_ike_keepalive = time(NULL) + 9;
-		keepalive_ike(s);
+	if (enable_keepalives) {
 		normal_timeout.tv_sec = 9;
 		normal_timeout.tv_usec = 500000;
+
+		if (s->ike_fd != s->esp_fd) {
+			/* send initial nat ike keepalive packet */
+			next_ike_keepalive = time(NULL) + 9;
+			keepalive_ike(s);
+		}
 	}
 	
 	select_timeout = normal_timeout;
