@@ -185,7 +185,7 @@ else
 	set_default_route() {
 		DEFAULTGW="`get_default_gw`"
 		echo "$DEFAULTGW" > "$DEFAULT_ROUTE_FILE"
-		route $route_syntax_del default "$DEFAULTGW"
+		route $route_syntax_del default
 		route add default $route_syntax_gw "$INTERNAL_IP4_ADDRESS"
 	}
 	
