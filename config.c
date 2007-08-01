@@ -236,11 +236,7 @@ static const char *config_def_if_mode(void)
 
 static const char *config_def_natt_mode(void)
 {
-#ifndef __APPLE__
 	return "natt";
-#else
-	return "cisco-udp";
-#endif
 }
 
 static const char *config_def_udp_port(void)
