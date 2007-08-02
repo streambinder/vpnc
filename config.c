@@ -54,6 +54,7 @@ void hex_dump(const char *str, const void *data, ssize_t len, const struct debug
 	if (opt_debug < 3)
 		return;
 
+	printf("   ");
 	switch (len) {
 	case DUMP_UINT8:
 		decodedval = val_to_string(*(uint8_t *)p, decode);
@@ -69,10 +70,10 @@ void hex_dump(const char *str, const void *data, ssize_t len, const struct debug
 		return;
 	}
 
-	printf("%s:%c", str, (len <= 32) ? ' ' : '\n');
+	printf("%s:%s", str, (len <= 16) ? " " : "\n   ");
 	for (i = 0; i < (size_t)len; i++) {
 		if (i && !(i % 32))
-			printf("\n");
+			printf("\n   ");
 		else if (i && !(i % 4))
 			printf(" ");
 		printf("%02x", p[i]);

@@ -443,12 +443,10 @@ static uint16_t unpack_verify_phase2(struct sa_block *s, uint8_t * r_packet,
 		gcry_md_final(hm);
 		expected_hash = gcry_md_read(hm, 0);
 
-		if (opt_debug >= 3) {
-			printf("hashlen: %lu\n", (unsigned long)s->ike.md_len);
-			printf("u.hash.length: %d\n", h->u.hash.length);
-			hex_dump("expected_hash", expected_hash, s->ike.md_len, NULL);
-			hex_dump("h->u.hash.data", h->u.hash.data, s->ike.md_len, NULL);
-		}
+		DEBUG(3,printf("hashlen: %lu\n", (unsigned long)s->ike.md_len));
+		DEBUG(3,printf("u.hash.length: %d\n", h->u.hash.length));
+		hex_dump("expected_hash", expected_hash, s->ike.md_len, NULL);
+		hex_dump("h->u.hash.data", h->u.hash.data, s->ike.md_len, NULL);
 
 		reject = 0;
 		if (memcmp(h->u.hash.data, expected_hash, s->ike.md_len) != 0)
@@ -1018,7 +1016,7 @@ static void do_phase1(const char *key_id, const char *shared_key, struct sa_bloc
 	int hash_expected, sig_expected;
 	unsigned char *dh_shared_secret;
 	
-	DEBUG(2, printf("S4.1\n"));
+	DEBUGTOP(2, printf("S4.1 create_nonce\n"));
 	gcry_create_nonce(s->ike.i_cookie, ISAKMP_COOKIE_LENGTH);
 	s->ike.life.start = time(NULL);
 	s->ipsec.do_pfs = -1;
@@ -1027,7 +1025,7 @@ static void do_phase1(const char *key_id, const char *shared_key, struct sa_bloc
 	hex_dump("i_cookie", s->ike.i_cookie, ISAKMP_COOKIE_LENGTH, NULL);
 	gcry_create_nonce(i_nonce, sizeof(i_nonce));
 	hex_dump("i_nonce", i_nonce, sizeof(i_nonce), NULL);
-	DEBUG(2, printf("S4.2\n"));
+	DEBUGTOP(2, printf("S4.2 dh setup\n"));
 	/* Set up the Diffie-Hellman stuff.  */
 	{
 		dh_grp = group_get(get_dh_group_ike()->my_id);
@@ -1036,7 +1034,7 @@ static void do_phase1(const char *key_id, const char *shared_key, struct sa_bloc
 		hex_dump("dh_public", dh_public, dh_getlen(dh_grp), NULL);
 	}
 
-	DEBUG(2, printf("S4.3\n"));
+	DEBUGTOP(2, printf("S4.3 AM packet_1\n"));
 	/* Create the first packet.  */
 	{
 		struct isakmp_payload *l;
@@ -1094,7 +1092,7 @@ static void do_phase1(const char *key_id, const char *shared_key, struct sa_bloc
 		r_length = sendrecv(s, r_packet, sizeof(r_packet), pkt, pkt_len, 0);
 		free(pkt);
 	}
-	DEBUG(2, printf("S4.4\n"));
+	DEBUGTOP(2, printf("S4.4 AM_packet2\n"));
 	/* Decode the recieved packet.  */
 	{
 		struct isakmp_packet *r;
@@ -1302,7 +1300,7 @@ static void do_phase1(const char *key_id, const char *shared_key, struct sa_bloc
 						sizeof(VID_NATT_02N)) == 0) {
 					seen_natt_vid = 1;
 					if (natt_draft < 1) natt_draft = 2;
-					DEBUG(2, printf("peer is NAT-T capable (draft-02)\n\n"));
+					DEBUG(2, printf("peer is NAT-T capable (draft-02)\\n\n")); /* sic! */
 				} else if (rp->u.vid.length == sizeof(VID_NATT_02)
 					&& memcmp(rp->u.vid.data, VID_NATT_02,
 						sizeof(VID_NATT_02)) == 0) {
@@ -1334,7 +1332,7 @@ static void do_phase1(const char *key_id, const char *shared_key, struct sa_bloc
 						DEBUG(2, printf("ignoring that peer is DPD capable (RFC3706)\n"));
 					}
 				} else {
-					hex_dump("unknown ISAKMP_PAYLOAD_VID: ",
+					hex_dump("unknown ISAKMP_PAYLOAD_VID",
 						rp->u.vid.data, rp->u.vid.length, NULL);
 				}
 				break;
@@ -1744,7 +1742,7 @@ static void do_phase1(const char *key_id, const char *shared_key, struct sa_bloc
 		gcry_md_close(skeyid_ctx);
 	}
 
-	DEBUG(2, printf("S4.5\n"));
+	DEBUGTOP(2, printf("S4.5 AM_packet3\n"));
 	/* Send final phase 1 packet.  */
 	{
 		struct isakmp_packet *p2;
@@ -1865,7 +1863,7 @@ static void do_phase1(const char *key_id, const char *shared_key, struct sa_bloc
 		r_length = sendrecv(s, r_packet, sizeof(r_packet), p2kt, p2kt_len, 0);
 		free(p2kt);
 	}
-	DEBUG(2, printf("S4.6\n"));
+	DEBUGTOP(2, printf("S4.6 cleanup\n"));
 
 	free_isakmp_packet(p1);
 	free(returned_hash);
@@ -1951,7 +1949,7 @@ static int do_phase2_xauth(struct sa_block *s)
 	int reject;
 	int passwd_used = 0;
 
-	DEBUG(2, printf("S5.1\n"));
+	DEBUGTOP(2, printf("S5.1 xauth_start\n"));
 	/* This can go around for a while.  */
 	for (loopcount = 0;; loopcount++) {
 		struct isakmp_payload *rp;
@@ -1959,14 +1957,14 @@ static int do_phase2_xauth(struct sa_block *s)
 		char ntop_buf[32];
 		int seen_answer = 0;
 
-		DEBUG(2, printf("S5.2\n"));
+		DEBUGTOP(2, printf("S5.2 notice_check\n"));
 		
 		/* recv and check for notices */
 		reject = do_phase2_notice_check(s, &r);
 		if (reject == -1)
 			return 1;
 		
-		DEBUG(2, printf("S5.3\n"));
+		DEBUGTOP(2, printf("S5.3 type-is-xauth check\n"));
 		/* Check the transaction type is OK.  */
 		if (reject == 0 && r->exchange_type != ISAKMP_EXCHANGE_MODECFG_TRANSACTION)
 			reject = ISAKMP_N_INVALID_EXCHANGE_TYPE;
@@ -1986,7 +1984,7 @@ static int do_phase2_xauth(struct sa_block *s)
 		if (reject != 0)
 			phase2_fatal(s, "expected xauth packet; rejected: %s(%d)", reject);
 
-		DEBUG(2, printf("S5.4\n"));
+		DEBUGTOP(2, printf("S5.4 xauth type check\n"));
 		a = r->payload->next->u.modecfg.attributes;
 		/* First, print any messages, and verify that we understand the
 		 * conversation.  */
@@ -2023,10 +2021,10 @@ static int do_phase2_xauth(struct sa_block *s)
 			default:
 				reject = ISAKMP_N_ATTRIBUTES_NOT_SUPPORTED;
 			}
-		DEBUG(2, printf("S5.5\n"));
 		if (reject != 0)
 			phase2_fatal(s, "xauth packet unsupported: %s(%d)", reject);
 
+		DEBUGTOP(2, printf("S5.5 do xauth authentication\n"));
 		inet_ntop(AF_INET, &s->dst, ntop_buf, sizeof(ntop_buf));
 
 		/* Collect data from the user.  */
@@ -2113,7 +2111,7 @@ static int do_phase2_xauth(struct sa_block *s)
 		(r->payload->next->u.modecfg.type == ISAKMP_MODECFG_CFG_SET)) {
 		struct isakmp_attribute *a = r->payload->next->u.modecfg.attributes;
 		
-		DEBUG(2, printf("S5.5.1\n"));
+		DEBUGTOP(2, printf("S5.5.1 do netscreen modecfg extra\n"));
 		
 		do_config_to_env(s, a);
 		
@@ -2131,7 +2129,7 @@ static int do_phase2_xauth(struct sa_block *s)
 			return 1;
 	}
 	
-	DEBUG(2, printf("S5.6\n"));
+	DEBUGTOP(2, printf("S5.6 process xauth response\n"));
 	{
 		/* The final SET should have just one attribute.  */
 		struct isakmp_attribute *a = r->payload->next->u.modecfg.attributes;
@@ -2156,7 +2154,7 @@ static int do_phase2_xauth(struct sa_block *s)
 		if (set_result == 0)
 			error(2, 0, "authentication unsuccessful");
 	}
-	DEBUG(2, printf("S5.7\n"));
+	DEBUGTOP(2, printf("S5.7 xauth done\n"));
 	return 0;
 }
 
@@ -2315,7 +2313,7 @@ static void setup_link(struct sa_block *s)
 	uint8_t nonce_i[20], *dh_public = NULL;
 	int i;
 
-	DEBUG(2, printf("S7.1\n"));
+	DEBUGTOP(2, printf("S7.1 QM_packet1\n"));
 	/* Set up the Diffie-Hellman stuff.  */
 	if (get_dh_group_ipsec(s->ipsec.do_pfs)->my_id) {
 		dh_grp = group_get(get_dh_group_ipsec(s->ipsec.do_pfs)->my_id);
@@ -2355,8 +2353,8 @@ static void setup_link(struct sa_block *s)
 	if (msgid == 0)
 		msgid = 1;
 
-	DEBUG(2, printf("S7.2\n"));
 	for (i = 0; i < 4; i++) {
+		DEBUGTOP(2, printf("S7.2 QM_packet2 send_receive\n"));
 		sendrecv_phase2(s, rp, ISAKMP_EXCHANGE_IKE_QUICK,
 			msgid, 0, &p_flat, &p_size, 0, 0, 0, 0);
 
@@ -2366,20 +2364,19 @@ static void setup_link(struct sa_block *s)
 			memcpy(realiv_msgid, s->ike.current_iv_msgid, 4);
 		}
 
-		DEBUG(2, printf("S7.3\n"));
+		DEBUGTOP(2, printf("S7.3 QM_packet2 validate type\n"));
 		reject = unpack_verify_phase2(s, r_packet, r_length, &r, nonce_i, sizeof(nonce_i));
 
-		DEBUG(2, printf("S7.4\n"));
 		if (((reject == 0) || (reject == ISAKMP_N_AUTHENTICATION_FAILED))
 			&& r->exchange_type == ISAKMP_EXCHANGE_INFORMATIONAL) {
+			DEBUGTOP(2, printf("S7.4 process and skip lifetime notice\n"));
 			/* handle notifie responder-lifetime */
 			/* (broken hash => ignore AUTHENTICATION_FAILED) */
 			if (reject == 0 && r->payload->next->type != ISAKMP_PAYLOAD_N)
 				reject = ISAKMP_N_INVALID_PAYLOAD_TYPE;
 
 			if (reject == 0
-				&& r->payload->next->u.n.type ==
-				ISAKMP_N_IPSEC_RESPONDER_LIFETIME) {
+				&& r->payload->next->u.n.type == ISAKMP_N_IPSEC_RESPONDER_LIFETIME) {
 				if (r->payload->next->u.n.protocol == ISAKMP_IPSEC_PROTO_ISAKMP)
 					lifetime_ike_process(s, r->payload->next->u.n.attributes);
 				else if (r->payload->next->u.n.protocol == ISAKMP_IPSEC_PROTO_IPSEC_ESP)
@@ -2410,7 +2407,7 @@ static void setup_link(struct sa_block *s)
 		break;
 	}
 
-	DEBUG(2, printf("S7.5\n"));
+	DEBUGTOP(2, printf("S7.5 QM_packet2 check reject offer\n"));
 	if (reject != 0)
 		phase2_fatal(s, "quick mode response rejected: %s(%d)\n"
 			"this means the concentrator did not like what we had to offer.\n"
@@ -2425,7 +2422,7 @@ static void setup_link(struct sa_block *s)
 			"     uses much CPU-resources on the concentrator\n",
 			reject);
 
-	DEBUG(2, printf("S7.6\n"));
+	DEBUGTOP(2, printf("S7.6 QM_packet2 check and process proposal\n"));
 	for (rp = r->payload->next; rp && reject == 0; rp = rp->next)
 		switch (rp->type) {
 		case ISAKMP_PAYLOAD_SA:
@@ -2586,12 +2583,12 @@ static void setup_link(struct sa_block *s)
 		msgid, 1, 0, 0, nonce_i, sizeof(nonce_i),
 		nonce_r->u.nonce.data, nonce_r->u.nonce.length);
 
-	DEBUG(2, printf("S7.7\n"));
+	DEBUGTOP(2, printf("S7.7 QM_packet3 sent - run script\n"));
 
 	/* Set up the interface here so it's ready when our acknowledgement
 	 * arrives.  */
 	config_tunnel(s);
-	DEBUG(2, printf("S7.8\n"));
+	DEBUGTOP(2, printf("S7.8 setup ipsec tunnel\n"));
 	{
 		unsigned char *dh_shared_secret = NULL;
 
@@ -2638,11 +2635,11 @@ static void setup_link(struct sa_block *s)
 		}
 		
 		s->ipsec.rx.seq_id = s->ipsec.tx.seq_id = 1;
-		DEBUG(2, printf("S7.9\n"));
+		DEBUGTOP(2, printf("S7.9 main loop (receive and transmit ipsec packets)\n"));
 		vpnc_doit(s);
 	}
 	
-	DEBUG(2, printf("S7.10\n"));
+	DEBUGTOP(2, printf("S7.10 send termination message\n"));
 	/* finished, send the delete message */
 	{
 		struct isakmp_payload *d_isakmp, *d_ipsec;
@@ -2872,7 +2869,7 @@ void process_late_ike(struct sa_block *s, uint8_t *r_packet, ssize_t r_length)
 	struct isakmp_payload *rp;
 	
 	DEBUG(2,printf("got late ike paket: %zd bytes\n", r_length));
-	/* we should ignore resend pakets here.
+	/* we should ignore resent pakets here.
 	 * unpack_verify_phase2 will fail to decode them probably */
 	reject = unpack_verify_phase2(s, r_packet, r_length, &r, NULL, 0);
 	
@@ -2982,34 +2979,34 @@ int main(int argc, char **argv)
 
 	do_config(argc, argv);
 	
+	DEBUG(1, printf("\nvpnc version " VERSION "\n"));
 	hex_dump("hex_test", hex_test, sizeof(hex_test), NULL);
 
-	DEBUG(1, printf("vpnc version " VERSION "\n"));
-	DEBUG(2, printf("S1\n"));
+	DEBUGTOP(2, printf("S1 init_sockaddr\n"));
 	init_sockaddr(&s->dst, config[CONFIG_IPSEC_GATEWAY]);
 	init_sockaddr(&s->opt_src_ip, config[CONFIG_LOCAL_ADDR]);
-	DEBUG(2, printf("S2\n"));
+	DEBUGTOP(2, printf("S2 make_socket\n"));
 	s->ike.src_port = atoi(config[CONFIG_LOCAL_PORT]);
 	s->ike.dst_port = ISAKMP_PORT;
 	s->ike_fd = make_socket(s, s->ike.src_port, s->ike.dst_port);
-	DEBUG(2, printf("S3\n"));
+	DEBUGTOP(2, printf("S3 setup_tunnel\n"));
 	setup_tunnel(s);
 
 	do_load_balance = 0;
 	do {
-		DEBUG(2, printf("S4\n"));
+		DEBUGTOP(2, printf("S4 do_phase1\n"));
 		do_phase1(config[CONFIG_IPSEC_ID], config[CONFIG_IPSEC_SECRET], s);
-		DEBUG(2, printf("S5\n"));
+		DEBUGTOP(2, printf("S5 do_phase2_xauth\n"));
 		/* FIXME: Create and use a generic function in supp.[hc] */
 		if (s->ike.auth_algo >= IKE_AUTH_HybridInitRSA)
 			do_load_balance = do_phase2_xauth(s);
-		DEBUG(2, printf("S6\n"));
+		DEBUGTOP(2, printf("S6 do_phase2_config\n"));
 		if ((opt_vendor != VENDOR_NETSCREEN) && (do_load_balance == 0))
 			do_load_balance = do_phase2_config(s);
 	} while (do_load_balance);
-	DEBUG(2, printf("S7\n"));
+	DEBUGTOP(2, printf("S7 setup_link (phase 2 + main_loop)\n"));
 	setup_link(s);
-	DEBUG(2, printf("S8\n"));
+	DEBUGTOP(2, printf("S8 close_tunnel\n"));
 	close_tunnel();
 
 	return 0;

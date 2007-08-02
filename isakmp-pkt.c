@@ -561,6 +561,7 @@ static struct isakmp_payload *parse_isakmp_payload(uint8_t type,
 		4, 12, 8, 8, 4, 8, 5, 5, 4, 4, 4, 12, 12, 4, 8
 	};
 
+	DEBUG(3, printf("\n"));
 	hex_dump("PARSING PAYLOAD type", &type, DUMP_UINT8, isakmp_payload_enum_array);
 	if (type == 0)
 		return NULL;
@@ -797,7 +798,7 @@ struct isakmp_packet *parse_isakmp_packet(const uint8_t * data, size_t data_len,
 		goto error;
 	}
 
-	DEBUG(3, printf("\nBEGIN_PARSE\n"));
+	DEBUG(3, printf("BEGIN_PARSE\n"));
 	DEBUG(3, printf("Recieved Packet Len: %d\n", data_len));
 	fetchn(r->i_cookie, ISAKMP_COOKIE_LENGTH);
 	hex_dump("i_cookie", r->i_cookie, ISAKMP_COOKIE_LENGTH, NULL);
@@ -836,7 +837,7 @@ struct isakmp_packet *parse_isakmp_packet(const uint8_t * data, size_t data_len,
 	if (reason != 0)
 		goto error;
 
-	DEBUG(3, printf("PARSE_OK\n\n"));
+	DEBUG(3, printf("PARSE_OK\n"));
 	return r;
 
       error:

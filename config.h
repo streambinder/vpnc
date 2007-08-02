@@ -94,7 +94,8 @@ extern enum natt_mode_enum opt_natt_mode;
 extern enum if_mode_enum opt_if_mode;
 extern uint16_t opt_udpencapport;
 
-#define DEBUG(lvl, a) do {if (opt_debug >= (lvl)) {a;}} while (0)
+#define DEBUGTOP(lvl, a) do {if(opt_debug >= (lvl)){printf("\n");(a);printf("\n");}} while (0)
+#define DEBUG(lvl, a) do {if (opt_debug >= (lvl)) {if(opt_debug>1)printf("   "); a;}} while (0)
 
 extern void hex_dump(const char *str, const void *data, ssize_t len, const struct debug_strings *decode);
 extern void do_config(int argc, char **argv);
