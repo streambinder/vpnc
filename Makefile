@@ -111,6 +111,7 @@ install-common: all
 	install vpnc-disconnect $(DESTDIR)$(SBINDIR)
 	install pcf2vpnc $(DESTDIR)$(BINDIR)
 	install vpnc.8 $(DESTDIR)$(MANDIR)/man8
+	install pcf2vpnc.1 $(DESTDIR)$(MANDIR)/man1
 
 install : install-common
 	install vpnc $(DESTDIR)$(SBINDIR)
