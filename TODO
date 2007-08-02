@@ -35,6 +35,8 @@ TODO list
 * implement certificate support
 * Adapt lifetime (when given as time) to certificate lifetime etc
   (rfc2401, 4.4.3)
+* implement main mode for phase 1 (needed to *use* certificates in
+  many cases)
 
 * factor out crypto stuff (cipher, hmac, dh)
   - http://libtomcrypt.org/features.html
