@@ -774,8 +774,10 @@ void do_config(int argc, char **argv)
 		opt_1des = (config[CONFIG_ENABLE_1DES]) ? 1 : 0;
 		opt_hybrid = (config[CONFIG_HYBRID]) ? 1 : 0;
 #ifndef OPENSSL_GPL_VIOLATION
-		printf("%s was built without openssl: Can't do hybrid mode.\n", argv[0]);
-		exit(1);
+		if (opt_hybrid) {
+			printf("%s was built without openssl: Can't do hybrid mode.\n", argv[0]);
+			exit(1);
+		}
 #endif
 		opt_no_encryption = (config[CONFIG_ENABLE_NO_ENCRYPTION]) ? 1 : 0;
 		opt_udpencapport=atoi(config[CONFIG_UDP_ENCAP_PORT]);
