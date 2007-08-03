@@ -1415,7 +1415,7 @@ static void do_phase1(const char *key_id, const char *shared_key, struct sa_bloc
 			memcpy(psk_skeyid, gcry_md_read(skeyid_ctx, 0), s->ike.md_len);
 			hex_dump("psk_skeyid", psk_skeyid, s->ike.md_len, NULL);
 			gcry_md_close(skeyid_ctx);
-			printf("shared-key: %s\n",shared_key);
+			DEBUG(99, printf("shared-key: %s\n",shared_key));
 			
 			/* SKEYID - psk only */
 			if (s->ike.auth_algo == IKE_AUTH_PRESHARED ||
