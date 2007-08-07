@@ -148,24 +148,26 @@ if [ -n "$IPROUTE" ]; then
 		NETWORK="$1"
 		NETMASK="$2"
 		NETMASKLEN="$3"
+		del_network_route "$NETWORK" "$NETMASK" "$NETMASKLEN"
 		$IPROUTE route add "$NETWORK/$NETMASKLEN" dev "$TUNDEV"
 		$IPROUTE route flush cache
 	}
 	
 	reset_default_route() {
-		$IPROUTE route $route_syntax_del default > /dev/null 2>&1
-		$IPROUTE route add `cat "$DEFAULT_ROUTE_FILE"`
-		$IPROUTE route flush cache
+		if [ -s "$DEFAULT_ROUTE_FILE" ]; then
+			$IPROUTE route $route_syntax_del default > /dev/null 2>&1
+			$IPROUTE route add `cat "$DEFAULT_ROUTE_FILE"`
+			$IPROUTE route flush cache
+			rm -f -- "$DEFAULT_ROUTE_FILE"
+		fi
 	}
 	
 	del_network_route() {
-		# linux deletes routes automatically if the device is shut down
-		return
-		#NETWORK="$1"
-		#NETMASK="$2"
-		#NETMASKLEN="$3"
-		#$IPROUTE route $route_syntax_del "$NETWORK/$NETMASKLEN" dev "$TUNDEV" 
-		#$IPROUTE route flush cache
+		NETWORK="$1"
+		NETMASK="$2"
+		NETMASKLEN="$3"
+		$IPROUTE route $route_syntax_del "$NETWORK/$NETMASKLEN" dev "$TUNDEV" 
+		$IPROUTE route flush cache
 	}
 else
 	get_default_gw() {
@@ -193,12 +195,16 @@ else
 		NETWORK="$1"
 		NETMASK="$2"
 		NETMASKLEN="$3"
+		del_network_route "$NETWORK" "$NETMASK" "$NETMASKLEN"
 		route add -net "$NETWORK" $route_syntax_netmask "$NETMASK" $route_syntax_gw "$INTERNAL_IP4_ADDRESS"
 	}
 	
 	reset_default_route() {
-		route $route_syntax_del default
-		route add default $route_syntax_gw `cat "$DEFAULT_ROUTE_FILE"`
+		if [ -s "$DEFAULT_ROUTE_FILE" ]; then
+			route $route_syntax_del default
+			route add default $route_syntax_gw `cat "$DEFAULT_ROUTE_FILE"`
+			rm -f -- "$DEFAULT_ROUTE_FILE"
+		fi
 	}
 	
 	del_network_route() {
@@ -353,7 +359,11 @@ do_connect() {
 			eval NETWORK="\${CISCO_SPLIT_INC_${i}_ADDR}"
 			eval NETMASK="\${CISCO_SPLIT_INC_${i}_MASK}"
 			eval NETMASKLEN="\${CISCO_SPLIT_INC_${i}_MASKLEN}"
-			set_network_route "$NETWORK" "$NETMASK" "$NETMASKLEN"
+			if [ $NETWORK != "0.0.0.0" ]; then
+				set_network_route "$NETWORK" "$NETMASK" "$NETMASKLEN"
+			else
+				set_default_route
+			fi
 			i=`expr $i + 1`
 		done
 		for i in $INTERNAL_IP4_DNS ; do
@@ -376,17 +386,20 @@ do_disconnect() {
 			eval NETWORK="\${CISCO_SPLIT_INC_${i}_ADDR}"
 			eval NETMASK="\${CISCO_SPLIT_INC_${i}_MASK}"
 			eval NETMASKLEN="\${CISCO_SPLIT_INC_${i}_MASKLEN}"
-			del_network_route "$NETWORK" "$NETMASK" "$NETMASKLEN"
+			if [ $NETWORK != "0.0.0.0" ]; then
+				# FIXME: This doesn't restore previously overwritten
+				#        routes.
+				del_network_route "$NETWORK" "$NETMASK" "$NETMASKLEN"
+			else
+				reset_default_route
+			fi
 			i=`expr $i + 1`
 		done
 		for i in $INTERNAL_IP4_DNS ; do
 			del_network_route "$i" "255.255.255.255" "32"
 		done
 	else
-		if [ -s "$DEFAULT_ROUTE_FILE" ]; then
-			reset_default_route
-			rm -f -- "$DEFAULT_ROUTE_FILE"
-		fi
+		reset_default_route
 	fi
 	
 	del_vpngateway_route
