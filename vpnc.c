@@ -313,6 +313,8 @@ static ssize_t sendrecv(struct sa_block *s, void *recvbuf, size_t recvbufsize, v
 		memmove(recvbuf, (char *)recvbuf+4, recvsize);
 	}
 
+	DEBUGTOP(3, printf("\n receiving: <========================\n"));
+
 	/* Wait at least 2s for a response or 4 times the time it took
 	 * last time.  */
 	if (start >= end)
