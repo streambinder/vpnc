@@ -20,6 +20,11 @@ the TUN/TAP driver in  Linux  kernel  2.4  and  above  and device tun(4)
 on BSD. The created connection is presented as a tunneling network
 device to the local system.
 .PP
+OBLIGATORY WARNING: the most used configuration (XAUTH authentication
+with pre-shared keys and password authentication) is insecure by design,
+be aware of this fact when you use vpnc to exchange sensitive data like
+passwords!
+.PP
 The vpnc daemon by itself does not set any routes, but it calls
 \fBvpnc\-script\fR to do this job. \fBvpnc\-script\fR displays
 a connect banner. If the concentrator supplies a network list
