@@ -112,17 +112,23 @@ install-common: all
 	install -m755 pcf2vpnc $(DESTDIR)$(BINDIR)
 	install -m644 vpnc.8 $(DESTDIR)$(MANDIR)/man8
 	install -m644 pcf2vpnc.1 $(DESTDIR)$(MANDIR)/man1
+	install -m644 cisco-decrypt.1 $(DESTDIR)$(MANDIR)/man1
 
 install : install-common
-	install vpnc $(DESTDIR)$(SBINDIR)
+	install -m755 vpnc $(DESTDIR)$(SBINDIR)
+	install -m755 cisco-decrypt $(DESTDIR)$(BINDIR)
 
 install-strip : install-common
-	install -s vpnc $(DESTDIR)$(SBINDIR)
+	install -s -m755 vpnc $(DESTDIR)$(SBINDIR)
+	install -s -m755 cisco-decrypt $(DESTDIR)$(BINDIR)
 
 uninstall :
 	rm -f $(DESTDIR)$(SBINDIR)/vpnc \
 		$(DESTDIR)$(SBINDIR)/vpnc-disconnect \
 		$(DESTDIR)$(BINDIR)/pcf2vpnc \
+		$(DESTDIR)$(BINDIR)/cisco-decrypt \
+		$(DESTDIR)$(MANDIR)/man1/cisco-decrypt.1 \
+		$(DESTDIR)$(MANDIR)/man1/pcf2vpnc \
 		$(DESTDIR)$(MANDIR)/man8/vpnc.8
 	@echo NOTE: remove $(DESTDIR)$(ETCDIR) manually
 

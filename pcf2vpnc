@@ -40,13 +40,15 @@ sub readPCF($) {
 	    } elsif ($1 eq "GroupPwd") {
 		$config{IPSec}{secret} = $2;
 	    } elsif ($1 eq "enc_GroupPwd") {
-		$config{IPSec}{obfuscated} = "secret $2";
+		# $config{IPSec}{obfuscated} = "secret $2";
+		$config{IPSec}{secret} = system("cisco-decrypt $2");
 	    } elsif ($1 eq "Username") {
 		$config{Xauth}{username} = $2;
 	    } elsif ($1 eq "UserPassword") {
 		$config{Xauth}{password} = $2;
 	    } elsif ($1 eq "enc_UserPassword") {
-		$config{Xauth}{obfuscated} = "password $2";
+		# $config{Xauth}{obfuscated} = "password $2";
+		$config{Xauth}{password} = system("cisco-decrypt $2");
 	    } elsif ($1 eq "NTDomain") {
 		$config{Domain}{""} = $2;
 	    } elsif ($1 eq "DHGroup") {
