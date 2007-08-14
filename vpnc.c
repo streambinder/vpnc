@@ -1486,7 +1486,7 @@ static void do_phase1(const char *key_id, const char *shared_key, struct sa_bloc
 
 			if (hash_expected) {
 				if (memcmp(expected_hash, hash->u.hash.data, s->ike.md_len) != 0)
-					error(1, 0, "hash comparison failed: %s(%d)\ncheck group password!",
+					error(2, 0, "hash comparison failed: %s(%d)\ncheck group password!",
 						val_to_string(ISAKMP_N_AUTHENTICATION_FAILED, isakmp_notify_enum_array),
 						ISAKMP_N_AUTHENTICATION_FAILED);
 				hex_dump("received hash", hash->u.hash.data, hash->u.hash.length, NULL);
