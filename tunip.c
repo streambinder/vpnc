@@ -1049,16 +1049,15 @@ void vpnc_doit(struct sa_block *s)
 			close(1); open("/dev/null", O_WRONLY, 0666);
 			close(2); open("/dev/null", O_WRONLY, 0666);
 			setsid();
-			openlog("vpnc", LOG_PID, LOG_DAEMON);
-			write_pidfile(pidfile);
 		} else {
 			printf("VPNC started in background (pid: %d)...\n", (int)pid);
 			exit(0);
 		}
 	} else {
 		printf("VPNC started in foreground...\n");
-		openlog("vpnc", LOG_PID, LOG_DAEMON);
 	}
+	openlog("vpnc", LOG_PID, LOG_DAEMON);
+	write_pidfile(pidfile);
 	
 	vpnc_main_loop(s);
 	
