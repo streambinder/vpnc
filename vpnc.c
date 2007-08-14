@@ -194,6 +194,10 @@ static void setup_tunnel(struct sa_block *s)
 
 	if (s->tun_fd == -1)
 		error(1, errno, "can't initialise tunnel interface");
+#ifdef FD_CLOEXEC
+	/* do not pass socket to vpnc-script, etc. */
+	fcntl(s->tun_fd, F_SETFD, FD_CLOEXEC);
+#endif
 	
 	if (opt_if_mode == IF_MODE_TAP) {
 		if (tun_get_hwaddr(s->tun_fd, s->tun_name, s->tun_hwaddr) < 0) {
