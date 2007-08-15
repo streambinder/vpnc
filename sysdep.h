@@ -125,6 +125,18 @@ int tun_get_hwaddr(int fd, char *dev, uint8_t *hwaddr);
 const char *inet_ntop(int af, const void *src, char *dst, size_t cnt);
 #endif
 /***************************************************************************/
+#if defined (__SKYOS__)
+#define HAVE_UNSETENV  1
+
+#ifndef IPPROTO_ENCAP
+#define IPPROTO_ENCAP 4
+#endif
+
+#ifndef IPPROTO_ESP
+#define IPPROTO_ESP 50
+#endif
+#endif
+/***************************************************************************/
 #if defined (__CYGWIN__)
 #define HAVE_VASPRINTF 1
 #define HAVE_ASPRINTF  1

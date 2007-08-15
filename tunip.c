@@ -63,7 +63,9 @@
 #include <netinet/in_systm.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>
+#ifndef __SKYOS__
 #include <netinet/ip_icmp.h>
+#endif
 #include <arpa/inet.h>
 #include <stdlib.h>
 #include <string.h>
@@ -77,7 +79,7 @@
 #include <pthread.h>
 #endif
 
-#ifndef __sun__
+#if !defined(__sun__) && !defined(__SKYOS__)
 #include <err.h>
 #endif
 
