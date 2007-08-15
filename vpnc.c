@@ -1419,7 +1419,10 @@ static void do_phase1(const char *key_id, const char *shared_key, struct sa_bloc
 			gcry_md_final(skeyid_ctx);
 			psk_skeyid = xallocc(s->ike.md_len);
 			memcpy(psk_skeyid, gcry_md_read(skeyid_ctx, 0), s->ike.md_len);
-			hex_dump("psk_skeyid", psk_skeyid, s->ike.md_len, NULL);
+			if (opt_debug < 99)
+				DEBUG(3, printf("(not dumping psk hash)\n"));
+			else
+				hex_dump("psk_skeyid", psk_skeyid, s->ike.md_len, NULL);
 			gcry_md_close(skeyid_ctx);
 			DEBUG(99, printf("shared-key: %s\n",shared_key));
 			
