@@ -47,10 +47,12 @@ RELEASE_VERSION := $(shell cat VERSION)
 #OPENSSLLIBS = -lssl
 
 CC=gcc
-CFLAGS := -pedantic -W -Wall -O3 -Wmissing-declarations -Wwrite-strings -g $(CFLAGS)
-CPPFLAGS += -DVERSION=\"$(VERSION)\" $(OPENSSL_GPL_VIOLATION)
-LDFLAGS := -g $(shell libgcrypt-config --libs) $(OPENSSLLIBS) $(LDFLAGS)
+CFLAGS ?= -O3 -g
+CFLAGS += -W -Wall -Wmissing-declarations -Wwrite-strings
 CFLAGS +=  $(shell libgcrypt-config --cflags)
+CPPFLAGS += -DVERSION=\"$(VERSION)\" $(OPENSSL_GPL_VIOLATION)
+LDFLAGS ?= -g
+LDFLAGS += $(shell libgcrypt-config --libs) $(OPENSSLLIBS)
 
 ifeq ($(shell uname -s), SunOS)
 LDFLAGS += -lnsl -lresolv -lsocket
