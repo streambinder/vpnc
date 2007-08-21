@@ -14,6 +14,7 @@
  * __APPLE__      Darwin / MacOS X
  * __sun__        SunOS / Solaris
  * __CYGWIN__
+ * __SKYOS__
  *
  */
 
