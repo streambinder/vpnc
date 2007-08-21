@@ -24,6 +24,8 @@ use IO::File;
 use strict;
 use warnings;
 
+my %authmode = ( 1 => 'psk', 5 => 'hybrid' );
+
 sub readPCF($) {
     my ($file) = @_;
     my %config;
@@ -41,18 +43,20 @@ sub readPCF($) {
 		$config{IPSec}{secret} = $2;
 	    } elsif ($1 eq "enc_GroupPwd") {
 		# $config{IPSec}{obfuscated} = "secret $2";
-		$config{IPSec}{secret} = system("cisco-decrypt $2");
+		$config{IPSec}{secret} = `cisco-decrypt $2`;
+	    } elsif ($1 eq "AuthType") {
+		$config{IKE}{Authmode} = $authmode{$2};
+	    } elsif ($1 eq "DHGroup") {
+		$config{IKE}{DH} = "Group dh$2";
 	    } elsif ($1 eq "Username") {
 		$config{Xauth}{username} = $2;
 	    } elsif ($1 eq "UserPassword") {
 		$config{Xauth}{password} = $2;
 	    } elsif ($1 eq "enc_UserPassword") {
 		# $config{Xauth}{obfuscated} = "password $2";
-		$config{Xauth}{password} = system("cisco-decrypt $2");
+		$config{Xauth}{password} = `cisco-decrypt $2`;
 	    } elsif ($1 eq "NTDomain") {
 		$config{Domain}{""} = $2;
-	    } elsif ($1 eq "DHGroup") {
-		$config{IKE}{DH} = "Group dh$2";
 	    }
 	}
     }

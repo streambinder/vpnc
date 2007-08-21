@@ -85,7 +85,7 @@ struct sa_block {
 		uint8_t *initial_iv;
 		uint8_t *skeyid_a;
 		uint8_t *skeyid_d;
-		int auth_algo; /* PSK, PSK+Xauth, ToDo: Cert/Hybrid/... */
+		int auth_algo; /* PSK, PSK+Xauth, Hybrid ToDo: Cert/... */
 		int cry_algo, md_algo;
 		size_t ivlen, md_len;
 		uint8_t current_iv_msgid[4];

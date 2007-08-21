@@ -928,11 +928,11 @@ static struct isakmp_payload *make_our_sa_ike(void)
 	r->u.sa.proposals = new_isakmp_payload(ISAKMP_PAYLOAD_P);
 	r->u.sa.proposals->u.p.prot_id = ISAKMP_IPSEC_PROTO_ISAKMP;
 	for (auth = 0; supp_auth[auth].name != NULL; auth++) {
-		if ((opt_hybrid == 1) &&
+		if ((opt_auth_mode == AUTH_MODE_HYBRID) &&
 			(supp_auth[auth].ike_sa_id != IKE_AUTH_HybridInitRSA) &&
 			(supp_auth[auth].ike_sa_id != IKE_AUTH_HybridInitDSS))
 			continue;
-		if ((opt_hybrid != 1) &&
+		if ((opt_auth_mode != AUTH_MODE_HYBRID) &&
 			((supp_auth[auth].ike_sa_id == IKE_AUTH_HybridInitRSA) ||
 			 (supp_auth[auth].ike_sa_id == IKE_AUTH_HybridInitDSS)))
 			continue;

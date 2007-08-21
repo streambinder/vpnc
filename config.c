@@ -39,7 +39,7 @@ const char *config[LAST_CONFIG];
 
 int opt_debug = 0;
 int opt_nd;
-int opt_1des, opt_no_encryption, opt_hybrid;
+int opt_1des, opt_no_encryption, opt_auth_mode;
 enum natt_mode_enum opt_natt_mode;
 enum vendor_enum opt_vendor;
 enum if_mode_enum opt_if_mode;
@@ -253,6 +253,11 @@ static const char *config_def_dpd_idle(void)
 static const char *config_ca_dir(void)
 {
 	return "/etc/ssl/certs";
+}
+
+static const char *config_def_auth_mode(void)
+{
+	return "psk";
 }
 
 static const char *config_def_app_version(void)
@@ -508,24 +513,26 @@ static const struct config_names_s {
 		"Don't ask anything, exit on missing options",
 		NULL
 	}, {
- 		CONFIG_HYBRID, 0, 1,
-		"--hybrid",
-		"Use Hybrid Auth",
-		NULL,
-		"enables to use the Hybrid-Authentication Mode for IKE",
-		NULL
+ 		CONFIG_AUTH_MODE, 1, 1,
+		"--auth-mode",
+		"IKE Authmode ",
+		"<psk/hybrid>",
+		"Authentication mode:\n"
+		" * psk:    pre-shared key (default)\n"
+		" * hybrid: server certificate + xauth\n",
+		config_def_auth_mode
 	}, {
 		CONFIG_CA_FILE, 1, 1,
 		"--ca-file",
-		"CA-File",
+		"CA-File ",
 		"<filename>",
 		"filename and path to the CA-PEM-File",
 		NULL
 	}, {
 		CONFIG_CA_DIR, 1, 1,
 		"--ca-dir",
-		"CA-Dir",
-		NULL,
+		"CA-Dir ",
+		"<directory>",
 		"path of the trusted CA-Directory",
 		config_ca_dir
 	}, {
@@ -772,9 +779,21 @@ void do_config(int argc, char **argv)
 		opt_debug = (config[CONFIG_DEBUG]) ? atoi(config[CONFIG_DEBUG]) : 0;
 		opt_nd = (config[CONFIG_ND]) ? 1 : 0;
 		opt_1des = (config[CONFIG_ENABLE_1DES]) ? 1 : 0;
-		opt_hybrid = (config[CONFIG_HYBRID]) ? 1 : 0;
+
+		if (!strcmp(config[CONFIG_AUTH_MODE], "psk")) {
+			opt_auth_mode = AUTH_MODE_PSK;
+#if 0
+		} else if (!strcmp(config[CONFIG_AUTH_MODE], "cert")) {
+			opt_auth_mode = AUTH_MODE_cert;
+#endif
+		} else if (!strcmp(config[CONFIG_AUTH_MODE], "hybrid")) {
+			opt_auth_mode = AUTH_MODE_HYBRID;
+		} else {
+			printf("%s: unknown authentication mode %s\nknown modes: psk hybrid\n", argv[0], config[CONFIG_AUTH_MODE]);
+			exit(1);
+		}
 #ifndef OPENSSL_GPL_VIOLATION
-		if (opt_hybrid) {
+		if (opt_auth_mode == AUTH_MODE_HYBRID) {
 			printf("%s was built without openssl: Can't do hybrid mode.\n", argv[0]);
 			exit(1);
 		}

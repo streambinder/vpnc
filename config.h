@@ -55,7 +55,7 @@ enum config_enum {
 	CONFIG_NATT_MODE,
 	CONFIG_UDP_ENCAP_PORT,
 	CONFIG_DPD_IDLE,
-	CONFIG_HYBRID,
+	CONFIG_AUTH_MODE,
 	CONFIG_CA_FILE,
 	CONFIG_CA_DIR,
 	LAST_CONFIG
@@ -84,12 +84,20 @@ enum if_mode_enum {
 	IF_MODE_TAP
 };
 
+enum auth_mode_enum {
+	AUTH_MODE_PSK,
+	AUTH_MODE_RSA1,
+	AUTH_MODE_RSA2,
+	AUTH_MODE_CERT,
+	AUTH_MODE_HYBRID
+};
+
 extern const char *config[LAST_CONFIG];
 
 extern enum vendor_enum opt_vendor;
 extern int opt_debug;
 extern int opt_nd;
-extern int opt_1des, opt_no_encryption, opt_hybrid;
+extern int opt_1des, opt_no_encryption, opt_auth_mode;
 extern enum natt_mode_enum opt_natt_mode;
 extern enum if_mode_enum opt_if_mode;
 extern uint16_t opt_udpencapport;
