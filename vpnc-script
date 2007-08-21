@@ -364,7 +364,7 @@ nameserver $i"
 	done
 	if [ -n "$CISCO_DEF_DOMAIN" ]; then
 		NEW_RESOLVCONF="$NEW_RESOLVCONF
-search $CISCO_DEF_DOMAIN"
+domain $CISCO_DEF_DOMAIN"
 	fi
 	echo "$NEW_RESOLVCONF" | /sbin/resolvconf -a $TUNDEV
 }
