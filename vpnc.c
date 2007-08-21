@@ -226,8 +226,10 @@ static int recv_ignore_dup(struct sa_block *s, void *recvbuf, size_t recvbufsize
 	int recvsize, hash_len;
 
 	recvsize = recv(s->ike_fd, recvbuf, recvbufsize, 0);
-	if (recvsize == -1)
+	if (recvsize < 0)
 		error(1, errno, "receiving packet");
+	if ((unsigned int)recvsize > recvbufsize)
+		error(1, errno, "received packet too large for buffer");
 	
 	/* skip NAT-T draft-0 keepalives */
 	if ((s->ipsec.natt_active_mode == NATT_ACTIVE_DRAFT_OLD) &&
@@ -1345,7 +1347,8 @@ static void do_phase1(const char *key_id, const char *shared_key, struct sa_bloc
 			case ISAKMP_PAYLOAD_NAT_D_OLD:
 			case ISAKMP_PAYLOAD_NAT_D:
 				natd_type = rp->type;
-				DEBUG(2, printf("peer is using type %d for NAT-Discovery payloads\n", natd_type));
+				DEBUG(2, printf("peer is using type %d%s for NAT-Discovery payloads\n",
+					natd_type, val_to_string(natd_type, isakmp_payload_enum_array)));
 				if (!seen_sa /*|| !seen_natt_vid*/) {
 					reject = ISAKMP_N_INVALID_PAYLOAD_TYPE;
 				} else if (opt_natt_mode == NATT_NONE) {
@@ -1401,7 +1404,7 @@ static void do_phase1(const char *key_id, const char *shared_key, struct sa_bloc
 			hash_expected = 1;
 		if (reject == 0 && hash_expected && (hash == NULL || hash->u.hash.length != s->ike.md_len))
 			reject = ISAKMP_N_INVALID_HASH_INFORMATION;
-                if (reject == 0 && sig_expected && sig == NULL)
+		if (reject == 0 && sig_expected && sig == NULL)
 			reject = ISAKMP_N_INVALID_SIGNATURE;
 		if (reject != 0)
 			error(1, 0, "response was invalid [3]: %s(%d)", val_to_string(reject, isakmp_notify_enum_array), reject);
@@ -1643,7 +1646,7 @@ static void do_phase1(const char *key_id, const char *shared_key, struct sa_bloc
 			gcry_md_setkey(hm, skeyid, s->ike.md_len);
 			gcry_md_write(hm, shared_key, strlen(shared_key));
 			gcry_md_final(hm);
-                        psk_hash = xallocc(s->ike.md_len);
+			psk_hash = xallocc(s->ike.md_len);
 			memcpy(psk_hash, gcry_md_read(hm, 0), s->ike.md_len);
 			gcry_md_close(hm);
 			hex_dump("psk_hash", psk_hash, s->ike.md_len, NULL);
