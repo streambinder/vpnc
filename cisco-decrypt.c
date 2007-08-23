@@ -39,6 +39,10 @@ int main(int argc, char *argv[])
 			argv[0]);
 		exit(1);
 	}
+	/* Hack for use in pcf2vpnc */
+	if (*argv[1] == 'q') {
+		exit(1);
+	}
 	
 	for (i = 1; i < argc; i++) {
 		ret = hex2bin(argv[i], &bin, &len);

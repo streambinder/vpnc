@@ -25,6 +25,12 @@ use strict;
 use warnings;
 
 my %authmode = ( 1 => 'psk', 5 => 'hybrid' );
+my $no_decrypt = 0;
+if (system("cisco-decrypt", "q") == -1) {
+    $no_decrypt = 1;
+    print STDERR "cisco-decrypt not in search path,\n";
+    print STDERR "  adding passwords in obfuscated form\n";
+}
 
 sub readPCF($) {
     my ($file) = @_;
@@ -42,8 +48,11 @@ sub readPCF($) {
 	    } elsif ($1 eq "GroupPwd") {
 		$config{IPSec}{secret} = $2;
 	    } elsif ($1 eq "enc_GroupPwd") {
-		# $config{IPSec}{obfuscated} = "secret $2";
-		$config{IPSec}{secret} = `cisco-decrypt $2`;
+		if ($no_decrypt) {
+		    $config{IPSec}{obfuscated} = "secret $2";
+		} else {
+		    $config{IPSec}{secret} = `cisco-decrypt $2`;
+		}
 	    } elsif ($1 eq "AuthType") {
 		$config{IKE}{Authmode} = $authmode{$2};
 	    } elsif ($1 eq "DHGroup") {
@@ -53,8 +62,11 @@ sub readPCF($) {
 	    } elsif ($1 eq "UserPassword") {
 		$config{Xauth}{password} = $2;
 	    } elsif ($1 eq "enc_UserPassword") {
-		# $config{Xauth}{obfuscated} = "password $2";
-		$config{Xauth}{password} = `cisco-decrypt $2`;
+		if ($no_decrypt) {
+		    $config{Xauth}{obfuscated} = "password $2";
+		} else {
+		    $config{Xauth}{password} = `cisco-decrypt $2`;
+		}
 	    } elsif ($1 eq "NTDomain") {
 		$config{Domain}{""} = $2;
 	    }
