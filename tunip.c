@@ -354,18 +354,14 @@ static void encap_esp_encapsulate(struct sa_block *s)
 	gcry_create_nonce(iv, s->ipsec.iv_len);
 	hex_dump("iv", iv, s->ipsec.iv_len, NULL);
 
-#if 1
 	hex_dump("sending ESP packet (before crypt)", s->ipsec.tx.buf, s->ipsec.tx.buflen, NULL);
-#endif
 
 	if (s->ipsec.cry_algo) {
 		gcry_cipher_setiv(s->ipsec.tx.cry_ctx, iv, s->ipsec.iv_len);
 		gcry_cipher_encrypt(s->ipsec.tx.cry_ctx, cleartext, cleartextlen, NULL, 0);
 	}
 
-#if 1
 	hex_dump("sending ESP packet (after crypt)", s->ipsec.tx.buf, s->ipsec.tx.buflen, NULL);
-#endif
 
 	/* Handle optional authentication field */
 	if (s->ipsec.md_algo) {
@@ -376,9 +372,7 @@ static void encap_esp_encapsulate(struct sa_block *s)
 			+ s->ipsec.tx.var_header_size + cleartextlen,
 			1, s->ipsec.tx.key_md, s->ipsec.md_len);
 		s->ipsec.tx.buflen += 12; /*gcry_md_get_algo_dlen(md_algo); see RFC .. only use 96 bit */
-#if 1
 		hex_dump("sending ESP packet (after ah)", s->ipsec.tx.buf, s->ipsec.tx.buflen, NULL);
-#endif
 	}
 }
 
@@ -560,9 +554,8 @@ static int encap_esp_recv_peer(struct sa_block *s)
 		syslog(LOG_ALERT, "Inconsistent next_header %d", next_header);
 		return -1;
 	}
-#if 0
-	printf("pad len: %d, next_header: %d\n", padlen, next_header);
-#endif
+	DEBUG(3, printf("pad len: %d, next_header: %d\n", padlen, next_header));
+
 	len -= padlen + 2;
 	s->ipsec.rx.buflen -= padlen + 2;
 

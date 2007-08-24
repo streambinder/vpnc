@@ -691,7 +691,7 @@ static struct isakmp_payload *parse_isakmp_payload(uint8_t type,
 		r->u.id.protocol = fetch1();
 		hex_dump("id.protocol", &r->u.id.protocol, DUMP_UINT8, NULL); /* IP protocol nr */
 		r->u.id.port = fetch2();
-		hex_dump("id.port", &r->u.id.port, sizeof(r->u.id.port), NULL);
+		hex_dump("id.port", &r->u.id.port, DUMP_UINT16, NULL);
 		r->u.id.length = length - 8;
 		r->u.id.data = xallocc(r->u.id.length);
 		fetchn(r->u.id.data, r->u.id.length);

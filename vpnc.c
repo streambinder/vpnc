@@ -1529,7 +1529,7 @@ static void do_phase1(const char *key_id, const char *shared_key, struct sa_bloc
 					printf("x509 error\n");
 					exit (1);
 				}
-				printf("%08lx\n",X509_subject_name_hash(x509));
+				DEBUG(3, printf("Subject name hash: %08lx\n",X509_subject_name_hash(x509)));
 	
 				/* BEGIN - verify certificate chain */
 				/* create the cert store */
