@@ -24,7 +24,7 @@ use IO::File;
 use strict;
 use warnings;
 
-my %authmode = ( 1 => 'psk', 5 => 'hybrid' );
+my %authmode = ( 1 => 'psk', 3 => 'cert', 5 => 'hybrid' );
 my $no_decrypt = 0;
 if (system("cisco-decrypt", "q") == -1) {
     $no_decrypt = 1;
