@@ -30,9 +30,7 @@
 # 3) In the split tunnel case, all routes but the default route might get replaced
 #   without getting restored later. We should explicitely check and save them just
 #   like the defaultroute
-# 4) If we use IPROUTE, the we could replace the del+add by replace: It works even
-#   if the route didn't previously exist.
-# 5) Replies to a dhcp-server should never be sent into the tunnel
+# 4) Replies to a dhcp-server should never be sent into the tunnel
 
 # Section B: Split DNS handling
 
@@ -127,8 +125,7 @@ if [ -n "$IPROUTE" ]; then
 	
 	set_default_route() {
 		$IPROUTE route | grep '^default' | fix_ip_get_output > "$DEFAULT_ROUTE_FILE"
-		$IPROUTE route $route_syntax_del default
-		$IPROUTE route add default dev "$TUNDEV"
+		$IPROUTE route replace default dev "$TUNDEV"
 		$IPROUTE route flush cache
 	}
 	
@@ -136,15 +133,13 @@ if [ -n "$IPROUTE" ]; then
 		NETWORK="$1"
 		NETMASK="$2"
 		NETMASKLEN="$3"
-		del_network_route "$NETWORK" "$NETMASK" "$NETMASKLEN"
-		$IPROUTE route add "$NETWORK/$NETMASKLEN" dev "$TUNDEV"
+		$IPROUTE route replace "$NETWORK/$NETMASKLEN" dev "$TUNDEV"
 		$IPROUTE route flush cache
 	}
 	
 	reset_default_route() {
 		if [ -s "$DEFAULT_ROUTE_FILE" ]; then
-			$IPROUTE route $route_syntax_del default > /dev/null 2>&1
-			$IPROUTE route add `cat "$DEFAULT_ROUTE_FILE"`
+			$IPROUTE route replace `cat "$DEFAULT_ROUTE_FILE"`
 			$IPROUTE route flush cache
 			rm -f -- "$DEFAULT_ROUTE_FILE"
 		fi
@@ -157,7 +152,7 @@ if [ -n "$IPROUTE" ]; then
 		$IPROUTE route $route_syntax_del "$NETWORK/$NETMASKLEN" dev "$TUNDEV" 
 		$IPROUTE route flush cache
 	}
-else
+else # use route command
 	get_default_gw() {
 		# isn't -n supposed to give --numeric output?
 		# apperently not...
