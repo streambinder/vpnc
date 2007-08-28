@@ -24,15 +24,32 @@ TODO list
 
 * add support for pcap and dump decrypted traffic
 
-* research:
+* research/bugs:
   - usernames containing "@" unable to login
   - ipsec over tcp
   - nortel support?
   - segfault if > 100 routes/acls (to large paket? read size?)
+    (probably "fixed" by increasing the size in r_packet in vpnc.c,
+    but why did it crash?)
   - amd64 somehow broken? maybe gcc bugs??
+  - some debug prints get the endianess wrong
+  - In case the psk in hybrid isn't correct, the server sends annother AM_2
+    packet - to port 500 of course, even if we are using nat-t and talked on
+    4500 already. We currently don't handle that.
 
 * optional drop root (rekey? reconnect? vpnc-script calls?)
+  - Don't drop privileges, ever, but allow to be run suid.
+  - If euid != ruid, clear out env on program start.
+  - Sanitize variables for vpnc-script (snarf code from
+    callscript.c from dhcpclient).
+  - If euid != ruid, disable command line options (but not the profile
+    parameter).
+  - If euid != ruid, treat profiles as filenames only. They must not
+    be paths, i.e. contain PATHSEP. Read them relative to /etc/vpnc.
+  - Make sure vpnc-disconnect only kills processes owned by same user.
+
 * implement certificate support
+* implement dsa certificates in hybrid mode
 * Adapt lifetime (when given as time) to certificate lifetime etc
   (rfc2401, 4.4.3)
 * implement main mode for phase 1 (needed to *use* certificates in
