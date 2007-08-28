@@ -457,7 +457,12 @@ static const struct config_names_s {
 		"--debug",
 		"Debug ",
 		"<0/1/2/3/99>",
-		"Show verbose debug messages",
+		"Show verbose debug messages\n"
+		" *  0: Do not print debug information.\n"
+		" *  1: Print minimal debug information.\n"
+		" *  2: Show statemachine and packet/payload type information\n"
+		" *  3: Dump everything exluding authentication data.\n"
+		" * 99: Dump everything including authentication data (e.g. passwords).\n",
 		NULL
 	}, {
 		CONFIG_ND, 0, 1,
