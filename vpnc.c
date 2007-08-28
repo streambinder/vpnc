@@ -1526,25 +1526,21 @@ static void do_phase1(const char *key_id, const char *shared_key, struct sa_bloc
 				x509 = d2i_X509(NULL, (const unsigned char **)&last_cert->u.cert.data, last_cert->u.cert.length);
 				if (x509 == NULL) {
 					ERR_print_errors_fp (stderr);
-					printf("x509 error\n");
-					exit (1);
+					error(1, 0, "x509 error\n");
 				}
 				DEBUG(3, printf("Subject name hash: %08lx\n",X509_subject_name_hash(x509)));
 	
 				/* BEGIN - verify certificate chain */
 				/* create the cert store */
 				if (!(store = X509_STORE_new())) {
-					printf("Error creating X509_STORE object\n");
-					exit (1);
+					error(1, 0, "Error creating X509_STORE object\n");
 				}
 				/* load the CA certificates */
 				if (X509_STORE_load_locations (store, config[CONFIG_CA_FILE], config[CONFIG_CA_DIR]) != 1) {
-					printf("Error loading the CA file or directory\n");
-					exit (1);
+					error(1, 0, "Error loading the CA file or directory\n");
 				}
 				if (X509_STORE_set_default_paths (store) != 1) {
-					printf("Error loading the system-wide CA certificates\n");
-					exit (1);
+					error(1, 0, "Error loading the system-wide CA certificates\n");
 				}
 
 #if 0
@@ -1553,20 +1549,17 @@ static void do_phase1(const char *key_id, const char *shared_key, struct sa_bloc
 #define CRL_FILE "root-ca-crl.crl.pem"
 
 				if (!(lookup = X509_STORE_add_lookup(store, X509_LOOKUP_file()))) {
-					printf("Error creating X509 lookup object.\n");
-					exit(1);
+					error(1, 0, "Error creating X509 lookup object.\n");
 				}
 				if (X509_load_crl_file(lookup, CRL_FILE, X509_FILETYPE_PEM) != 1) {
 					ERR_print_errors_fp(stderr);
-					printf("Error reading CRL file\n");
-					exit(1);
+					error(1, 0, "Error reading CRL file\n");
 				}
 				X509_STORE_set_flags(store, X509_V_FLAG_CRL_CHECK | X509_V_FLAG_CRL_CHECK_ALL);
 #endif /* 0 */
 				/* create a verification context and initialize it */
 				if (!(verify_ctx = X509_STORE_CTX_new ())) {
-					printf("Error creating X509_STORE_CTX object\n");
-					exit(1);
+					error(1, 0, "Error creating X509_STORE_CTX object\n");
 				}
 				/* X509_STORE_CTX_init did not return an error condition
 				in prior versions */
@@ -1576,8 +1569,7 @@ static void do_phase1(const char *key_id, const char *shared_key, struct sa_bloc
 				/* verify the certificate */
 				if (X509_verify_cert(verify_ctx) != 1) {
 					ERR_print_errors_fp(stderr);
-					printf("Error verifying the certificate-chain\n");
-					exit(1);
+					error(2, 0, "Error verifying the certificate-chain\n");
 				} else
 					DEBUG(3, printf("Certificate-chain verified correctly!\n"));
 	
@@ -1604,14 +1596,14 @@ static void do_phase1(const char *key_id, const char *shared_key, struct sa_bloc
 					hex_dump("    decr_hash", rec_hash, decr_size, NULL);
 					hex_dump("expected hash", expected_hash, s->ike.md_len, NULL);
 				
-					error(1, 0, "The hash-value, which was decrypted from the received signature, and the expected hash-value differ in size.\n");
+					error(2, 0, "The hash-value, which was decrypted from the received signature, and the expected hash-value differ in size.\n");
 				} else {
 					if (memcmp(rec_hash, expected_hash, decr_size) != 0) {
 						printf("Decrypted-Size: %d\n",decr_size);
 						hex_dump("    decr_hash", rec_hash, decr_size, NULL);
 						hex_dump("expected hash", expected_hash, s->ike.md_len, NULL);
 	
-						error(1, 0, "The hash-value, which was decrypted from the received signature, and the expected hash-value differ.\n");
+						error(2, 0, "The hash-value, which was decrypted from the received signature, and the expected hash-value differ.\n");
 					} else {
 						DEBUG(3, printf("Signature MATCH!!\n"));
 					}
