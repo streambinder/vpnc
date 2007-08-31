@@ -156,7 +156,8 @@ else # use route command
 	get_default_gw() {
 		# isn't -n supposed to give --numeric output?
 		# apperently not...
-		netstat -r -n | sed 's/default/0.0.0.0/' | grep '^0.0.0.0' | awk '{print $2}'
+		# Get rid of lines containing IPv6 addresses (':')
+		netstat -r -n | sed 's/default/0.0.0.0/' | sed 's/^.*:.*$//' | grep '^0.0.0.0' | awk '{print $2}'
 	}
 	
 	set_vpngateway_route() {
