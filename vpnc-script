@@ -335,7 +335,7 @@ restore_resolvconf_generic() {
 # Suse provides a script that modifies resolv.conf. Use it because it will
 # restart/reload all other services that care about it (e.g. lwresd).
 
-function modify_resolvconf_suse()
+modify_resolvconf_suse()
 {
 	RESOLV_OPTS=''
 	test -n "$INTERNAL_IP4_DNS" && RESOLV_OPTS="-n \"$INTERNAL_IP4_DNS\""
@@ -344,7 +344,7 @@ function modify_resolvconf_suse()
 }
 
 # Restore resolv.conf to old contents on Suse
-function restore_resolvconf_suse()
+restore_resolvconf_suse()
 {
 	/sbin/modify_resolvconf restore -s vpnc -p $SCRIPTNAME -f $FULL_SCRIPTNAME -e $TUNDEV
 }
