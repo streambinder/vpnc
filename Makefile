@@ -44,7 +44,7 @@ RELEASE_VERSION := $(shell cat VERSION)
 # Comment this in to obtain a binary with certificate support which is
 # GPL incompliant though.
 #OPENSSL_GPL_VIOLATION = -DOPENSSL_GPL_VIOLATION
-#OPENSSLLIBS = -lssl
+#OPENSSLLIBS = -lcrypto
 
 CC=gcc
 CFLAGS ?= -O3 -g
