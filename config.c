@@ -205,11 +205,6 @@ static void config_deobfuscate(int obfuscated, int clear)
 	return;
 }
 
-static const char *config_def_description(void)
-{
-	return "default value for this option";
-}
-
 static const char *config_def_ike_dh(void)
 {
 	return "dh2";
@@ -300,13 +295,6 @@ static const struct config_names_s {
 	 * fix the parser to care about ' ' or '\t' after the wanted
 	 * option... */
 	{
-		CONFIG_NONE, 0, 0,
-		"commandline option,",
-		"configfile variable, ",
-		"argument type",
-		"description",
-		config_def_description
-	}, {
 		CONFIG_IPSEC_GATEWAY, 1, 0,
 		"--gateway",
 		"IPSec gateway ",
@@ -594,8 +582,6 @@ static void read_config_file(const char *name, const char **configs, int missing
 			line[--llen] = 0;
 		linenum++;
 		for (i = 0; config_names[i].name != NULL; i++) {
-			if (config_names[i].nm == CONFIG_NONE)
-				continue;
 			if (strncasecmp(config_names[i].name, line,
 					strlen(config_names[i].name)) == 0) {
 				/* boolean implementation, using harmless pointer targets as true */
@@ -638,13 +624,13 @@ static void print_usage(char *argv0, int print_level)
 
 	printf("Usage: %s [--version] [--print-config] [--help] [--long-help] [options] [config files]\n\n",
 		argv0);
-	printf("Legend:\n");
+	printf("Options:\n");
 	for (c = 0; config_names[c].name != NULL; c++) {
 		if (config_names[c].long_only > print_level)
 			continue;
 
 		printf("  %s %s\n"
-			"  %s%s\n",
+			"  conf-var: %s%s\n",
 			(config_names[c].option == NULL ? "(configfile only option)" :
 				config_names[c].option),
 			((config_names[c].type == NULL || config_names[c].option == NULL) ?
@@ -722,7 +708,6 @@ void do_config(int argc, char **argv)
 
 		for (c = 0; config_names[c].name != NULL && !known; c++) {
 			if (config_names[c].option == NULL
-				|| config_names[c].nm == CONFIG_NONE
 				|| strncmp(argv[i], config_names[c].option,
 					strlen(config_names[c].option)) != 0)
 				continue;
@@ -777,7 +762,7 @@ void do_config(int argc, char **argv)
 	
 	if (!print_config) {
 		for (i = 0; config_names[i].name != NULL; i++)
-			if (!config[config_names[i].nm] && i != CONFIG_NONE
+			if (!config[config_names[i].nm]
 				&& config_names[i].get_def != NULL)
 				config[config_names[i].nm] = config_names[i].get_def();
 		

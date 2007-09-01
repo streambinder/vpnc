@@ -27,7 +27,6 @@
 #include "vpnc-debug.h"
 
 enum config_enum {
-	CONFIG_NONE,
 	CONFIG_SCRIPT,
 	CONFIG_DEBUG,
 	CONFIG_DOMAIN,
