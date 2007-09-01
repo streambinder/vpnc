@@ -34,12 +34,15 @@ BINSRCS = $(addsuffix .c,$(BINS))
 VERSION := $(shell sh mk-version)
 RELEASE_VERSION := $(shell cat VERSION)
 
-# The license of openssl is incompatible with the openssl license. Openssl
-# is currently used to provide certificate support for vpnc (hybrid only).
+# The license of vpnc (Gpl >= 2) is quite likely incompatible with the
+# openssl license. Openssl is currently used to provide certificate
+# support for vpnc (hybrid only).
 # While it is OK for users to build their own binaries linking in openssl
-# with vpnc, giving the compiled binaries to others isn't.
+# with vpnc and even providing dynamically linked binaries it is probably
+# not OK to provide the binaries inside a distribution.
 # See http://www.gnome.org/~markmc/openssl-and-the-gpl.html for further
 # details.
+# Some distributions like Suse end Fedora seem to think otherwise.
 
 # Comment this in to obtain a binary with certificate support which is
 # GPL incompliant though.
