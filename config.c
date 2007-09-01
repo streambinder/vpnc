@@ -367,7 +367,7 @@ static const struct config_names_s {
 		"--xauth-inter",
 		"Xauth interactive",
 		NULL,
-		"enable interactive extended authentication (for challange response auth)",
+		"enable interactive extended authentication (for challenge response auth)",
 		NULL
 	}, {
 		CONFIG_VENDOR, 1, 1,
@@ -398,8 +398,8 @@ static const struct config_names_s {
 		"command is executed using system() to configure the interface,\n"
 		"routing and so on. Device name, IP, etc. are passed using enviroment\n"
 		"variables, see README. This script is executed right after ISAKMP is\n"
-		"done, but befor tunneling is enabled. It is called when vpnc\n"
-		"terminates too\n",
+		"done, but before tunneling is enabled. It is called when vpnc\n"
+		"terminates, too\n",
 		config_def_script
 	}, {
 		CONFIG_IKE_DH, 1, 1,
@@ -598,7 +598,7 @@ static void read_config_file(const char *name, const char **configs, int missing
 				continue;
 			if (strncasecmp(config_names[i].name, line,
 					strlen(config_names[i].name)) == 0) {
-				/* boolean implementation, using harmles pointer targets as true */
+				/* boolean implementation, using harmless pointer targets as true */
 				if (!config_names[i].needsArgument) {
 					configs[config_names[i].nm] = config_names[i].name;
 					break;
