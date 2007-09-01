@@ -629,18 +629,18 @@ static void print_usage(char *argv0, int print_level)
 		if (config_names[c].long_only > print_level)
 			continue;
 
-		printf("  %s %s\n"
-			"  conf-var: %s%s\n",
-			(config_names[c].option == NULL ? "(configfile only option)" :
-				config_names[c].option),
+		printf("  %s %s\n", (config_names[c].option == NULL ?
+				"(configfile only option)" : config_names[c].option),
 			((config_names[c].type == NULL || config_names[c].option == NULL) ?
-				"" : config_names[c].type),
-			config_names[c].name,
-			(config_names[c].type == NULL ? "" : config_names[c].type));
+				"" : config_names[c].type));
+
 		print_desc("      ", config_names[c].desc);
 
 		if (config_names[c].get_def != NULL)
 			printf("    Default: %s\n", config_names[c].get_def());
+
+		printf("  conf-variable: %s%s\n", config_names[c].name,
+			(config_names[c].type == NULL ? "" : config_names[c].type));
 
 		printf("\n");
 	}
