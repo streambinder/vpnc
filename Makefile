@@ -42,7 +42,7 @@ RELEASE_VERSION := $(shell cat VERSION)
 # not OK to provide the binaries inside a distribution.
 # See http://www.gnome.org/~markmc/openssl-and-the-gpl.html for further
 # details.
-# Some distributions like Suse end Fedora seem to think otherwise.
+# Some distributions like Suse and Fedora seem to think otherwise.
 
 # Comment this in to obtain a binary with certificate support which is
 # GPL incompliant though.
