@@ -2353,7 +2353,7 @@ static void setup_link(struct sa_block *s)
 		rp->next->next->next = us;
 	}
 
-	gcry_create_nonce((uint8_t *) & msgid, sizeof(&msgid));
+	gcry_create_nonce((uint8_t *) & msgid, sizeof(msgid));
 	if (msgid == 0)
 		msgid = 1;
 
