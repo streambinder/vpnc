@@ -114,21 +114,21 @@ the config filename (with or without .conf) is specified on the command line.
 
 
 .SH EXAMPLES
-This is an example kevpnc.conf with pre-shared keys:
+This is an example vpnc.conf with pre-shared keys:
 
 .RS
 .PD 0
-IPSec gateway vpn.rwth\-aachen.de
+IPSec gateway vpn.example.com
 .P
-IPSec ID MoPS
+IPSec ID ExampleVpnPSK
 .P
 IKE Authmode psk
 .P
-IPSec secret mopsWLAN
+IPSec secret PskS3cret!
 .P
-Xauth username abcdef
+Xauth username user@example.com
 .P
-Xauth password 123456
+Xauth password USecr3t
 .PD
 .RE
 
@@ -136,9 +136,9 @@ And another one with hybrid authentication:
 
 .RS
 .PD 0
-IPSec gateway vpn.rwth\-aachen.de
+IPSec gateway vpn.example.com
 .P
-IPSec ID HybMoPS
+IPSec ID ExampleVpnHybrid
 .P
 IKE Authmode hybrid
 .P
@@ -146,9 +146,9 @@ CA-Dir /etc/vpnc
 .P
 CA-File rwth-cert.pem
 .P
-IPSec secret mopsHybridWLAN
+IPSec secret HybS3cret?
 .P
-Xauth username abcdef
+Xauth username user@example.com
 .P
 Xauth password 123456
 .PD
