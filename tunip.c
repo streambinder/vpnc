@@ -907,15 +907,19 @@ static void vpnc_main_loop(struct sa_block *s)
 		if (timed_mode) {
 			time_t now = time(NULL);
 			time_t next_up = now + 86400;
-			if (enable_keepalives && s->ike_fd != s->esp_fd) {
-				if (now >= next_ike_keepalive) {
-					/* send nat ike keepalive packet now */
-					next_ike_keepalive = now + 9;
-					keepalive_ike(s);
-					select_timeout = normal_timeout;
+			if (enable_keepalives) {
+				/* never wait more than 9 seconds for a UDP keepalive */
+				next_up = now + 9;
+				if (s->ike_fd != s->esp_fd) {
+					if (now >= next_ike_keepalive) {
+						/* send nat ike keepalive packet now */
+						next_ike_keepalive = now + 9;
+						keepalive_ike(s);
+						select_timeout = normal_timeout;
+					}
+					if (next_ike_keepalive < next_up)
+						next_up = next_ike_keepalive;
 				}
-				if (next_ike_keepalive < next_up)
-					next_up = next_ike_keepalive;
 			}
 			if (s->ike.do_dpd) {
 				if (s->ike.dpd_seqno != s->ike.dpd_seqno_ack) {
