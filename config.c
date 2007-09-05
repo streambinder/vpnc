@@ -512,6 +512,7 @@ static const struct config_names_s {
 		"<psk/hybrid>",
 		"Authentication mode:\n"
 		" * psk:    pre-shared key (default)\n"
+		" * cert:   server + client certificate(not implemented yet)\n"
 		" * hybrid: server certificate + xauth\n",
 		config_def_auth_mode
 	}, {
@@ -772,19 +773,18 @@ void do_config(int argc, char **argv)
 
 		if (!strcmp(config[CONFIG_AUTH_MODE], "psk")) {
 			opt_auth_mode = AUTH_MODE_PSK;
-#if 0
 		} else if (!strcmp(config[CONFIG_AUTH_MODE], "cert")) {
-			opt_auth_mode = AUTH_MODE_cert;
-#endif
+			opt_auth_mode = AUTH_MODE_CERT;
 		} else if (!strcmp(config[CONFIG_AUTH_MODE], "hybrid")) {
 			opt_auth_mode = AUTH_MODE_HYBRID;
 		} else {
-			printf("%s: unknown authentication mode %s\nknown modes: psk hybrid\n", argv[0], config[CONFIG_AUTH_MODE]);
+			printf("%s: unknown authentication mode %s\nknown modes: psk cert hybrid\n", argv[0], config[CONFIG_AUTH_MODE]);
 			exit(1);
 		}
 #ifndef OPENSSL_GPL_VIOLATION
-		if (opt_auth_mode == AUTH_MODE_HYBRID) {
-			printf("%s was built without openssl: Can't do hybrid mode.\n", argv[0]);
+		if (opt_auth_mode == AUTH_MODE_HYBRID ||
+			opt_auth_mode == AUTH_MODE_CERT) {
+			printf("%s was built without openssl: Can't do hybrid or cert mode.\n", argv[0]);
 			exit(1);
 		}
 #endif

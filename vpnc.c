@@ -928,14 +928,21 @@ static struct isakmp_payload *make_our_sa_ike(void)
 	r->u.sa.proposals = new_isakmp_payload(ISAKMP_PAYLOAD_P);
 	r->u.sa.proposals->u.p.prot_id = ISAKMP_IPSEC_PROTO_ISAKMP;
 	for (auth = 0; supp_auth[auth].name != NULL; auth++) {
-		if ((opt_auth_mode == AUTH_MODE_HYBRID) &&
-			(supp_auth[auth].ike_sa_id != IKE_AUTH_HybridInitRSA) &&
-			(supp_auth[auth].ike_sa_id != IKE_AUTH_HybridInitDSS))
-			continue;
-		if ((opt_auth_mode != AUTH_MODE_HYBRID) &&
-			((supp_auth[auth].ike_sa_id == IKE_AUTH_HybridInitRSA) ||
-			 (supp_auth[auth].ike_sa_id == IKE_AUTH_HybridInitDSS)))
-			continue;
+		if (opt_auth_mode == AUTH_MODE_CERT) {
+			if ((supp_auth[auth].ike_sa_id != IKE_AUTH_RSA_SIG) &&
+				(supp_auth[auth].ike_sa_id != IKE_AUTH_DSS))
+				continue;
+		} else if (opt_auth_mode == AUTH_MODE_HYBRID) {
+			if ((supp_auth[auth].ike_sa_id != IKE_AUTH_HybridInitRSA) &&
+				(supp_auth[auth].ike_sa_id != IKE_AUTH_HybridInitDSS)) 
+				continue;
+		} else {
+			if (supp_auth[auth].ike_sa_id == IKE_AUTH_HybridInitRSA ||
+				supp_auth[auth].ike_sa_id == IKE_AUTH_HybridInitDSS ||
+				supp_auth[auth].ike_sa_id == IKE_AUTH_RSA_SIG ||
+				supp_auth[auth].ike_sa_id == IKE_AUTH_DSS)
+				continue;
+		}
 		for (crypt = 0; supp_crypt[crypt].name != NULL; crypt++) {
 			keylen = supp_crypt[crypt].keylen;
 			for (hash = 0; supp_hash[hash].name != NULL; hash++) {
@@ -1021,7 +1028,6 @@ static void do_phase1(const char *key_id, const char *shared_key, struct sa_bloc
 	int seen_natt_vid = 0, seen_natd = 0, seen_natd_them = 0, seen_natd_us = 0, natd_type = 0;
 	unsigned char *natd_us = NULL, *natd_them = NULL;
 	int natt_draft = -1;
-	int hash_expected, sig_expected;
 	unsigned char *dh_shared_secret;
 	
 	DEBUGTOP(2, printf("S4.1 create_nonce\n"));
@@ -1109,13 +1115,13 @@ static void do_phase1(const char *key_id, const char *shared_key, struct sa_bloc
 		struct isakmp_payload *nonce = NULL;
 		struct isakmp_payload *ke = NULL;
 		struct isakmp_payload *hash = NULL;
+		struct isakmp_payload *last_cert = NULL;
 		struct isakmp_payload *sig = NULL;
 		struct isakmp_payload *idp = NULL;
 		int seen_sa = 0, seen_xauth_vid = 0;
 		unsigned char *psk_skeyid;
 		unsigned char *skeyid;
 		gcry_md_hd_t skeyid_ctx;
-		struct isakmp_payload *last_cert = NULL;
 
 #ifdef OPENSSL_GPL_VIOLATION
 		X509 *current_cert;
@@ -1397,14 +1403,11 @@ static void do_phase1(const char *key_id, const char *shared_key, struct sa_bloc
 			reject = ISAKMP_N_INVALID_ID_INFORMATION;
   
 		/* Decide if signature or hash is expected (sig only if vpnc is initiator of hybrid-auth */
-		hash_expected = sig_expected = 0;
-		if (s->ike.auth_algo == IKE_AUTH_HybridInitRSA || s->ike.auth_algo == IKE_AUTH_HybridInitDSS)
-			sig_expected = 1;
-		else
-			hash_expected = 1;
-		if (reject == 0 && hash_expected && (hash == NULL || hash->u.hash.length != s->ike.md_len))
+		if (reject == 0 && opt_auth_mode == AUTH_MODE_PSK && (hash == NULL || hash->u.hash.length != s->ike.md_len))
 			reject = ISAKMP_N_INVALID_HASH_INFORMATION;
-		if (reject == 0 && sig_expected && sig == NULL)
+		if (reject == 0 && sig == NULL &&
+			(opt_auth_mode == AUTH_MODE_CERT ||
+			 opt_auth_mode == AUTH_MODE_HYBRID))
 			reject = ISAKMP_N_INVALID_SIGNATURE;
 		if (reject != 0)
 			error(1, 0, "response was invalid [3]: %s(%d)", val_to_string(reject, isakmp_notify_enum_array), reject);
@@ -1494,14 +1497,14 @@ static void do_phase1(const char *key_id, const char *shared_key, struct sa_bloc
 			expected_hash = gcry_md_read(hm, 0);
 			hex_dump("expected hash", expected_hash, s->ike.md_len, NULL);
 
-			if (hash_expected) {
+			if (opt_auth_mode == AUTH_MODE_PSK) {
 				if (memcmp(expected_hash, hash->u.hash.data, s->ike.md_len) != 0)
 					error(2, 0, "hash comparison failed: %s(%d)\ncheck group password!",
 						val_to_string(ISAKMP_N_AUTHENTICATION_FAILED, isakmp_notify_enum_array),
 						ISAKMP_N_AUTHENTICATION_FAILED);
 				hex_dump("received hash", hash->u.hash.data, hash->u.hash.length, NULL);
-			}
-			if (sig_expected) {
+			} else if (opt_auth_mode == AUTH_MODE_CERT ||
+				opt_auth_mode == AUTH_MODE_HYBRID) {
 #ifdef OPENSSL_GPL_VIOLATION
 				
 				/* BEGIN - check the signature using OpenSSL */
@@ -1753,6 +1756,17 @@ static void do_phase1(const char *key_id, const char *shared_key, struct sa_bloc
 		uint8_t *p2kt;
 		size_t p2kt_len;
 		struct isakmp_payload *pl;
+#if 0 /* cert support */
+#ifdef OPENSSL_GPL_VIOLATION
+		struct isakmp_payload *last_cert = NULL;
+		struct isakmp_payload *sig = NULL;
+
+
+		X509 *current_cert;
+		/* structure to store the certificate chain */
+		STACK_OF(X509) *cert_stack = sk_X509_new_null();
+#endif /* OPENSSL_GPL_VIOLATION */
+#endif /* 0 */
 
 		p2 = new_isakmp_packet();
 		memcpy(p2->i_cookie, s->ike.i_cookie, ISAKMP_COOKIE_LENGTH);
@@ -1760,6 +1774,7 @@ static void do_phase1(const char *key_id, const char *shared_key, struct sa_bloc
 		p2->flags = ISAKMP_FLAG_E;
 		p2->isakmp_version = ISAKMP_VERSION;
 		p2->exchange_type = ISAKMP_EXCHANGE_AGGRESSIVE;
+	/* XXX CERT Add id(?), cert and sig here in case of cert auth */
 		p2->payload = new_isakmp_data_payload(ISAKMP_PAYLOAD_HASH,
 			returned_hash, s->ike.md_len);
 		p2->payload->next = pl = new_isakmp_payload(ISAKMP_PAYLOAD_N);
