@@ -1,14 +1,11 @@
-.TH "VPNC" "8" "13 Mai 2004" "Debian" "vpnc"
 .\"
 .\" $Id$
 .\"
 .SH NAME
 vpnc \- client for Cisco VPN3000 Concentrator, IOS and PIX
 .SH SYNOPSIS
-
-see
-.B vpnc  \-\-long\-help
-
+.B vpnc
+[\fI--version\fR] [\fI--print-config\fR] [\fI--help\fR] [\fI--long-help\fR] [\fIoptions\fR] [\fIconfig files\fR]
 .SH "DESCRIPTION"
 .PP
 This manual page documents briefly the
@@ -43,11 +40,16 @@ and restore the previous routing configuration.
 .SH CONFIGURATION
 The daemon reads configuration data from the following places:
 .PD 0
-.IP "- command line options"
-.IP "- config file(s) specified on the command line"
-.IP "- /etc/vpnc/default.conf"
-.IP "- /etc/vpnc.conf"
-.IP "- prompting the user if not found above"
+.IP \(bu
+command line options
+.IP \(bu
+config file(s) specified on the command line
+.IP \(bu
+/etc/vpnc/default.conf
+.IP \(bu
+/etc/vpnc.conf
+.IP \(bu
+prompting the user if not found above
 
 .PP
 
@@ -75,16 +77,15 @@ and
 will be loaded.
 
 .SH OPTIONS
-The program options can be either given as argument (but not all of them
+The program options can be either given as arguments (but not all of them
 for security reasons) or be stored in a configuration file.
+.PD 0
+.\" ###makeman.pl: Insert options from help-output here!
 
-
-.IP "\-\-print\-config"
- Prints your configuration; output can be used as vpnc.conf
-
-See output of
-.B vpnc \-\-long\-help
-for a complete description
+.HP 
+\fB\-\-print\-config\fR
+.IP
+Prints your configuration; output can be used as vpnc.conf
 
 .SH FILES
 .I /etc/vpnc.conf
@@ -143,9 +144,15 @@ IPSec ID ExampleVpnHybrid
 .P
 IKE Authmode hybrid
 .P
+
+.P
 CA-Dir /etc/vpnc
 .P
-CA-File rwth-cert.pem
+\fBor\fR
+.P
+CA-File /etc/vpnc/vpn-example-com.pem
+.P
+
 .P
 IPSec secret HybS3cret?
 .P
@@ -160,6 +167,13 @@ The values start exactly one space after the keywords, and run to the end of
 line. This lets you put any kind of weird character (except CR, LF and NUL) in
 your strings, but it does mean you can't add comments after a string, or spaces
 before them.
+
+In case the the \fBCA-Dir\fR option is used, your certificate needs to be
+named something like 722d15bd.X, where X is a manually assigned number to
+make sure that files with colliding hashes have different names. The number
+can be derived from the certificate file itself:
+.P
+openssl x509 -subject_hash -noout -in /etc/vpnc/vpn-example-com.pem
 
 See also the
 .B \-\-print\-config

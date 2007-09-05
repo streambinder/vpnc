@@ -65,10 +65,13 @@ ifneq (,$(findstring Apple,$(shell $(CC) --version)))
 CFLAGS += -fstrict-aliasing -freorder-blocks -fsched-interblock
 endif
 
-all : $(BINS)
+all : $(BINS) vpnc.8
 
 vpnc : $(OBJS) vpnc.o
 	$(CC) -o $@ $^ $(LDFLAGS)
+
+vpnc.8 : vpnc.8.template makeman.pl vpnc
+	./makeman.pl
 
 cisco-decrypt : cisco-decrypt.o config.o supp.o sysdep.o vpnc-debug.o
 	$(CC) -o $@ $^ $(LDFLAGS)
@@ -96,13 +99,13 @@ vpnc-%.tar.gz :
 	tar zcf ../$@ vpnc-$*
 	rm -rf vpnc-$*
 
-dist : VERSION vpnc-$(RELEASE_VERSION).tar.gz
+dist : VERSION vpnc.8 vpnc-$(RELEASE_VERSION).tar.gz
 
 clean :
 	-rm -f $(OBJS) $(BINOBJS) $(BINS) tags
 
 distclean : clean
-	-rm -f vpnc-debug.c vpnc-debug.h vpnc.ps .depend
+	-rm -f vpnc-debug.c vpnc-debug.h vpnc.ps vpnc.8 .depend
 
 install-common: all
 	install -d $(DESTDIR)$(ETCDIR) $(DESTDIR)$(BINDIR) $(DESTDIR)$(SBINDIR) $(DESTDIR)$(MANDIR)/man1 $(DESTDIR)$(MANDIR)/man8
