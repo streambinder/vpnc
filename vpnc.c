@@ -615,7 +615,7 @@ static void send_dpd(struct sa_block *s, int isack, uint32_t seqno)
 	pl->u.n.data = xallocc(4);
 	memcpy(pl->u.n.data, &seqno, 4);
 	gcry_create_nonce((uint8_t *) & msgid, sizeof(msgid));
-	/* 2007-09-06 JKU/ZID: sonicwall drops non hashed ack-requests */
+	/* 2007-09-06 JKU/ZID: Sonicwall drops non hashed r_u_there-requests */
 	sendrecv_phase2(s, pl, ISAKMP_EXCHANGE_INFORMATIONAL, msgid,
 		1 , NULL, NULL, NULL, 0, NULL, 0);
 }
