@@ -2666,6 +2666,23 @@ static void setup_link(struct sa_block *s)
 		struct isakmp_payload *d_isakmp, *d_ipsec;
 		uint8_t del_msgid;
 
+		/* 2007-08-31 JKU/ZID: Sonicwall doesn't like the chained
+		 * request but wants them split. Cisco does fine with it */
+		gcry_create_nonce((uint8_t *) & del_msgid, sizeof(del_msgid));
+		d_ipsec = new_isakmp_payload(ISAKMP_PAYLOAD_D);
+		d_ipsec->u.d.doi = ISAKMP_DOI_IPSEC;
+		d_ipsec->u.d.protocol = ISAKMP_IPSEC_PROTO_IPSEC_ESP;
+		d_ipsec->u.d.spi_length = 4;
+		d_ipsec->u.d.num_spi = 2;
+		d_ipsec->u.d.spi = xallocc(2 * sizeof(uint8_t *));
+		d_ipsec->u.d.spi[0] = xallocc(d_ipsec->u.d.spi_length);
+		memcpy(d_ipsec->u.d.spi[0], &s->ipsec.rx.spi, 4);
+		d_ipsec->u.d.spi[1] = xallocc(d_ipsec->u.d.spi_length);
+		memcpy(d_ipsec->u.d.spi[1], &s->ipsec.tx.spi, 4);
+		sendrecv_phase2(s, d_ipsec, ISAKMP_EXCHANGE_INFORMATIONAL,
+			del_msgid, 1, NULL, NULL,
+			NULL, 0, NULL, 0);
+
 		gcry_create_nonce((uint8_t *) & del_msgid, sizeof(del_msgid));
 		d_isakmp = new_isakmp_payload(ISAKMP_PAYLOAD_D);
 		d_isakmp->u.d.doi = ISAKMP_DOI_IPSEC;
@@ -2678,18 +2695,7 @@ static void setup_link(struct sa_block *s)
 			ISAKMP_COOKIE_LENGTH);
 		memcpy(d_isakmp->u.d.spi[0] + ISAKMP_COOKIE_LENGTH * 1, s->ike.r_cookie,
 			ISAKMP_COOKIE_LENGTH);
-		d_ipsec = new_isakmp_payload(ISAKMP_PAYLOAD_D);
-		d_ipsec->next = d_isakmp;
-		d_ipsec->u.d.doi = ISAKMP_DOI_IPSEC;
-		d_ipsec->u.d.protocol = ISAKMP_IPSEC_PROTO_IPSEC_ESP;
-		d_ipsec->u.d.spi_length = 4;
-		d_ipsec->u.d.num_spi = 2;
-		d_ipsec->u.d.spi = xallocc(2 * sizeof(uint8_t *));
-		d_ipsec->u.d.spi[0] = xallocc(d_ipsec->u.d.spi_length);
-		memcpy(d_ipsec->u.d.spi[0], &s->ipsec.rx.spi, 4);
-		d_ipsec->u.d.spi[1] = xallocc(d_ipsec->u.d.spi_length);
-		memcpy(d_ipsec->u.d.spi[1], &s->ipsec.tx.spi, 4);
-		sendrecv_phase2(s, d_ipsec, ISAKMP_EXCHANGE_INFORMATIONAL,
+		sendrecv_phase2(s, d_isakmp, ISAKMP_EXCHANGE_INFORMATIONAL,
 			del_msgid, 1, NULL, NULL,
 			NULL, 0, NULL, 0);
 	}
