@@ -1,6 +1,9 @@
+.\" Template to generate the vpnc-manpage
+.\" $Id:$
 .\"
-.\" $Id$
-.\"
+.TH VPNC "8" "Warning: Just a template!" "vpnc man-template" "Warning: Just a template!"
+.\" Fake header just to make this file viewable with man.
+.\" ###makeman.pl: Replace header here!
 .SH NAME
 vpnc \- client for Cisco VPN3000 Concentrator, IOS and PIX
 .SH SYNOPSIS
@@ -209,4 +212,3 @@ License can be found in /usr/share/common\-licenses/GPL.
 .BR ifconfig (8),
 .BR route (1),
 .BR http://www.unix\-ag.uni\-kl.de/~massar/vpnc/
-
