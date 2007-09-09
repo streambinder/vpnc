@@ -422,7 +422,7 @@ static const struct config_names_s {
 		"--application-version",
 		"Application version ",
 		"<ASCII string>",
-		"Application Version to report",
+		"Application Version to report. Note: Default string is generated at runtime.",
 		config_def_app_version
 	}, {
 		CONFIG_IF_NAME, 1, 1,
@@ -448,7 +448,7 @@ static const struct config_names_s {
 		"Show verbose debug messages\n"
 		" *  0: Do not print debug information.\n"
 		" *  1: Print minimal debug information.\n"
-		" *  2: Show statemachine and packet/payload type information\n"
+		" *  2: Show statemachine and packet/payload type information.\n"
 		" *  3: Dump everything exluding authentication data.\n"
 		" * 99: Dump everything including authentication data (e.g. passwords).\n",
 		NULL
@@ -485,10 +485,10 @@ static const struct config_names_s {
 		"--udp-port",
 		"Cisco UDP Encapsulation Port ",
 		"<0-65535>",
-		"Local UDP port number to use (0 == use random port)\n"
+		"Local UDP port number to use (0 == use random port).\n"
 		"This is only relevant if cisco-udp nat-traversal is used.\n"
 		"This is the _local_ port, the remote udp port is discovered automatically.\n"
-		"It is especially not the cisco-tcp port\n",
+		"It is especially not the cisco-tcp port.\n",
 		config_def_udp_port
 	}, {
 		CONFIG_DPD_IDLE, 1, 1,
@@ -509,11 +509,11 @@ static const struct config_names_s {
  		CONFIG_AUTH_MODE, 1, 1,
 		"--auth-mode",
 		"IKE Authmode ",
-		"<psk/hybrid>",
+		"<psk/cert/hybrid>",
 		"Authentication mode:\n"
 		" * psk:    pre-shared key (default)\n"
-		" * cert:   server + client certificate(not implemented yet)\n"
-		" * hybrid: server certificate + xauth\n",
+		" * cert:   server + client certificate (not implemented yet)\n"
+		" * hybrid: server certificate + xauth (if built with openssl support)\n",
 		config_def_auth_mode
 	}, {
 		CONFIG_CA_FILE, 1, 1,
