@@ -50,7 +50,8 @@ enum isakmp_payload_enum {
 	ISAKMP_PAYLOAD_POP,		/* RFC 3547 */
 	ISAKMP_PAYLOAD_NAT_D,		/* RFC 3947 */
 	ISAKMP_PAYLOAD_NAT_OA,		/* RFC 3947 */
-	ISAKMP_PAYLOAD_NAT_D_OLD = 0x82
+	ISAKMP_PAYLOAD_NAT_D_OLD = 0x82,
+	ISAKMP_PAYLOAD_FRAG = 0x84
 };
 
 /* Exchange types.  */

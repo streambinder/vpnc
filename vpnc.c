@@ -62,14 +62,14 @@
 #define ISAKMP_PORT (500)
 #define ISAKMP_PORT_NATT (4500)
 
-const unsigned char VID_XAUTH[] = { /* draft-ietf-ipsec-isakmp-xauth-06.txt */
+const unsigned char VID_XAUTH[] = { /* "draft-ietf-ipsra-isakmp-xauth-06.txt"/8 */
 	0x09, 0x00, 0x26, 0x89, 0xDF, 0xD6, 0xB7, 0x12
 };
 const unsigned char VID_DPD[] = { /* Dead Peer Detection, RFC 3706 */
 	0xAF, 0xCA, 0xD7, 0x13, 0x68, 0xA1, 0xF1, 0xC9,
 	0x6B, 0x86, 0x96, 0xFC, 0x77, 0x57, 0x01, 0x00
 };
-const unsigned char VID_UNITY[] = {
+const unsigned char VID_UNITY[] = { /* "CISCO-UNITY"/14 + major + minor */
 	0x12, 0xF5, 0xF2, 0x8C, 0x45, 0x71, 0x68, 0xA9,
 	0x70, 0x2D, 0x9F, 0xE2, 0x74, 0xCC, 0x01, 0x00
 };
@@ -77,30 +77,76 @@ const unsigned char VID_UNKNOWN[] = {
 	0x12, 0x6E, 0x1F, 0x57, 0x72, 0x91, 0x15, 0x3B,
 	0x20, 0x48, 0x5F, 0x7F, 0x15, 0x5B, 0x4B, 0xC8
 };
-const unsigned char VID_NATT_00[] = { /* draft-ietf-ipsec-nat-t-ike-00 */
+const unsigned char VID_NATT_00[] = { /* "draft-ietf-ipsec-nat-t-ike-00" */
 	0x44, 0x85, 0x15, 0x2d, 0x18, 0xb6, 0xbb, 0xcd,
 	0x0b, 0xe8, 0xa8, 0x46, 0x95, 0x79, 0xdd, 0xcc
 };
-const unsigned char VID_NATT_01[] = { /* draft-ietf-ipsec-nat-t-ike-01 */
+const unsigned char VID_NATT_01[] = { /* "draft-ietf-ipsec-nat-t-ike-01" */
 	0x16, 0xf6, 0xca, 0x16, 0xe4, 0xa4, 0x06, 0x6d,
 	0x83, 0x82, 0x1a, 0x0f, 0x0a, 0xea, 0xa8, 0x62
 };
-const unsigned char VID_NATT_02[] = { /* draft-ietf-ipsec-nat-t-ike-02 */
+const unsigned char VID_NATT_02[] = { /* "draft-ietf-ipsec-nat-t-ike-02" */
 	0xcd, 0x60, 0x46, 0x43, 0x35, 0xdf, 0x21, 0xf8,
 	0x7c, 0xfd, 0xb2, 0xfc, 0x68, 0xb6, 0xa4, 0x48
 };
-const unsigned char VID_NATT_02N[] = { /* draft-ietf-ipsec-nat-t-ike-02\n */
+const unsigned char VID_NATT_02N[] = { /* "draft-ietf-ipsec-nat-t-ike-02\n" */
 	0x90, 0xCB, 0x80, 0x91, 0x3E, 0xBB, 0x69, 0x6E,
 	0x08, 0x63, 0x81, 0xB5, 0xEC, 0x42, 0x7B, 0x1F
 };
-const unsigned char VID_NATT_RFC[] = { /* RFC 3947 */
+const unsigned char VID_NATT_RFC[] = { /* "RFC 3947" */
 	0x4A, 0x13, 0x1C, 0x81, 0x07, 0x03, 0x58, 0x45,
 	0x5C, 0x57, 0x28, 0xF2, 0x0E, 0x95, 0x45, 0x2F
 };
 
+const unsigned char VID_CISCO_FRAG[] = { /* "FRAGMENTATION" */
+	0x40, 0x48, 0xB7, 0xD5, 0x6E, 0xBC, 0xE8, 0x85,
+	0x25, 0xE7, 0xDE, 0x7F, 0x00, 0xD6, 0xC2, 0xD3,
+	0x80, 0x00, 0x00, 0x00
+};
+
+struct vid_element {
+	const unsigned char* valueptr;
+	const uint16_t length;
+	const char* descr;
+};
+
+const struct vid_element vid_list[] = {
+	{ VID_XAUTH,		sizeof(VID_XAUTH),	"Xauth" },	
+	{ VID_DPD,		sizeof(VID_DPD),	"DPD" },	
+	{ VID_UNITY,		sizeof(VID_UNITY),	"Cisco Unity" },	
+	{ VID_NATT_00,		sizeof(VID_NATT_00),	"Nat-T 00" },	
+	{ VID_NATT_01,		sizeof(VID_NATT_01),	"Nat-T 01" },	
+	{ VID_NATT_02,		sizeof(VID_NATT_02),	"Nat-T 02" },	
+	{ VID_NATT_02N,		sizeof(VID_NATT_02N),	"Nat-T 02N" },	
+	{ VID_NATT_RFC,		sizeof(VID_NATT_RFC),	"Nat-T RFC" },	
+	{ VID_CISCO_FRAG,	sizeof(VID_CISCO_FRAG),	"Cisco Fragmentation" },
+
+	{ NULL, 0, NULL }
+};
+
+/* What are DWR-Code and DWR-Text ? */
 
 static uint8_t r_packet[8192];
 static ssize_t r_length;
+
+void print_vid(const unsigned char *vid, uint16_t len) {
+	
+	int vid_index = 0;
+
+	if (opt_debug < 3)
+		return;
+
+	while (vid_list[vid_index].length) {
+		/* FIXME: Do the work here */
+		if (len == vid_list[vid_index].length &&
+			memcmp(vid_list[vid_index].valueptr, vid, len) == 0) {
+			printf("   (%s)\n", vid_list[vid_index].descr);
+			return;
+		}
+		vid_index++;
+	}
+	printf("   (unknown)\n");
+}
 
 static __inline__ int min(int a, int b)
 {

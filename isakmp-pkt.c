@@ -28,6 +28,8 @@
 #include "sysdep.h"
 #include "config.h"
 #include "isakmp-pkt.h"
+#include "math_group.h"
+#include "vpnc.h"
 
 void *xallocc(size_t x)
 {
@@ -692,6 +694,8 @@ static struct isakmp_payload *parse_isakmp_payload(uint8_t type,
 		r->u.ke.data = xallocc(r->u.ke.length);
 		fetchn(r->u.ke.data, r->u.ke.length);
 		hex_dump("ke.data", r->u.ke.data, r->u.ke.length, NULL);
+		if (type == ISAKMP_PAYLOAD_VID)
+			print_vid(r->u.ke.data, r->u.ke.length);
 		break;
 	case ISAKMP_PAYLOAD_ID:
 		r->u.id.type = fetch1();
