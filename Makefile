@@ -25,6 +25,7 @@ ETCDIR=/etc/vpnc
 BINDIR=$(PREFIX)/bin
 SBINDIR=$(PREFIX)/sbin
 MANDIR=$(PREFIX)/share/man
+DOCDIR=$(PREFIX)/share/doc/vpnc
 
 SRCS = sysdep.c vpnc-debug.c isakmp-pkt.c tunip.c config.c dh.c math_group.c supp.c decrypt-utils.c
 BINS = vpnc cisco-decrypt
@@ -108,7 +109,7 @@ distclean : clean
 	-rm -f vpnc-debug.c vpnc-debug.h vpnc.ps vpnc.8 .depend
 
 install-common: all
-	install -d $(DESTDIR)$(ETCDIR) $(DESTDIR)$(BINDIR) $(DESTDIR)$(SBINDIR) $(DESTDIR)$(MANDIR)/man1 $(DESTDIR)$(MANDIR)/man8
+	install -d $(DESTDIR)$(ETCDIR) $(DESTDIR)$(BINDIR) $(DESTDIR)$(SBINDIR) $(DESTDIR)$(MANDIR)/man1 $(DESTDIR)$(MANDIR)/man8 $(DESTDIR)$(DOCDIR)
 	if [ "`uname -s | cut -c-6`" = "CYGWIN" ]; then \
 		install vpnc-script-win $(DESTDIR)$(ETCDIR)/vpnc-script; \
 		install vpnc-script-win.js $(DESTDIR)$(ETCDIR); \
@@ -121,6 +122,7 @@ install-common: all
 	install -m644 vpnc.8 $(DESTDIR)$(MANDIR)/man8
 	install -m644 pcf2vpnc.1 $(DESTDIR)$(MANDIR)/man1
 	install -m644 cisco-decrypt.1 $(DESTDIR)$(MANDIR)/man1
+	install -m644 COPYING $(DESTDIR)$(DOCDIR)
 
 install : install-common
 	install -m755 vpnc $(DESTDIR)$(SBINDIR)
