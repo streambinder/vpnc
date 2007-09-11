@@ -104,6 +104,13 @@ const unsigned char VID_CISCO_FRAG[] = { /* "FRAGMENTATION" */
 	0x80, 0x00, 0x00, 0x00
 };
 
+const unsigned char VID_NETSCREEN_15[] = { /* netscreen 15 */
+	0x16, 0x6f, 0x93, 0x2d, 0x55, 0xeb, 0x64, 0xd8,
+	0xe4, 0xdf, 0x4f, 0xd3, 0x7e, 0x23, 0x13, 0xf0,
+	0xd0, 0xfd, 0x84, 0x51, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00
+};
+
 struct vid_element {
 	const unsigned char* valueptr;
 	const uint16_t length;
@@ -120,6 +127,7 @@ const struct vid_element vid_list[] = {
 	{ VID_NATT_02N,		sizeof(VID_NATT_02N),	"Nat-T 02N" },	
 	{ VID_NATT_RFC,		sizeof(VID_NATT_RFC),	"Nat-T RFC" },	
 	{ VID_CISCO_FRAG,	sizeof(VID_CISCO_FRAG),	"Cisco Fragmentation" },
+	{ VID_NETSCREEN_15,	sizeof(VID_NETSCREEN_15),	"Netscreen 15" },
 
 	{ NULL, 0, NULL }
 };
