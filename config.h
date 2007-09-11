@@ -106,7 +106,5 @@ extern uint16_t opt_udpencapport;
 
 extern void hex_dump(const char *str, const void *data, ssize_t len, const struct debug_strings *decode);
 extern void do_config(int argc, char **argv);
-extern int hex2bin(const char *str, char **bin, int *len);
-extern int deobfuscate(char *ct, int len, const char **resp, char *reslenp);
 
 #endif
