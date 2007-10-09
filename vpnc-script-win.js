@@ -43,7 +43,7 @@ case "connect":
 	echo("Interface: \"" + env("TUNDEV") + "\"");
 
         echo("Configuring \"" + env("TUNDEV") + "\" interface...");
-	run("netsh interface ip set address " + env("TUNDEV") + " static " +
+	run("netsh interface ip set address \"" + env("TUNDEV") + "\" static " +
 	    env("INTERNAL_IP4_ADDRESS") + " 255.255.255.0");
 
 	// Add direct route for the VPN gateway to avoid routing loops
@@ -78,7 +78,7 @@ case "connect":
 			var netmasklen = env("CISCO_SPLIT_INC_" + i +
 					 "_MASKLEN");
 			run("route add " + network + " mask " + netmask +
-                	     + " " + env("INTERNAL_IP4_ADDRESS"));
+                	     " " + env("INTERNAL_IP4_ADDRESS"));
 		}
 	} else {
 		echo("Gateway did not provide network configuration.");

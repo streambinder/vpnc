@@ -45,17 +45,6 @@ PATH=/sbin:/usr/sbin:$PATH
 
 OS="`uname -s`"
 
-VPNC_WIN_SCRIPT=/etc/vpnc/vpnc-script-win
-
-case "$OS" in
-	CYGWIN_NT*)
-		# why does "--kernel-name" include "--kernel-release" on cygwin?!
-		exec $VPNC_WIN_SCRIPT
-		;;
-	*)
-		;;
-esac
-
 DEFAULT_ROUTE_FILE=/var/run/vpnc/defaultroute
 RESOLV_CONF_BACKUP=/var/run/vpnc/resolv.conf-backup
 FULL_SCRIPTNAME=/usr/local/sbin/vpnc
