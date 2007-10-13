@@ -2781,7 +2781,7 @@ static int do_rekey(struct sa_block *s, struct isakmp_packet *r)
 		return ISAKMP_N_DOI_NOT_SUPPORTED;
 	if (rp->u.sa.situation != ISAKMP_IPSEC_SIT_IDENTITY_ONLY)
 		return ISAKMP_N_SITUATION_NOT_SUPPORTED;
-	if (rp->u.sa.proposals == NULL || rp->u.sa.proposals->next != NULL) /* rekeying should only have one proposal */
+	if (rp->u.sa.proposals == NULL)
 		return ISAKMP_N_BAD_PROPOSAL_SYNTAX;
 	if (rp->u.sa.proposals->u.p.prot_id != ISAKMP_IPSEC_PROTO_IPSEC_ESP)
 		return ISAKMP_N_INVALID_PROTOCOL_ID;
@@ -2843,10 +2843,14 @@ static int do_rekey(struct sa_block *s, struct isakmp_packet *r)
 	if (!seen_auth || !seen_encap || (dh_grp && !seen_group))
 		return ISAKMP_N_BAD_PROPOSAL_SYNTAX;
 	
-	if (get_algo(SUPP_ALGO_HASH, SUPP_ALGO_IPSEC_SA, seen_auth, NULL, 0) == NULL)
+	/* FIXME: Current code has a limitation that will cause problems if
+	 * different algorithms are negotiated during re-keying
+	 */
+	if ((get_algo(SUPP_ALGO_HASH, SUPP_ALGO_IPSEC_SA, seen_auth, NULL, 0) == NULL) || 
+	    (get_algo(SUPP_ALGO_CRYPT, SUPP_ALGO_IPSEC_SA, seen_enc, NULL, seen_keylen) == NULL)) {
+		printf("\nFIXME: vpnc doesn't support change of algorightms during rekeying\n");
 		return ISAKMP_N_BAD_PROPOSAL_SYNTAX;
-	if (get_algo(SUPP_ALGO_CRYPT, SUPP_ALGO_IPSEC_SA, seen_enc, NULL, seen_keylen) == NULL)
-		return ISAKMP_N_BAD_PROPOSAL_SYNTAX;
+	}
 	
 	/* we don't want to change ciphers during rekeying */
 	if (s->ipsec.cry_algo != get_algo(SUPP_ALGO_CRYPT, SUPP_ALGO_IPSEC_SA, seen_enc,  NULL, seen_keylen)->my_id)
