@@ -66,13 +66,16 @@ ifneq (,$(findstring Apple,$(shell $(CC) --version)))
 CFLAGS += -fstrict-aliasing -freorder-blocks -fsched-interblock
 endif
 
-all : $(BINS) vpnc.8
+all : $(BINS) vpnc.8 vpnc-script
 
 vpnc : $(OBJS) vpnc.o
 	$(CC) -o $@ $^ $(LDFLAGS)
 
 vpnc.8 : vpnc.8.template makeman.pl vpnc
 	./makeman.pl
+
+vpnc-script : vpnc-script.in
+	sed -e 's,@''PREFIX''@,$(PREFIX),g' $< > $@ && chmod 755 $@
 
 cisco-decrypt : cisco-decrypt.o decrypt-utils.o
 	$(CC) -o $@ $^ $(LDFLAGS)
