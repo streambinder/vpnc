@@ -84,7 +84,7 @@ cisco-decrypt : cisco-decrypt.o decrypt-utils.o
 	$(CC) -MM $(SRCS) $(BINSRCS) $(CFLAGS) $(CPPFLAGS) > $@
 
 vpnc-debug.c vpnc-debug.h : isakmp.h enum2debug.pl
-	perl -w ./enum2debug.pl isakmp.h >vpnc-debug.c 2>vpnc-debug.h
+	LANG=C perl -w ./enum2debug.pl isakmp.h >vpnc-debug.c 2>vpnc-debug.h
 
 vpnc.ps : vpnc.c
 	enscript -E -G -T 4 --word-wrap -o- $^ | psnup -2 /dev/stdin $@
@@ -98,7 +98,7 @@ ctags :
 
 vpnc-%.tar.gz :
 	mkdir vpnc-$*
-	svn info -R | awk -v RS='\n\n' -v FS='\n' '/Node Kind: file/ {print substr($$1,7)}' | \
+	LAMG=C svn info -R | awk -v RS='\n\n' -v FS='\n' '/Node Kind: file/ {print substr($$1,7)}' | \
 		tar cT - | tar xC vpnc-$*/
 	tar zcf ../$@ vpnc-$*
 	rm -rf vpnc-$*
