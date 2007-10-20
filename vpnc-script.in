@@ -146,7 +146,7 @@ else # use route command
 		# isn't -n supposed to give --numeric output?
 		# apperently not...
 		# Get rid of lines containing IPv6 addresses (':')
-		netstat -r -n | sed 's/default/0.0.0.0/' | sed 's/^.*:.*$//' | grep '^0.0.0.0' | awk '{print $2}'
+		netstat -r -n | sed -e 's/default/0.0.0.0/' -e 's/^.*:.*$//' | awk '/^0.0.0.0/ {print $2}'
 	}
 	
 	set_vpngateway_route() {

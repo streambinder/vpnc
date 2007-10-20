@@ -145,7 +145,6 @@ void print_vid(const unsigned char *vid, uint16_t len) {
 		return;
 
 	while (vid_list[vid_index].length) {
-		/* FIXME: Do the work here */
 		if (len == vid_list[vid_index].length &&
 			memcmp(vid_list[vid_index].valueptr, vid, len) == 0) {
 			printf("   (%s)\n", vid_list[vid_index].descr);
@@ -2633,6 +2632,7 @@ static void setup_link(struct sa_block *s)
 			}
 			break;
 		case ISAKMP_PAYLOAD_ID:
+			/* FIXME: Parse payload ID and add route-env in case of ipv4_prefix */
 			break;
 		case ISAKMP_PAYLOAD_KE:
 			ke = rp;
@@ -2861,6 +2861,7 @@ static int do_rekey(struct sa_block *s, struct isakmp_packet *r)
 	for (rp = rp->next; rp; rp = rp->next)
 		switch (rp->type) {
 		case ISAKMP_PAYLOAD_ID:
+			/* FIXME: Parse payload ID and add route-env in case of ipv4_prefix */
 			break;
 		case ISAKMP_PAYLOAD_KE:
 			ke = rp;
