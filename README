@@ -145,3 +145,24 @@ the directory has to contain the certificate named like this hash_value.
 A link can also be used like in /etc/ssl/Certs.
 The hash value can be calculated by e.g.
 	openssl x509 -in <ca_certfile.pem> -noout -hash
+
+
+===================================================================
+
+Know problems:
+
+Problem:
+In some environments it may happen that stuff works for a while and then
+stops working.
+
+Reason:
+The dhcp leases are very short intervals and on each renew the dhcp
+client overwrites things like /etc/resolv.conf and maybe the default route.
+
+Solution:
+Fix your dhcpclient. On Debian that problem can be fixed by installing
+and using resolvconf to modify that file instead of modifying it directly.
+
+
+===================================================================
+
