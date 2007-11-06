@@ -460,6 +460,7 @@ static uint16_t unpack_verify_phase2(struct sa_block *s, uint8_t * r_packet,
 	if (r_length < ISAKMP_PAYLOAD_O || ((r_length - ISAKMP_PAYLOAD_O) % s->ike.ivlen != 0)) {
 		DEBUG(2, printf("payload too short or not padded: len=%lld, min=%d (ivlen=%lld)\n",
 			(long long)r_length, ISAKMP_PAYLOAD_O, (long long)s->ike.ivlen));
+		hex_dump("Payload", r_packet, r_length, NULL);
 		return ISAKMP_N_UNEQUAL_PAYLOAD_LENGTHS;
 	}
 
