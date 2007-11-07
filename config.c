@@ -483,9 +483,9 @@ static void read_config_file(const char *name, const char **configs, int missing
 			break;
 		if (llen == -1)
 			error(1, errno, "reading `%s'", realname);
-		if (line[llen - 1] == '\n')
+		if (llen > 0 && line[llen - 1] == '\n')
 			line[--llen] = 0;
-		if (line[llen - 1] == '\r')
+		if (llen > 0 && line[llen - 1] == '\r')
 			line[--llen] = 0;
 		linenum++;
 		for (i = 0; config_names[i].name != NULL; i++) {
