@@ -101,7 +101,17 @@ extern enum natt_mode_enum opt_natt_mode;
 extern enum if_mode_enum opt_if_mode;
 extern uint16_t opt_udpencapport;
 
-#define DEBUGTOP(lvl, a) do {if(opt_debug >= (lvl)){printf("\n");(a);printf("\n");}} while (0)
+#define TIMESTAMP() ({				\
+	char st[20];				\
+	time_t t;				\
+	struct tm *tm;				\
+	t = time(NULL);				\
+	tm = localtime(&t);			\
+	strftime(st, sizeof(st), "%F %T", tm);	\
+	st;					\
+	})
+
+#define DEBUGTOP(lvl, a) do {if(opt_debug >= (lvl)){ printf("\n");(a);printf(" [%s]\n", TIMESTAMP());}} while (0)
 #define DEBUG(lvl, a) do {if (opt_debug >= (lvl)) {if(opt_debug>1)printf("   "); a;}} while (0)
 
 extern void hex_dump(const char *str, const void *data, ssize_t len, const struct debug_strings *decode);
