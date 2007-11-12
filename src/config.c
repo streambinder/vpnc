@@ -349,7 +349,7 @@ static const char *config_def_udp_port(void)
 
 static const char *config_def_dpd_idle(void)
 {
-	return "300";
+	return "600";
 }
 
 static const char *config_ca_dir(void)

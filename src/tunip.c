@@ -955,7 +955,7 @@ static void vpnc_main_loop(struct sa_block *s)
 					time_t now = time(NULL);
 					if (s->ike.dpd_seqno != s->ike.dpd_seqno_ack) {
 						/* Wake up more often for dpd attempts */
-						select_timeout.tv_sec = 5;
+						select_timeout.tv_sec = s->ike.dpd_idle/10;
 						select_timeout.tv_usec = 0;
 						dpd_ike(s);
 						next_ike_dpd = now + s->ike.dpd_idle;
@@ -1029,8 +1029,8 @@ static void vpnc_main_loop(struct sa_block *s)
 				if (s->ike.dpd_seqno != s->ike.dpd_seqno_ack) {
 					dpd_ike(s);
 					next_ike_dpd = now + s->ike.dpd_idle;
-					if (now + 5 < next_up)
-						next_up = now + 5;
+					if (now + s->ike.dpd_idle/10 < next_up)
+						next_up = now + s->ike.dpd_idle/10;
 				}
 				else if (now >= next_ike_dpd) {
 					dpd_ike(s);
