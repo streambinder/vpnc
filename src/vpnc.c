@@ -801,13 +801,13 @@ void dpd_ike(struct sa_block *s)
 		send_dpd(s, 0, s->ike.dpd_seqno);
 	} else {
 		/* Our last dpd request has not yet been acked.  If it's been
-		** less than 5 seconds since we sent it do nothing.  Otherwise
+		** less than 1/10th of idle timeout since we sent it do nothing.  Otherwise
 		** decrement dpd_attempts.  If dpd_attempts is 0 dpd fails and we
 		** terminate otherwise we send it again with the same sequence
 		** number and record current time.
 		*/
 		time_t now = time(NULL);
-		if (now < s->ike.dpd_sent + 5)
+		if (now < s->ike.dpd_sent + s->ike.dpd_idle/10)
 			return;
 		if (--s->ike.dpd_attempts == 0) {
 			DEBUG(2, printf("dead peer detected, terminating\n"));
@@ -815,6 +815,8 @@ void dpd_ike(struct sa_block *s)
 			return;
 		}
 		s->ike.dpd_sent = now;
+		if (s->ike.dpd_attempts == 3)
+		    ++s->ike.dpd_seqno; /* maybe just the dpd reply got lost let's try new seq no */
 		send_dpd(s, 0, s->ike.dpd_seqno);
 	}
 	DEBUG(3, printf("sent DPD packet\n"));
