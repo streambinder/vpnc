@@ -127,9 +127,7 @@ static uint8_t global_buffer_tx[MAX_HEADER + MAX_PACKET + ETH_HLEN];
  * in_cksum --
  *	Checksum routine for Internet Protocol family headers (C Version)
  */
-static u_short in_cksum(addr, len)
-	u_short *addr;
-	int len;
+static u_short in_cksum(u_short *addr, int len)
 {
 	register int nleft = len;
 	register u_short *w = addr;
@@ -290,7 +288,7 @@ static int hmac_compute(int md_algo,
 
 	/* See RFC 2104 */
 	gcry_md_open(&md_ctx, md_algo, GCRY_MD_FLAG_HMAC);
-	assert(md_ctx != 0);
+	assert(md_ctx != NULL);
 	ret = gcry_md_setkey(md_ctx, secret, secret_size);
 	assert(ret == 0);
 	gcry_md_write(md_ctx, data, data_size);
@@ -651,7 +649,7 @@ static int process_non_ip(struct sa_block *s, uint8_t *frame)
 {
 	struct ether_header *eth = (struct ether_header *) frame;
 	
-	s = 0; /* unused */
+	s = NULL; /* unused */
 	
 	if (ntohs(eth->ether_type) != ETHERTYPE_IP) {
 		/* drop non-ip traffic */
