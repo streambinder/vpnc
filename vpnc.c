@@ -2062,9 +2062,14 @@ static int do_phase2_xauth(struct sa_block *s)
 		DEBUGTOP(2, printf("S5.4 xauth type check\n"));
 		a = r->payload->next->u.modecfg.attributes;
 		/* First, print any messages, and verify that we understand the
-		 * conversation.  */
+		 * conversation. This looks for any place were input is
+		 * required - in these cases, we need to print the prompt
+		 * regardless of whether the user requested interactive mode
+		 * or not. */
 		for (ap = a; ap && seen_answer == 0; ap = ap->next)
-			if (ap->type == ISAKMP_XAUTH_ATTRIB_ANSWER)
+			if (ap->type == ISAKMP_XAUTH_ATTRIB_ANSWER
+			    || ap->type == ISAKMP_XAUTH_ATTRIB_NEXT_PIN
+			    || ap->type == ISAKMP_XAUTH_ATTRIB_PASSCODE)
 				seen_answer = 1;
 
 		for (ap = a; ap && reject == 0; ap = ap->next)
@@ -2078,6 +2083,7 @@ static int do_phase2_xauth(struct sa_block *s)
 			case ISAKMP_XAUTH_ATTRIB_PASSCODE:
 			case ISAKMP_XAUTH_ATTRIB_DOMAIN:
 			case ISAKMP_XAUTH_ATTRIB_ANSWER:
+			case ISAKMP_XAUTH_ATTRIB_NEXT_PIN:
 			case ISAKMP_XAUTH_ATTRIB_CISCOEXT_VENDOR:
 				break;
 			case ISAKMP_XAUTH_ATTRIB_MESSAGE:
@@ -2134,6 +2140,7 @@ static int do_phase2_xauth(struct sa_block *s)
 			case ISAKMP_XAUTH_ATTRIB_ANSWER:
 			case ISAKMP_XAUTH_ATTRIB_USER_PASSWORD:
 			case ISAKMP_XAUTH_ATTRIB_PASSCODE:
+			case ISAKMP_XAUTH_ATTRIB_NEXT_PIN:
 				if (passwd_used && config[CONFIG_NON_INTERACTIVE]) {
 					reject = ISAKMP_N_AUTHENTICATION_FAILED;
 					phase2_fatal(s, "noninteractive can't reuse password", reject);
