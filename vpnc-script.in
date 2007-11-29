@@ -84,7 +84,7 @@ fi
 # =========== tunnel interface handling ====================================
 
 do_ifconfig() {
-	ifconfig "$TUNDEV" inet "$INTERNAL_IP4_ADDRESS" $ifconfig_syntax_ptp "$INTERNAL_IP4_ADDRESS" netmask 255.255.255.255 mtu 1412 up
+	ifconfig "$TUNDEV" inet "$INTERNAL_IP4_ADDRESS" $ifconfig_syntax_ptp "$INTERNAL_IP4_ADDRESS" netmask ${INTERNAL_IP4_NETMASK:-255.255.255.255} mtu 1412 up
 }
 
 destroy_tun_device() {
@@ -221,9 +221,15 @@ EOF
 					LINE=""
 				fi
 				;;
-			domain*|search*)
+			search*)
 				if [ -n "$CISCO_DEF_DOMAIN" ]; then
 					LINE="$LINE $CISCO_DEF_DOMAIN"
+					CISCO_DEF_DOMAIN=""
+				fi
+				;;
+			domain*)
+				if [ -n "$CISCO_DEF_DOMAIN" ]; then
+					LINE="domain $CISCO_DEF_DOMAIN"
 					CISCO_DEF_DOMAIN=""
 				fi
 				;;
