@@ -3095,7 +3095,7 @@ int main(int argc, char **argv)
 		if (s->ike.auth_algo >= IKE_AUTH_HybridInitRSA)
 			do_load_balance = do_phase2_xauth(s);
 		DEBUGTOP(2, printf("S6 do_phase2_config\n"));
-		if ((opt_vendor != VENDOR_NETSCREEN) && (do_load_balance == 0))
+		if ((opt_vendor == VENDOR_CISCO) && (do_load_balance == 0))
 			do_load_balance = do_phase2_config(s);
 	} while (do_load_balance);
 	DEBUGTOP(2, printf("S7 setup_link (phase 2 + main_loop)\n"));
