@@ -204,7 +204,7 @@ static int make_socket(struct sa_block *s, uint16_t src_port, uint16_t dst_port)
 	name.sin_addr = s->opt_src_ip;
 	name.sin_port = htons(src_port);
 	if (bind(sock, (struct sockaddr *)&name, sizeof(name)) < 0)
-		error(1, errno, "binding to %s:%d", inet_ntoa(s->opt_src_ip), src_port);
+		error(1, errno, "Error binding to source port. Try '--local-port 0'\nFailed to bind to %s:%d", inet_ntoa(s->opt_src_ip), src_port);
 
 	/* connect the socket */
 	name.sin_family = AF_INET;
@@ -2707,7 +2707,7 @@ static void setup_link(struct sa_block *s)
 			s->esp_fd = socket(PF_INET, SOCK_RAW, IPPROTO_ESP);
 			if (s->esp_fd == -1) {
 				close_tunnel();
-				error(1, errno, "socket(PF_INET, SOCK_RAW, IPPROTO_ESP)");
+				error(1, errno, "Couldn't open socket of ESP. Maybe something registered ESP already.\nPlease try '--natt-mode force-natt' or disable whatever is using ESP.\nsocket(PF_INET, SOCK_RAW, IPPROTO_ESP)");
 			}
 #ifdef IP_HDRINCL
 			if (setsockopt(s->esp_fd, IPPROTO_IP, IP_HDRINCL, &hincl, sizeof(hincl)) == -1) {
