@@ -382,7 +382,7 @@ static void encap_esp_encapsulate(struct sa_block *s)
 static void encap_esp_send_peer(struct sa_block *s, unsigned char *buf, unsigned int bufsize)
 {
 	ssize_t sent;
-	struct ip *tip, *ip;
+	struct ip *tip, ip;
 	struct sockaddr_in dstaddr;
 
 	buf += MAX_HEADER;
@@ -401,29 +401,30 @@ static void encap_esp_send_peer(struct sa_block *s, unsigned char *buf, unsigned
 
 	s->ipsec.tx.bufpayload = sizeof(struct ip);
 
-	ip = (struct ip *)(s->ipsec.tx.buf);
 	/* Fill non-mutable fields */
-	ip->ip_v = IPVERSION;
-	ip->ip_hl = 5;
+	ip.ip_v = IPVERSION;
+	ip.ip_hl = 5;
 	/*gcry_md_get_algo_dlen(md_algo); see RFC .. only use 96 bit */
-	ip->ip_id = htons(s->ipsec.ip_id++);
-	ip->ip_p = IPPROTO_ESP;
-	ip->ip_src = s->src;
-	ip->ip_dst = s->dst;
+	ip.ip_id = htons(s->ipsec.ip_id++);
+	ip.ip_p = IPPROTO_ESP;
+	ip.ip_src = s->src;
+	ip.ip_dst = s->dst;
 
 	/* Fill mutable fields */
-	ip->ip_tos = (bufsize < sizeof(struct ip)) ? 0 : tip->ip_tos;
-	ip->ip_off = 0;
-	ip->ip_ttl = IPDEFTTL;
-	ip->ip_sum = 0;
+	ip.ip_tos = (bufsize < sizeof(struct ip)) ? 0 : tip->ip_tos;
+	ip.ip_off = 0;
+	ip.ip_ttl = IPDEFTTL;
+	ip.ip_sum = 0;
 
 	encap_esp_encapsulate(s);
 
-	ip->ip_len = s->ipsec.tx.buflen;
+	ip.ip_len = s->ipsec.tx.buflen;
 #ifdef NEED_IPLEN_FIX
-	ip->ip_len = htons(ip->ip_len);
+	ip.ip_len = htons(ip->ip_len);
 #endif
-	ip->ip_sum = in_cksum((u_short *) s->ipsec.tx.buf, sizeof(struct ip));
+	ip.ip_sum = in_cksum((u_short *) s->ipsec.tx.buf, sizeof(struct ip));
+
+	memcpy(s->ipsec.tx.buf, &ip, sizeof ip);
 
 	dstaddr.sin_family = AF_INET;
 	dstaddr.sin_addr = s->dst;
