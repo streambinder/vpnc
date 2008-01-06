@@ -29,6 +29,8 @@ function getDefaultGateway()
 // Script starts here
 // --------------------------------------------------------------
 
+var internal_ip4_netmask = "255.255.255.0"
+
 var ws = WScript.CreateObject("WScript.Shell");
 var env = ws.Environment("Process");
 
@@ -42,9 +44,13 @@ case "connect":
   	echo("Internal Netmask: " + env("INTERNAL_IP4_NETMASK"));
 	echo("Interface: \"" + env("TUNDEV") + "\"");
 
-        echo("Configuring \"" + env("TUNDEV") + "\" interface...");
+	if (env("INTERNAL_IP4_NETMASK")) {
+	    internal_ip4_netmask = env("INTERNAL_IP4_NETMASK");
+	}
+
+	echo("Configuring \"" + env("TUNDEV") + "\" interface...");
 	run("netsh interface ip set address \"" + env("TUNDEV") + "\" static " +
-	    env("INTERNAL_IP4_ADDRESS") + " 255.255.255.0");
+	    env("INTERNAL_IP4_ADDRESS") + " " + internal_ip4_netmask);
 
 	// Add direct route for the VPN gateway to avoid routing loops
 	run("route add " + env("VPNGATEWAY") +
