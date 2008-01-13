@@ -98,9 +98,9 @@ ctags :
 
 vpnc-%.tar.gz :
 	mkdir vpnc-$*
-	LC_ALL=C svn info -R | awk -v RS='\n\n' -v FS='\n' '/Node Kind: file/ {print substr($$1,7)}' | \
-		tar cT - | tar xC vpnc-$*/
-	tar zcf ../$@ vpnc-$*
+	LC_ALL=C svn info -R | awk -v RS='' -v FS='\n' '/Node Kind: file/ {print substr($$1,7)}' | \
+		tar -cf - -T - | tar -xf - -C vpnc-$*/
+	tar -czf ../$@ vpnc-$*
 	rm -rf vpnc-$*
 
 dist : VERSION vpnc.8 vpnc-$(RELEASE_VERSION).tar.gz
