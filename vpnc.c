@@ -233,6 +233,28 @@ static void init_sockaddr(struct in_addr *dst, const char *hostname)
 	}
 }
 
+static void init_netaddr(struct in_addr *net, const char *string)
+{
+	char *p;
+
+	if ((p = strchr(string, '/')) != NULL) {
+		char *host = xallocc(p - string + 1);
+		memcpy(host, string, p - string + 1);
+		host[p - string] = '\0';
+		init_sockaddr((struct in_addr *)net, host);
+		free(host);
+		if (strchr(p + 1, '.') != NULL)
+			init_sockaddr(net + 1, p + 1);
+		else {
+			int bits = atoi(p + 1);
+			unsigned long mask = (1 << bits) - 1;
+			memcpy((char *)(net + 1), (char *)&mask, 4);
+		}
+	} else {
+		memset((char *)net, 0, 8);
+	}
+}
+
 static void setup_tunnel(struct sa_block *s)
 {
 	setenv("reason", "pre-init", 1);
@@ -2419,7 +2441,8 @@ static void setup_link(struct sa_block *s)
 	them->u.id.type = ISAKMP_IPSEC_ID_IPV4_ADDR_SUBNET;
 	them->u.id.length = 8;
 	them->u.id.data = xallocc(8);
-	memset(them->u.id.data, 0, 8);
+	init_netaddr((struct in_addr *)them->u.id.data,
+		     config[CONFIG_IPSEC_TARGET_NETWORK]);
 	us->next = them;
 	s->ipsec.life.start = time(NULL);
 

@@ -186,6 +186,11 @@ static const char *config_def_vendor(void)
 	return "cisco";
 }
 
+static const char *config_def_target_network(void)
+{
+	return "0.0.0.0/0.0.0.0";
+}
+
 static const struct config_names_s {
 	enum config_enum nm;
 	const int needsArgument;
@@ -435,6 +440,13 @@ static const struct config_names_s {
 		"<directory>",
 		"path of the trusted CA-Directory",
 		config_ca_dir
+	}, {
+		CONFIG_IPSEC_TARGET_NETWORK, 1, 1,
+		"--target-network",
+		"IPSEC target network ",
+		"<target network/netmask>",
+		"Target network in dotted decimal or CIDR notation\n",
+		config_def_target_network
 	}, {
 		0, 0, 0, NULL, NULL, NULL, NULL, NULL
 	}
