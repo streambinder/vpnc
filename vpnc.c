@@ -349,7 +349,7 @@ static ssize_t sendrecv(struct sa_block *s, void *recvbuf, size_t recvbufsize, v
 	if ((s->ipsec.natt_active_mode == NATT_ACTIVE_RFC) && (tosend != NULL)) {
 		DEBUG(2, printf("NAT-T mode, adding non-esp marker\n"));
 		realtosend = xallocc(sendsize+4);
-		memcpy((char*)realtosend+4, tosend, sendsize);
+		memmove((char*)realtosend+4, tosend, sendsize);
 		sendsize += 4;
 	} else {
 		realtosend = tosend;
