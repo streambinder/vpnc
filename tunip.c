@@ -420,7 +420,7 @@ static void encap_esp_send_peer(struct sa_block *s, unsigned char *buf, unsigned
 
 	ip.ip_len = s->ipsec.tx.buflen;
 #ifdef NEED_IPLEN_FIX
-	ip.ip_len = htons(ip->ip_len);
+	ip.ip_len = htons(ip.ip_len);
 #endif
 	ip.ip_sum = in_cksum((u_short *) s->ipsec.tx.buf, sizeof(struct ip));
 
