@@ -51,7 +51,7 @@ FULL_SCRIPTNAME=@PREFIX@/sbin/vpnc
 SCRIPTNAME=`basename $FULL_SCRIPTNAME`
 
 # some systems, eg. Darwin & FreeBSD, prune /var/run on boot
-if ! [ -d "/var/run/vpnc" ]; then
+if [ ! -d "/var/run/vpnc" ]; then
 	mkdir -p /var/run/vpnc
 fi
 
