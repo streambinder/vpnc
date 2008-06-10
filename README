@@ -167,7 +167,7 @@ The default is
 
 As the trusted certificate is referenced by the hash of the subject name, 
 the directory has to contain the certificate named like this hash_value. 
-A link can also be used like in /etc/ssl/Certs.
+A link can also be used like in /etc/ssl/certs/.
 The hash value can be calculated by e.g.
 	openssl x509 -in <ca_certfile.pem> -noout -hash
 
