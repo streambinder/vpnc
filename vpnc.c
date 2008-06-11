@@ -111,6 +111,12 @@ const unsigned char VID_NETSCREEN_15[] = { /* netscreen 15 */
 	0x00, 0x00, 0x00, 0x00
 };
 
+const unsigned char VID_HEARTBEAT_NOTIFY[] = { /*Heartbeat Notify*/
+	0x48, 0x65, 0x61, 0x72, 0x74, 0x42, 0x65, 0x61,
+	0x74, 0x5f, 0x4e, 0x6f, 0x74, 0x69, 0x66, 0x79,
+	0x38, 0x6b, 0x01, 0x00
+};
+
 struct vid_element {
 	const unsigned char* valueptr;
 	const uint16_t length;
@@ -128,6 +134,7 @@ const struct vid_element vid_list[] = {
 	{ VID_NATT_RFC,		sizeof(VID_NATT_RFC),	"Nat-T RFC" },	
 	{ VID_CISCO_FRAG,	sizeof(VID_CISCO_FRAG),	"Cisco Fragmentation" },
 	{ VID_NETSCREEN_15,	sizeof(VID_NETSCREEN_15),	"Netscreen 15" },
+	{ VID_HEARTBEAT_NOTIFY,	sizeof(VID_HEARTBEAT_NOTIFY),	"Heartbeat Notify" },
 
 	{ NULL, 0, NULL }
 };
@@ -141,7 +148,7 @@ void print_vid(const unsigned char *vid, uint16_t len) {
 	
 	int vid_index = 0;
 
-	if (opt_debug < 3)
+	if (opt_debug < 2)
 		return;
 
 	while (vid_list[vid_index].length) {
@@ -305,11 +312,17 @@ static int recv_ignore_dup(struct sa_block *s, void *recvbuf, size_t recvbufsize
 		error(1, errno, "receiving packet");
 	if ((unsigned int)recvsize > recvbufsize)
 		error(1, errno, "received packet too large for buffer");
-	
-	/* skip NAT-T draft-0 keepalives */
-	if ((s->ipsec.natt_active_mode == NATT_ACTIVE_DRAFT_OLD) &&
-		(recvsize == 1) && (*((u_char *)(recvbuf)) == 0xff))
+
+	/* skip (not only) NAT-T draft-0 keepalives */
+	if ( /* (s->ipsec.natt_active_mode == NATT_ACTIVE_DRAFT_OLD) && */
+	    (recvsize == 1) && (*((u_char *)(recvbuf)) == 0xff))
+	{
+		if ((s->ipsec.natt_active_mode != NATT_ACTIVE_DRAFT_OLD))
+		{
+			DEBUG(2, printf("Received UDP NAT-Keepalive bug nat active mode incorrect: %d\n", s->ipsec.natt_active_mode));
+		}
 		return -1;
+	}
 	
 	hash_len = gcry_md_get_algo_dlen(GCRY_MD_SHA1);
 	resend_check_hash = malloc(hash_len);
@@ -1430,6 +1443,14 @@ static void do_phase1(const char *key_id, const char *shared_key, struct sa_bloc
 					} else {
 						DEBUG(2, printf("ignoring that peer is DPD capable (RFC3706)\n"));
 					}
+				} else if (rp->u.vid.length == sizeof(VID_NETSCREEN_15)
+					&& memcmp(rp->u.vid.data, VID_NETSCREEN_15,
+						sizeof(VID_NETSCREEN_15)) == 0) {
+					DEBUG(2, printf("peer is using ScreenOS 5.3, 5.4 or 6.0\n"));
+				} else if (rp->u.vid.length == sizeof(VID_HEARTBEAT_NOTIFY)
+					&& memcmp(rp->u.vid.data, VID_HEARTBEAT_NOTIFY,
+						sizeof(VID_HEARTBEAT_NOTIFY)) == 0) {
+					DEBUG(2, printf("peer sent Heartbeat Notify payload\n"));
 				} else {
 					hex_dump("unknown ISAKMP_PAYLOAD_VID",
 						rp->u.vid.data, rp->u.vid.length, NULL);
