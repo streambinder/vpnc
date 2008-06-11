@@ -479,11 +479,18 @@ static uint16_t unpack_verify_phase2(struct sa_block *s, uint8_t * r_packet,
 	
 	*r_p = NULL;
 
-	if (r_length < ISAKMP_PAYLOAD_O || ((r_length - ISAKMP_PAYLOAD_O) % s->ike.ivlen != 0)) {
+	/* Some users report "payload ... not padded..." errors. It seems that they
+	 * are harmless, so ignore and fix that condition
+	 */
+	if (r_length < ISAKMP_PAYLOAD_O ||
+	    ((r_length - ISAKMP_PAYLOAD_O) % s->ike.ivlen != 0)) {
 		DEBUG(2, printf("payload too short or not padded: len=%lld, min=%d (ivlen=%lld)\n",
 			(long long)r_length, ISAKMP_PAYLOAD_O, (long long)s->ike.ivlen));
 		hex_dump("Payload", r_packet, r_length, NULL);
-		return ISAKMP_N_UNEQUAL_PAYLOAD_LENGTHS;
+		if (r_length < ISAKMP_PAYLOAD_O ) {
+			return ISAKMP_N_UNEQUAL_PAYLOAD_LENGTHS;
+		}
+		r_length -= (r_length - ISAKMP_PAYLOAD_O) % s->ike.ivlen;
 	}
 
 	reject = isakmp_crypt(s, r_packet, r_length, 0);
