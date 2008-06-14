@@ -1,5 +1,5 @@
 .\" Template to generate the vpnc-manpage
-.\" $Id:$
+.\" $Id$
 .\"
 .TH VPNC "8" "Warning: Just a template!" "vpnc man-template" "Warning: Just a template!"
 .\" Fake header just to make this file viewable with man.

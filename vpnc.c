@@ -2118,26 +2118,26 @@ static int do_phase2_xauth(struct sa_block *s)
 		 * regardless of whether the user requested interactive mode
 		 * or not. */
 		for (ap = a; ap && seen_answer == 0; ap = ap->next)
-			if (ap->type == ISAKMP_XAUTH_ATTRIB_ANSWER
-			    || ap->type == ISAKMP_XAUTH_ATTRIB_NEXT_PIN
-			    || ap->type == ISAKMP_XAUTH_ATTRIB_PASSCODE)
+			if (ap->type == ISAKMP_XAUTH_06_ATTRIB_ANSWER
+			    || ap->type == ISAKMP_XAUTH_06_ATTRIB_NEXT_PIN
+			    || ap->type == ISAKMP_XAUTH_06_ATTRIB_PASSCODE)
 				seen_answer = 1;
 
 		for (ap = a; ap && reject == 0; ap = ap->next)
 			switch (ap->type) {
-			case ISAKMP_XAUTH_ATTRIB_TYPE:
+			case ISAKMP_XAUTH_06_ATTRIB_TYPE:
 				if (ap->af != isakmp_attr_16 || ap->u.attr_16 != 0)
 					reject = ISAKMP_N_ATTRIBUTES_NOT_SUPPORTED;
 				break;
-			case ISAKMP_XAUTH_ATTRIB_USER_NAME:
-			case ISAKMP_XAUTH_ATTRIB_USER_PASSWORD:
-			case ISAKMP_XAUTH_ATTRIB_PASSCODE:
-			case ISAKMP_XAUTH_ATTRIB_DOMAIN:
-			case ISAKMP_XAUTH_ATTRIB_ANSWER:
-			case ISAKMP_XAUTH_ATTRIB_NEXT_PIN:
-			case ISAKMP_XAUTH_ATTRIB_CISCOEXT_VENDOR:
+			case ISAKMP_XAUTH_06_ATTRIB_USER_NAME:
+			case ISAKMP_XAUTH_06_ATTRIB_USER_PASSWORD:
+			case ISAKMP_XAUTH_06_ATTRIB_PASSCODE:
+			case ISAKMP_XAUTH_06_ATTRIB_DOMAIN:
+			case ISAKMP_XAUTH_06_ATTRIB_ANSWER:
+			case ISAKMP_XAUTH_06_ATTRIB_NEXT_PIN:
+			case ISAKMP_XAUTH_06_ATTRIB_CISCOEXT_VENDOR:
 				break;
-			case ISAKMP_XAUTH_ATTRIB_MESSAGE:
+			case ISAKMP_XAUTH_06_ATTRIB_MESSAGE:
 				if (opt_debug || seen_answer || config[CONFIG_XAUTH_INTERACTIVE]) {
 					if (ap->af == isakmp_attr_16)
 						printf("%c%c\n", ap->u.attr_16 >> 8, ap->u.attr_16);
@@ -2163,7 +2163,7 @@ static int do_phase2_xauth(struct sa_block *s)
 		reply_attr = NULL;
 		for (ap = a; ap && reject == 0; ap = ap->next)
 			switch (ap->type) {
-			case ISAKMP_XAUTH_ATTRIB_DOMAIN:
+			case ISAKMP_XAUTH_06_ATTRIB_DOMAIN:
 				{
 					struct isakmp_attribute *na;
 					na = new_isakmp_attribute(ap->type, reply_attr);
@@ -2177,7 +2177,7 @@ static int do_phase2_xauth(struct sa_block *s)
 						na->u.lots.length);
 					break;
 				}
-			case ISAKMP_XAUTH_ATTRIB_USER_NAME:
+			case ISAKMP_XAUTH_06_ATTRIB_USER_NAME:
 				{
 					struct isakmp_attribute *na;
 					na = new_isakmp_attribute(ap->type, reply_attr);
@@ -2188,10 +2188,10 @@ static int do_phase2_xauth(struct sa_block *s)
 						na->u.lots.length);
 					break;
 				}
-			case ISAKMP_XAUTH_ATTRIB_ANSWER:
-			case ISAKMP_XAUTH_ATTRIB_USER_PASSWORD:
-			case ISAKMP_XAUTH_ATTRIB_PASSCODE:
-			case ISAKMP_XAUTH_ATTRIB_NEXT_PIN:
+			case ISAKMP_XAUTH_06_ATTRIB_ANSWER:
+			case ISAKMP_XAUTH_06_ATTRIB_USER_PASSWORD:
+			case ISAKMP_XAUTH_06_ATTRIB_PASSCODE:
+			case ISAKMP_XAUTH_06_ATTRIB_NEXT_PIN:
 				if (passwd_used && config[CONFIG_NON_INTERACTIVE]) {
 					reject = ISAKMP_N_AUTHENTICATION_FAILED;
 					phase2_fatal(s, "noninteractive can't reuse password", reject);
@@ -2201,9 +2201,9 @@ static int do_phase2_xauth(struct sa_block *s)
 					struct isakmp_attribute *na;
 
 					asprintf(&prompt, "%s for VPN %s@%s: ",
-						(ap->type == ISAKMP_XAUTH_ATTRIB_ANSWER) ?
+						(ap->type == ISAKMP_XAUTH_06_ATTRIB_ANSWER) ?
 						"Answer" :
-						(ap->type == ISAKMP_XAUTH_ATTRIB_USER_PASSWORD) ?
+						(ap->type == ISAKMP_XAUTH_06_ATTRIB_USER_PASSWORD) ?
 						"Password" : "Passcode",
 						config[CONFIG_XAUTH_USERNAME], ntop_buf);
 					pass = getpass(prompt);
@@ -2269,7 +2269,7 @@ static int do_phase2_xauth(struct sa_block *s)
 		uint16_t set_result = 1;
 
 		if (a == NULL
-			|| a->type != ISAKMP_XAUTH_ATTRIB_STATUS
+			|| a->type != ISAKMP_XAUTH_06_ATTRIB_STATUS
 			|| a->af != isakmp_attr_16 || a->next != NULL) {
 			reject = ISAKMP_N_INVALID_PAYLOAD_TYPE;
 			phase2_fatal(s, "xauth SET response rejected: %s(%d)", reject);

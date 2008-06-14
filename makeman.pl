@@ -1,6 +1,6 @@
 #! /usr/bin/perl -w
 
-# $Id:$
+# $Id$
 
 # Written by Wolfram Sang (wolfram@the-dreams.de) in 2007,
 # some inspiration from help2man by Brendan O'Dea and from Perl::Critic

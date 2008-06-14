@@ -493,9 +493,9 @@ static struct isakmp_attribute *parse_isakmp_attributes(const uint8_t ** data_p,
 		hex_dump("t.attributes.type", &r->type, DUMP_UINT16, attr_type_to_debug_strings(decode_proto));
 		r->af = isakmp_attr_16;
 		r->u.attr_16 = length;
-		if ((ISAKMP_XAUTH_ATTRIB_TYPE <= r->type)
-			&& (r->type <= ISAKMP_XAUTH_ATTRIB_ANSWER)
-			&& (r->type != ISAKMP_XAUTH_ATTRIB_STATUS)
+		if ((ISAKMP_XAUTH_06_ATTRIB_TYPE <= r->type)
+			&& (r->type <= ISAKMP_XAUTH_06_ATTRIB_ANSWER)
+			&& (r->type != ISAKMP_XAUTH_06_ATTRIB_STATUS)
 			&& (length > 0)
 			&& (opt_debug < 99))
 			DEBUG(3, printf("(not dumping xauth data)\n"));
@@ -507,9 +507,9 @@ static struct isakmp_attribute *parse_isakmp_attributes(const uint8_t ** data_p,
 		hex_dump("t.attributes.type", &r->type, DUMP_UINT16, attr_type_to_debug_strings(decode_proto));
 		r->af = isakmp_attr_lots;
 		r->u.lots.length = length;
-		if ((ISAKMP_XAUTH_ATTRIB_TYPE <= r->type)
-			&& (r->type <= ISAKMP_XAUTH_ATTRIB_ANSWER)
-			&& (r->type != ISAKMP_XAUTH_ATTRIB_STATUS)
+		if ((ISAKMP_XAUTH_06_ATTRIB_TYPE <= r->type)
+			&& (r->type <= ISAKMP_XAUTH_06_ATTRIB_ANSWER)
+			&& (r->type != ISAKMP_XAUTH_06_ATTRIB_STATUS)
 			&& (length > 0)
 			&& (opt_debug < 99))
 			DEBUG(3, printf("(not dumping xauth data length)\n"));
@@ -543,9 +543,9 @@ static struct isakmp_attribute *parse_isakmp_attributes(const uint8_t ** data_p,
 		} else {
 			r->u.lots.data = xallocc(length);
 			fetchn(r->u.lots.data, length);
-			if ((ISAKMP_XAUTH_ATTRIB_TYPE <= type)
-				&& (type <= ISAKMP_XAUTH_ATTRIB_ANSWER)
-				&& (r->type != ISAKMP_XAUTH_ATTRIB_STATUS)
+			if ((ISAKMP_XAUTH_06_ATTRIB_TYPE <= type)
+				&& (type <= ISAKMP_XAUTH_06_ATTRIB_ANSWER)
+				&& (r->type != ISAKMP_XAUTH_06_ATTRIB_STATUS)
 				&& (length > 0)
 				&& (opt_debug < 99))
 				DEBUG(3, printf("(not dumping xauth data)\n"));
