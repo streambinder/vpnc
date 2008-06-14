@@ -2135,7 +2135,7 @@ static int do_phase2_xauth(struct sa_block *s)
 			case ISAKMP_XAUTH_06_ATTRIB_DOMAIN:
 			case ISAKMP_XAUTH_06_ATTRIB_ANSWER:
 			case ISAKMP_XAUTH_06_ATTRIB_NEXT_PIN:
-			case ISAKMP_XAUTH_06_ATTRIB_CISCOEXT_VENDOR:
+			case ISAKMP_XAUTH_ATTRIB_CISCOEXT_VENDOR:
 				break;
 			case ISAKMP_XAUTH_06_ATTRIB_MESSAGE:
 				if (opt_debug || seen_answer || config[CONFIG_XAUTH_INTERACTIVE]) {
