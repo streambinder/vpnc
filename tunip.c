@@ -212,7 +212,7 @@ static int encap_udp_recv(struct sa_block *s, unsigned char *buf, unsigned int b
 	}
 	if( r == 1 && *buf == 0xff )
 	{
-		DEBUG(1, "UDP NAT keepalive packet received" );
+		DEBUG(1, printf("UDP NAT keepalive packet received"));
 		return -1;
 	}
 	if (r < s->ipsec.em->fixed_header_size) {
