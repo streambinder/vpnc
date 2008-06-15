@@ -2331,6 +2331,7 @@ static int do_phase2_config(struct sa_block *s)
 	
 	a = new_isakmp_attribute(ISAKMP_MODECFG_ATTRIB_CISCO_BANNER, a);
 	a = new_isakmp_attribute(ISAKMP_MODECFG_ATTRIB_CISCO_DO_PFS, a);
+	/* a = new_isakmp_attribute(ISAKMP_MODECFG_ATTRIB_CISCO_FW_TYPE, a); */
 	if (opt_natt_mode == NATT_CISCO_UDP)
 		a = new_isakmp_attribute(ISAKMP_MODECFG_ATTRIB_CISCO_UDP_ENCAP_PORT, a);
 	a = new_isakmp_attribute(ISAKMP_MODECFG_ATTRIB_CISCO_DEF_DOMAIN, a);
