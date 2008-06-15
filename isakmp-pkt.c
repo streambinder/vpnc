@@ -232,6 +232,15 @@ void flatten_isakmp_payloads(struct isakmp_payload *p, uint8_t ** result, size_t
 	*size = f.end - f.base;
 }
 
+void flatten_isakmp_payload(struct isakmp_payload *p, uint8_t ** result, size_t * size)
+{
+	struct isakmp_payload *next;
+	next = p->next;
+	p->next = NULL;
+	flatten_isakmp_payloads(p, result, size);
+	p->next = next;
+}
+
 void flatten_isakmp_packet(struct isakmp_packet *p, uint8_t ** result, size_t * size, size_t blksz)
 {
 	struct flow f;

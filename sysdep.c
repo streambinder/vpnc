@@ -495,6 +495,7 @@ int tun_close(int fd, char *dev)
 	}
 
 	close(ip_fd);
+	ip_fd = -1;
 	close(fd);
 	return 0;
 }
