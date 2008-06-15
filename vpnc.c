@@ -97,6 +97,10 @@ const unsigned char VID_NATT_RFC[] = { /* "RFC 3947" */
 	0x4A, 0x13, 0x1C, 0x81, 0x07, 0x03, 0x58, 0x45,
 	0x5C, 0x57, 0x28, 0xF2, 0x0E, 0x95, 0x45, 0x2F
 };
+const unsigned char VID_CWR[] = { /* DWR support - whatever that is */
+	0x2D, 0x79, 0x22, 0xC6, 0xB3, 0x01, 0xD9, 0xB0,
+	0xE1, 0x34, 0x27, 0x39, 0xE9, 0xCF, 0xBB, 0xD5
+};
 const unsigned char VID_CISCO_FRAG[] = { /* "FRAGMENTATION" */
 	0x40, 0x48, 0xB7, 0xD5, 0x6E, 0xBC, 0xE8, 0x85,
 	0x25, 0xE7, 0xDE, 0x7F, 0x00, 0xD6, 0xC2, 0xD3,
@@ -132,6 +136,7 @@ const struct vid_element vid_list[] = {
 	{ VID_NATT_02,		sizeof(VID_NATT_02),	"Nat-T 02" },	
 	{ VID_NATT_02N,		sizeof(VID_NATT_02N),	"Nat-T 02N" },	
 	{ VID_NATT_RFC,		sizeof(VID_NATT_RFC),	"Nat-T RFC" },	
+	{ VID_CWR,		sizeof(VID_CWR),	"CWR??" },	
 	{ VID_CISCO_FRAG,	sizeof(VID_CISCO_FRAG),	"Cisco Fragmentation" },
 	{ VID_NETSCREEN_15,	sizeof(VID_NETSCREEN_15),	"Netscreen 15" },
 	{ VID_NORTEL_CONT,	sizeof(VID_NORTEL_CONT),	"Nortel Contivity" },
