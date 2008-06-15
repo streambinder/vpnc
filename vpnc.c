@@ -618,7 +618,7 @@ phase2_authpacket(struct sa_block *s, struct isakmp_payload *pl,
 		gcry_md_write(hm, nonce_r, nr_len);
 
 	if (pl != NULL) {
-		flatten_isakmp_payload(pl, &pl_flat, &pl_size);
+		flatten_isakmp_payloads(pl, &pl_flat, &pl_size);
 		gcry_md_write(hm, pl_flat, pl_size);
 		memset(pl_flat, 0, pl_size);
 		free(pl_flat);
@@ -1009,8 +1009,8 @@ static struct isakmp_attribute *make_transform_ike(int dh_group, int crypt, int 
 	a->u.lots.data = xallocc(a->u.lots.length);
 	*((uint32_t *) a->u.lots.data) = htonl(2147483);
 	a = new_isakmp_attribute_16(IKE_ATTRIB_LIFE_TYPE, IKE_LIFE_TYPE_SECONDS, a);
-	a = new_isakmp_attribute_16(IKE_ATTRIB_GROUP_DESC, dh_group, a);
 	a = new_isakmp_attribute_16(IKE_ATTRIB_AUTH_METHOD, auth, a);
+	a = new_isakmp_attribute_16(IKE_ATTRIB_GROUP_DESC, dh_group, a);
 	a = new_isakmp_attribute_16(IKE_ATTRIB_HASH, hash, a);
 	a = new_isakmp_attribute_16(IKE_ATTRIB_ENC, crypt, a);
 	if (keylen != 0)
@@ -1593,9 +1593,9 @@ static void do_phase1(const char *key_id, const char *shared_key, struct sa_bloc
 			sa->next = NULL;
 			idi->next = NULL;
 			idp->next = NULL;
-			flatten_isakmp_payload(sa, &sa_f, &sa_size);
-			flatten_isakmp_payload(idi, &idi_f, &idi_size);
-			flatten_isakmp_payload(idp, &idp_f, &idp_size);
+			flatten_isakmp_payloads(sa, &sa_f, &sa_size);
+			flatten_isakmp_payloads(idi, &idi_f, &idi_size);
+			flatten_isakmp_payloads(idp, &idp_f, &idp_size);
 
 			gcry_md_open(&hm, s->ike.md_algo, GCRY_MD_FLAG_HMAC);
 			gcry_md_setkey(hm, skeyid, s->ike.md_len);
