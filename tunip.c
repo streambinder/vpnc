@@ -1064,6 +1064,6 @@ void vpnc_doit(struct sa_block *s)
 	
 	vpnc_main_loop(s);
 	
-	if (!opt_nd)
+	if (pidfile)
 		unlink(pidfile); /* ignore errors */
 }
