@@ -2196,7 +2196,7 @@ static int do_phase2_xauth(struct sa_block *s)
 		for (ap = a; ap && seen_answer == 0; ap = ap->next)
 			if (ap->type == ISAKMP_XAUTH_06_ATTRIB_ANSWER
 			    || ap->type == ISAKMP_XAUTH_06_ATTRIB_NEXT_PIN
-			    || ap->type == ISAKMP_XAUTH_06_ATTRIB_PASSCODE)
+			    /* || ap->type == ISAKMP_XAUTH_06_ATTRIB_PASSCODE */)
 				seen_answer = 1;
 
 		for (ap = a; ap && reject == 0; ap = ap->next)
