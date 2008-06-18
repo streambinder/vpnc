@@ -97,7 +97,7 @@ const unsigned char VID_NATT_RFC[] = { /* "RFC 3947" */
 	0x4A, 0x13, 0x1C, 0x81, 0x07, 0x03, 0x58, 0x45,
 	0x5C, 0x57, 0x28, 0xF2, 0x0E, 0x95, 0x45, 0x2F
 };
-const unsigned char VID_CWR[] = { /* DWR support - whatever that is */
+const unsigned char VID_DWR[] = { /* DWR: Delete with reason */
 	0x2D, 0x79, 0x22, 0xC6, 0xB3, 0x01, 0xD9, 0xB0,
 	0xE1, 0x34, 0x27, 0x39, 0xE9, 0xCF, 0xBB, 0xD5
 };
@@ -112,7 +112,7 @@ const unsigned char VID_NETSCREEN_15[] = { /* netscreen 15 */
 	0xd0, 0xfd, 0x84, 0x51, 0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00
 };
-const unsigned char VID_HEARTBEAT_NOTIFY[] = { /*Heartbeat Notify*/
+const unsigned char VID_HEARTBEAT_NOTIFY[] = { /* Heartbeat Notify */
 	0x48, 0x65, 0x61, 0x72, 0x74, 0x42, 0x65, 0x61,
 	0x74, 0x5f, 0x4e, 0x6f, 0x74, 0x69, 0x66, 0x79,
 	0x38, 0x6b, 0x01, 0x00
@@ -136,7 +136,7 @@ const struct vid_element vid_list[] = {
 	{ VID_NATT_02,		sizeof(VID_NATT_02),	"Nat-T 02" },	
 	{ VID_NATT_02N,		sizeof(VID_NATT_02N),	"Nat-T 02N" },	
 	{ VID_NATT_RFC,		sizeof(VID_NATT_RFC),	"Nat-T RFC" },	
-	{ VID_CWR,		sizeof(VID_CWR),	"CWR??" },	
+	{ VID_DWR,		sizeof(VID_DWR),	"Delete With Reason" },	
 	{ VID_CISCO_FRAG,	sizeof(VID_CISCO_FRAG),	"Cisco Fragmentation" },
 	{ VID_NETSCREEN_15,	sizeof(VID_NETSCREEN_15),	"Netscreen 15" },
 	{ VID_NORTEL_CONT,	sizeof(VID_NORTEL_CONT),	"Nortel Contivity" },

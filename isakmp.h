@@ -120,6 +120,23 @@ enum isakmp_notify_enum {
 	ISAKMP_N_CISCO_PRESHARED_KEY_HASH = 40503
 };
 
+/* Delete with reason values */
+/* Note: The values are random, i.e. we don't know them yet */
+enum dwr_ike_delete {
+	IKE_DELETE_SERVER_SHUTDOWN = 0, /* Peer has been shut down */
+	IKE_DELETE_SERVER_REBOOT, /* Peer has been rebooted. */
+	IKE_DELETE_MAX_CONNECT_TIME, /* Maximum configured connection time exceeded. */
+	IKE_DELETE_BY_USER_COMMAND, /* Manually disconnected by administrator. */
+	IKE_DELETE_BY_ERROR, /* Connectivity to Client lost. */
+	IKE_DELETE_NO_ERROR, /* Unknown error. */
+	IKE_DELETE_IDLE_TIMEOUT, /* Maximum idle time for session exceeded. */
+	IKE_DELETE_P2_PROPOSAL_MISMATCH, /* Policy negotiation failed */
+	IKE_DELETE_FIREWALL_MISMATCH, /* Firewall policy mismatch. */
+	IKE_DELETE_CERT_EXPIRED, /* Certificates used with this connection entry have expired. */
+	IKE_DELETE_BY_EXPIRED_LIFETIME, /* Maximum configured lifetime exceeded. */
+	DEL_REASON_RESET_SADB /* (found in vpnclient log file) */
+};
+
 /* Certificate types.  */
 enum isakmp_certificate_enum {
 	ISAKMP_CERT_NONE = 0,
