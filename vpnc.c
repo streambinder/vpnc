@@ -2588,7 +2588,6 @@ static void setup_link(struct sa_block *s)
 
 		DEBUGTOP(2, printf("S7.3 QM_packet2 validate type\n"));
 		reject = unpack_verify_phase2(s, r_packet, r_length, &r, nonce_i, sizeof(nonce_i));
-		/* FIXME: LEAK: r not freed */
 
 		if (((reject == 0) || (reject == ISAKMP_N_AUTHENTICATION_FAILED))
 			&& r->exchange_type == ISAKMP_EXCHANGE_INFORMATIONAL) {
@@ -2835,6 +2834,7 @@ static void setup_link(struct sa_block *s)
 			group_free(dh_grp);
 		if (dh_shared_secret)
 			free(dh_shared_secret);
+		free_isakmp_packet(r);
 		
 		if ((opt_natt_mode == NATT_CISCO_UDP) && s->ipsec.peer_udpencap_port) {
 			s->esp_fd = make_socket(s, opt_udpencapport, s->ipsec.peer_udpencap_port);
