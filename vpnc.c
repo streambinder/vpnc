@@ -2864,21 +2864,10 @@ static void do_phase2_qm(struct sa_block *s)
 	if (dh_public) free(dh_public);
 }
 
-static void setup_link(struct sa_block *s)
+static void send_delete_ipsec(struct sa_block *s)
 {
-	/* Set up the interface here so it's ready when our acknowledgement
-	 * arrives.  */
-	DEBUGTOP(2, printf("S7.0 run interface setup script\n"));
-
-	config_tunnel(s);
-
-	do_phase2_qm(s);
-	DEBUGTOP(2, printf("S7.9 main loop (receive and transmit ipsec packets)\n"));
-	vpnc_doit(s);
-	
-	/* finished, send the delete messages
-	 * 2007-08-31 JKU/ZID: Sonicwall doesn't like the chained
-	 * request but wants them split. Cisco does fine with it */
+	/* 2007-08-31 JKU/ZID: Sonicwall doesn't like the chained
+	 * request but wants them split. Cisco does fine with it. */
 	DEBUGTOP(2, printf("S7.10 send ipsec termination message\n"));
 	{
 		struct isakmp_payload *d_ipsec;
@@ -2899,6 +2888,10 @@ static void setup_link(struct sa_block *s)
 			del_msgid, 1, NULL, NULL,
 			NULL, 0, NULL, 0);
 	}
+}
+
+static void send_delete_isakmp(struct sa_block *s)
+{
 	DEBUGTOP(2, printf("S7.11 send isakmp termination message\n"));
 	{
 		struct isakmp_payload *d_isakmp;
@@ -3267,9 +3260,21 @@ int main(int argc, char **argv)
 			do_load_balance = do_phase2_config(s);
 	} while (do_load_balance);
 	DEBUGTOP(2, printf("S7 setup_link (phase 2 + main_loop)\n"));
-	setup_link(s);
+	DEBUGTOP(2, printf("S7.0 run interface setup script\n"));
+	config_tunnel(s);
+	do_phase2_qm(s);
+	DEBUGTOP(2, printf("S7.9 main loop (receive and transmit ipsec packets)\n"));
+	vpnc_doit(s);
+
+	/* Tear down phase 2 and 1 tunnels */
+	send_delete_ipsec(s);
+	send_delete_isakmp(s);
+
+	/* Cleanup routing */
 	DEBUGTOP(2, printf("S8 close_tunnel\n"));
 	close_tunnel();
+
+	/* Free resources */
 	DEBUGTOP(2, printf("S9 cleanup\n"));
 	cleanup(s);
 
