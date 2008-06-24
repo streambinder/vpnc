@@ -556,7 +556,7 @@ static uint16_t unpack_verify_phase2(struct sa_block *s, uint8_t * r_packet,
 	*r_p = NULL;
 
 	/* Some users report "payload ... not padded..." errors. It seems that they
-	 * are harmless, so ignore and fix the sypmptom
+	 * are harmless, so ignore and fix the symptom
 	 */
 	if (r_length < ISAKMP_PAYLOAD_O ||
 	    ((r_length - ISAKMP_PAYLOAD_O) % s->ike.ivlen != 0)) {
