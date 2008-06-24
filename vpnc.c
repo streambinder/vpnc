@@ -556,7 +556,7 @@ static uint16_t unpack_verify_phase2(struct sa_block *s, uint8_t * r_packet,
 	*r_p = NULL;
 
 	/* Some users report "payload ... not padded..." errors. It seems that they
-	 * are harmless, so ignore and fix that condition
+	 * are harmless, so ignore and fix the sypmptom
 	 */
 	if (r_length < ISAKMP_PAYLOAD_O ||
 	    ((r_length - ISAKMP_PAYLOAD_O) % s->ike.ivlen != 0)) {
@@ -1185,7 +1185,7 @@ static void lifetime_ipsec_process(struct sa_block *s, struct isakmp_attribute *
 		s->ipsec.life.kbytes = value;
 }
 
-static void do_phase1(const char *key_id, const char *shared_key, struct sa_block *s)
+static void do_phase1_am(const char *key_id, const char *shared_key, struct sa_block *s)
 {
 	unsigned char i_nonce[20];
 	struct group *dh_grp;
@@ -2420,8 +2420,10 @@ static int do_phase2_config(struct sa_block *s)
 	a = new_isakmp_attribute(ISAKMP_MODECFG_ATTRIB_INTERNAL_IP4_ADDRESS, a);
 
 	rp->u.modecfg.attributes = a;
+	DEBUGTOP(2, printf("S6.1 phase2_config send modecfg\n"));
 	sendrecv_phase2(s, rp, ISAKMP_EXCHANGE_MODECFG_TRANSACTION, msgid, 0, 0, 0, 0, 0, 0, 0);
 
+	DEBUGTOP(2, printf("S6.2 phase2_config receive modecfg\n"));
 	/* recv and check for notices */
 	reject = do_phase2_notice_check(s, &r);
 	if (reject == -1) {
@@ -2522,7 +2524,7 @@ static struct isakmp_payload *make_our_sa_ipsec(struct sa_block *s)
 	return r;
 }
 
-static void setup_link(struct sa_block *s)
+static void do_phase2_qm(struct sa_block *s)
 {
 	struct isakmp_payload *rp, *us, *ke = NULL, *them, *nonce_r = NULL;
 	struct isakmp_packet *r;
@@ -2587,7 +2589,7 @@ static void setup_link(struct sa_block *s)
 		}
 
 		DEBUGTOP(2, printf("S7.3 QM_packet2 validate type\n"));
-		reject = unpack_verify_phase2(s, r_packet, r_length, &r, nonce_i, sizeof(nonce_i));
+		reject = unpack_verify_phase2(s, r_packet, r_length, &r, nonce_i, sizeof(nonce_i)); /* FIXME: LEAK */
 
 		if (((reject == 0) || (reject == ISAKMP_N_AUTHENTICATION_FAILED))
 			&& r->exchange_type == ISAKMP_EXCHANGE_INFORMATIONAL) {
@@ -2806,11 +2808,8 @@ static void setup_link(struct sa_block *s)
 		msgid, 1, 0, 0, nonce_i, sizeof(nonce_i),
 		nonce_r->u.nonce.data, nonce_r->u.nonce.length);
 
-	DEBUGTOP(2, printf("S7.7 QM_packet3 sent - run script\n"));
+	DEBUGTOP(2, printf("S7.7 QM_packet3 sent\n"));
 
-	/* Set up the interface here so it's ready when our acknowledgement
-	 * arrives.  */
-	config_tunnel(s);
 	DEBUGTOP(2, printf("S7.8 setup ipsec tunnel\n"));
 	{
 		unsigned char *dh_shared_secret = NULL;
@@ -2861,18 +2860,30 @@ static void setup_link(struct sa_block *s)
 		}
 		
 		s->ipsec.rx.seq_id = s->ipsec.tx.seq_id = 1;
-		DEBUGTOP(2, printf("S7.9 main loop (receive and transmit ipsec packets)\n"));
-		vpnc_doit(s);
 	}
+	if (dh_public) free(dh_public);
+}
+
+static void setup_link(struct sa_block *s)
+{
+	/* Set up the interface here so it's ready when our acknowledgement
+	 * arrives.  */
+	DEBUGTOP(2, printf("S7.0 run interface setup script\n"));
+
+	config_tunnel(s);
+
+	do_phase2_qm(s);
+	DEBUGTOP(2, printf("S7.9 main loop (receive and transmit ipsec packets)\n"));
+	vpnc_doit(s);
 	
-	DEBUGTOP(2, printf("S7.10 send termination message\n"));
-	/* finished, send the delete message */
+	/* finished, send the delete messages
+	 * 2007-08-31 JKU/ZID: Sonicwall doesn't like the chained
+	 * request but wants them split. Cisco does fine with it */
+	DEBUGTOP(2, printf("S7.10 send ipsec termination message\n"));
 	{
-		struct isakmp_payload *d_isakmp, *d_ipsec;
+		struct isakmp_payload *d_ipsec;
 		uint8_t del_msgid;
 
-		/* 2007-08-31 JKU/ZID: Sonicwall doesn't like the chained
-		 * request but wants them split. Cisco does fine with it */
 		gcry_create_nonce((uint8_t *) & del_msgid, sizeof(del_msgid));
 		d_ipsec = new_isakmp_payload(ISAKMP_PAYLOAD_D);
 		d_ipsec->u.d.doi = ISAKMP_DOI_IPSEC;
@@ -2887,6 +2898,11 @@ static void setup_link(struct sa_block *s)
 		sendrecv_phase2(s, d_ipsec, ISAKMP_EXCHANGE_INFORMATIONAL,
 			del_msgid, 1, NULL, NULL,
 			NULL, 0, NULL, 0);
+	}
+	DEBUGTOP(2, printf("S7.11 send isakmp termination message\n"));
+	{
+		struct isakmp_payload *d_isakmp;
+		uint8_t del_msgid;
 
 		gcry_create_nonce((uint8_t *) & del_msgid, sizeof(del_msgid));
 		d_isakmp = new_isakmp_payload(ISAKMP_PAYLOAD_D);
@@ -2904,7 +2920,6 @@ static void setup_link(struct sa_block *s)
 			del_msgid, 1, NULL, NULL,
 			NULL, 0, NULL, 0);
 	}
-	if (dh_public) free(dh_public);
 }
 
 static int do_rekey(struct sa_block *s, struct isakmp_packet *r)
@@ -3241,8 +3256,8 @@ int main(int argc, char **argv)
 
 	do_load_balance = 0;
 	do {
-		DEBUGTOP(2, printf("S4 do_phase1\n"));
-		do_phase1(config[CONFIG_IPSEC_ID], config[CONFIG_IPSEC_SECRET], s);
+		DEBUGTOP(2, printf("S4 do_phase1_am\n"));
+		do_phase1_am(config[CONFIG_IPSEC_ID], config[CONFIG_IPSEC_SECRET], s);
 		DEBUGTOP(2, printf("S5 do_phase2_xauth\n"));
 		/* FIXME: Create and use a generic function in supp.[hc] */
 		if (s->ike.auth_algo >= IKE_AUTH_HybridInitRSA)
