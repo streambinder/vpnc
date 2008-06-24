@@ -3189,7 +3189,18 @@ void process_late_ike(struct sa_block *s, uint8_t *r_packet, ssize_t r_length)
 		/* search for delete payloads */
 		if (rp->type != ISAKMP_PAYLOAD_D)
 			continue;
-		
+		if (rp->u.d.protocol == ISAKMP_IPSEC_PROTO_IPSEC_ESP) {
+			/* RFC2408, 5.15:
+			 * Process the Delete payload and take appropriate action, according
+			 * to local security policy.  As described above, one appropriate
+			 * action SHOULD include cleaning up the local SA database.
+			 */
+			/* FIXME: any cleanup needed??? */
+
+			free_isakmp_packet(r);
+			do_phase2_qm(s);
+			return;
+		}
 		/* skip ipsec-esp delete */
 		if (rp->u.d.protocol != ISAKMP_IPSEC_PROTO_ISAKMP) {
 			DEBUG(2, printf("got non isakmp-delete, ignoring...\n"));
