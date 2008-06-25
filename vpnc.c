@@ -2067,7 +2067,13 @@ static void do_phase1_am(const char *key_id, const char *shared_key, struct sa_b
 	DEBUGTOP(2, printf("S4.6 cleanup\n"));
 
 	free_isakmp_packet(p1);
+	/* This seems to cause a duplicate free of some data:
+	 * *** glibc detected *** vpnc-connect: free(): invalid pointer: 0x09d63ba5
+	 * See also: http://bugs.gentoo.org/show_bug.cgi?id=229003
+	 */
+#if 0
 	free_isakmp_packet(r);
+#endif
 	free(returned_hash);
 	free(dh_public);
 	free(dh_shared_secret);
