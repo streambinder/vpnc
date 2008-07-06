@@ -2602,10 +2602,6 @@ static void do_phase2_qm(struct sa_block *s)
 			DEBUGTOP(2, printf("S7.4 process and skip lifetime notice\n"));
 			/* handle notify responder-lifetime */
 			/* (broken hash => ignore AUTHENTICATION_FAILED) */
-			if (reject == ISAKMP_N_AUTHENTICATION_FAILED) {
-				reject = 0;
-				continue;
-			}
 			if (reject == 0 && r->payload->next->type != ISAKMP_PAYLOAD_N)
 				reject = ISAKMP_N_INVALID_PAYLOAD_TYPE;
 
