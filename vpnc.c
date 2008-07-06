@@ -2416,7 +2416,7 @@ static int do_phase2_config(struct sa_block *s)
 	
 	a = new_isakmp_attribute(ISAKMP_MODECFG_ATTRIB_CISCO_BANNER, a);
 	a = new_isakmp_attribute(ISAKMP_MODECFG_ATTRIB_CISCO_DO_PFS, a);
-	/* a = new_isakmp_attribute(ISAKMP_MODECFG_ATTRIB_CISCO_FW_TYPE, a); */
+	a = new_isakmp_attribute(ISAKMP_MODECFG_ATTRIB_CISCO_FW_TYPE, a);
 	if (opt_natt_mode == NATT_CISCO_UDP)
 		a = new_isakmp_attribute(ISAKMP_MODECFG_ATTRIB_CISCO_UDP_ENCAP_PORT, a);
 	a = new_isakmp_attribute(ISAKMP_MODECFG_ATTRIB_CISCO_DEF_DOMAIN, a);
@@ -2600,8 +2600,12 @@ static void do_phase2_qm(struct sa_block *s)
 		if (((reject == 0) || (reject == ISAKMP_N_AUTHENTICATION_FAILED))
 			&& r->exchange_type == ISAKMP_EXCHANGE_INFORMATIONAL) {
 			DEBUGTOP(2, printf("S7.4 process and skip lifetime notice\n"));
-			/* handle notifie responder-lifetime */
+			/* handle notify responder-lifetime */
 			/* (broken hash => ignore AUTHENTICATION_FAILED) */
+			if (reject == ISAKMP_N_AUTHENTICATION_FAILED) {
+				reject = 0;
+				continue;
+			}
 			if (reject == 0 && r->payload->next->type != ISAKMP_PAYLOAD_N)
 				reject = ISAKMP_N_INVALID_PAYLOAD_TYPE;
 
