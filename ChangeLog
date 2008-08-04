@@ -1,3 +1,30 @@
+* vpnc-0.5.2.tar.gz TBD
+
+  User visible changes:
+
+     * Install the license file with the binary
+     * Fix routing issues in vpcn-script-win.js, by Paolo Zarpellon
+     * Fix Phase 2 rekeying, by various authors
+     * Improvements to debug messages, by various authors
+     * Support for the NEXT_PIN for SecureID, by Phil Dibowitz and Rob West
+     * Print hints on how to fix some error conditions
+     * Add --target-address option, by Stelian Pop and Tom Schneider
+     * Try to work around the "payload too short" message instead
+       of aborting, by John Williams
+     * Fix some problems with keepalives during xauth on SonicWall and
+       ScreenOS >= 6, by Johan Fischer
+     * Improvements to syslog messages, by various authors
+     * On Linux calculate the MTU size instead of hardcoding it, by
+       Tomas Mraz
+     * Remove pid file also when not running daemonized, by Martin von Gagern
+     * Always send FW_TYPE xauth attribute, by Johan Dahlin
+
+  Under the hood:
+     * Move decryption code into its own files, by Wolfram Sang
+     * Use ony awk instead of awk+sed in vpnc-script, by Jukka Salmi
+     * Fix some alignment errors on ARM, by Karzist
+     * Memory handling fixes, by various authors
+
 * vpnc-0.5.1.tar.gz Mon Sep 10 23:16:41 CEST 2007
 
      * link against -lcrypto instead of -lssl, fix from: Christophe Thil
