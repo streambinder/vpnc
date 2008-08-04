@@ -189,7 +189,7 @@ else # use route command
 	
 	del_network_route() {
 		case "$OS" in
-		Linux|NetBSD) # and probably others...
+		Linux|NetBSD|Darwin) # and probably others...
 			# routes are deleted automatically on device shutdown
 			return
 			;;
@@ -285,7 +285,8 @@ search $CISCO_DEF_DOMAIN"
 					d.add ServerAddresses * $INTERNAL_IP4_DNS
 					set State:/Network/Service/$TUNDEV/DNS
 					d.init
-					d.add Router $INTERNAL_IP4_ADDRESS
+					# next line overrides the default gateway and breaks split routing
+					# d.add Router $INTERNAL_IP4_ADDRESS
 					d.add Addresses * $INTERNAL_IP4_ADDRESS
 					d.add SubnetMasks * 255.255.255.255
 					d.add InterfaceName $TUNDEV
