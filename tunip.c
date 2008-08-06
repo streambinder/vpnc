@@ -436,11 +436,11 @@ static void encap_esp_send_peer(struct sa_block *s, unsigned char *buf, unsigned
 	dstaddr.sin_port = 0;
 	sent = sendto(s->esp_fd, s->ipsec.tx.buf, s->ipsec.tx.buflen, 0, (struct sockaddr *)&dstaddr, sizeof(struct sockaddr_in));
 	if (sent == -1) {
-		syslog(LOG_ERR, "sendto: %m");
+		syslog(LOG_ERR, "esp sendto: %m");
 		return;
 	}
 	if (sent != s->ipsec.tx.buflen)
-		syslog(LOG_ALERT, "truncated out (%lld out of %d)", (long long)sent, s->ipsec.tx.buflen);
+		syslog(LOG_ALERT, "esp truncated out (%lld out of %d)", (long long)sent, s->ipsec.tx.buflen);
 }
 
 /*
@@ -475,11 +475,11 @@ static void encap_udp_send_peer(struct sa_block *s, unsigned char *buf, unsigned
 	
 	sent = send(s->esp_fd, s->ipsec.tx.buf, s->ipsec.tx.buflen, 0);
 	if (sent == -1) {
-		syslog(LOG_ERR, "sendto: %m");
+		syslog(LOG_ERR, "udp sendto: %m");
 		return;
 	}
 	if (sent != s->ipsec.tx.buflen)
-		syslog(LOG_ALERT, "truncated out (%lld out of %d)",
+		syslog(LOG_ALERT, "udp truncated out (%lld out of %d)",
 			(long long)sent, s->ipsec.tx.buflen);
 }
 
@@ -862,7 +862,7 @@ static void vpnc_main_loop(struct sa_block *s)
 					}
 					/* send nat keepalive packet */
 					if (send(s->esp_fd, keepalive, keepalive_size, 0) == -1) {
-						syslog(LOG_ERR, "sendto: %m");
+						syslog(LOG_ERR, "keepalive sendto: %m");
 					}
 				}
 				if (s->ike.do_dpd) {
