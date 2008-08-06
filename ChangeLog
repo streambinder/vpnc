@@ -18,6 +18,7 @@
        Tomas Mraz
      * Remove pid file also when not running daemonized, by Martin von Gagern
      * Always send FW_TYPE xauth attribute, by Johan Dahlin
+     * Fix default route while setting DNS on Darwin, by Felix Buenemann
 
   Under the hood:
      * Move decryption code into its own files, by Wolfram Sang
