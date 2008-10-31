@@ -193,8 +193,7 @@ static void addenv(const void *name, const char *value)
 
 	setenv(name, strbuf ? strbuf : value, 1);
 
-	if (strbuf)
-		free(strbuf);
+	free(strbuf);
 }
 
 static void addenv_ipv4(const void *name, uint8_t * data)
@@ -2630,10 +2629,9 @@ static void do_phase2_qm(struct sa_block *s)
 		if (reject == 0 && r->payload->next->type != ISAKMP_PAYLOAD_SA)
 			reject = ISAKMP_N_INVALID_PAYLOAD_TYPE;
 
-		if (p_flat)
-			free(p_flat);
-		if (realiv)
-			free(realiv);
+		free(p_flat);
+		free(realiv);
+
 		break;
 	}
 
@@ -2837,8 +2835,7 @@ static void do_phase2_qm(struct sa_block *s)
 		
 		if (dh_grp)
 			group_free(dh_grp);
-		if (dh_shared_secret)
-			free(dh_shared_secret);
+		free(dh_shared_secret);
 		free_isakmp_packet(r);
 		
 		if ((opt_natt_mode == NATT_CISCO_UDP) && s->ipsec.peer_udpencap_port) {
@@ -2867,7 +2864,7 @@ static void do_phase2_qm(struct sa_block *s)
 		
 		s->ipsec.rx.seq_id = s->ipsec.tx.seq_id = 1;
 	}
-	if (dh_public) free(dh_public);
+	free(dh_public);
 }
 
 static void send_delete_ipsec(struct sa_block *s)
