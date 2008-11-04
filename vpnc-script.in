@@ -73,7 +73,7 @@ fi
 if [ -x /sbin/resolvconf ]; then # Optional tool on Debian, Ubuntu, Gentoo
 	MODIFYRESOLVCONF=modify_resolvconf_manager
 	RESTORERESOLVCONF=restore_resolvconf_manager
-elif [ -x /sbin/modify_resolvconf ]; then # Mandatory tool on Suse
+elif [ -x /sbin/modify_resolvconf ]; then # Mandatory tool on Suse earlier than 11.1
 	MODIFYRESOLVCONF=modify_resolvconf_suse
 	RESTORERESOLVCONF=restore_resolvconf_suse
 else # Generic for any OS
