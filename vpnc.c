@@ -127,6 +127,11 @@ const unsigned char VID_NORTEL_CONT[] = { /* BNES: Bay Networks Enterprise Switc
 	0x42, 0x4e, 0x45, 0x53, 0x00, 0x00, 0x00, 0x0a
 };
 
+const unsigned char FW_UNKNOWN_TYPEINFO[] = {
+	0x80, 0x01, 0x00, 0x01, 0x80, 0x02, 0x00, 0x01,
+	0x80, 0x03, 0x00, 0x02
+};
+
 struct vid_element {
 	const unsigned char* valueptr;
 	const uint16_t length;
@@ -2416,6 +2421,9 @@ static int do_phase2_config(struct sa_block *s)
 	a = new_isakmp_attribute(ISAKMP_MODECFG_ATTRIB_CISCO_BANNER, a);
 	a = new_isakmp_attribute(ISAKMP_MODECFG_ATTRIB_CISCO_DO_PFS, a);
 	a = new_isakmp_attribute(ISAKMP_MODECFG_ATTRIB_CISCO_FW_TYPE, a);
+	a->u.lots.length = sizeof(FW_UNKNOWN_TYPEINFO);
+	a->u.lots.data = xallocc(a->u.lots.length);
+	memcpy(a->u.lots.data, FW_UNKNOWN_TYPEINFO, a->u.lots.length);
 	if (opt_natt_mode == NATT_CISCO_UDP)
 		a = new_isakmp_attribute(ISAKMP_MODECFG_ATTRIB_CISCO_UDP_ENCAP_PORT, a);
 	a = new_isakmp_attribute(ISAKMP_MODECFG_ATTRIB_CISCO_DEF_DOMAIN, a);
