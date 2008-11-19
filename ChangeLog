@@ -1,3 +1,18 @@
+* vpnc-0.5.3.tar.gz Wed Nov 19 21:29:22 CET 2008
+
+  User visible changes:
+
+     * Don't crash while rekeying, by Maurice Massar
+     * Fix lifetime handling if both options are present, by Maurice Massar
+     * Support providing the destination network's netmask
+     * Working with concentrators that require a firewall capable
+       client might work, by Nicholas Reilly
+     * Fix a case where pcf2vpnc would create an incorrect config line,
+       by Wolfram Sang
+     * Make vpnc work with newer development versions of openvpn on
+       Windows, by Paolo Zarpellon
+     * print logmessages while opening tun to syslog as well as stderr
+
 * vpnc-0.5.2.tar.gz Wed Nov 19 17:49:46 CET 2008
 
   User visible changes:
