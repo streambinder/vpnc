@@ -888,6 +888,17 @@ static uint8_t *gen_keymat(struct sa_block *s,
 	return block;
 }
 
+static int mask_to_masklen(struct in_addr mask)
+{ 
+	int len;
+	uint32_t addr;
+	
+	addr = ntohl(mask.s_addr);
+	for (len = 0; addr; addr <<= 1, len++)
+		;
+	return len;
+}
+
 static int do_config_to_env(struct sa_block *s, struct isakmp_attribute *a)
 {
 	int i;
@@ -922,8 +933,12 @@ static int do_config_to_env(struct sa_block *s, struct isakmp_attribute *a)
 			}
 			if (a->af != isakmp_attr_lots || a->u.lots.length != 4)
 				reject = ISAKMP_N_ATTRIBUTES_NOT_SUPPORTED;
-			else
+			else {
 				addenv_ipv4("INTERNAL_IP4_NETMASK", a->u.lots.data);
+				asprintf(&strbuf, "%d", mask_to_masklen(*((struct in_addr *)a->u.lots.data)));
+				setenv("INTERNAL_IP4_NETMASKLEN", strbuf, 1);
+				free(strbuf);
+			}
 			break;
 
 		case ISAKMP_MODECFG_ATTRIB_INTERNAL_IP4_DNS:
@@ -1016,20 +1031,12 @@ static int do_config_to_env(struct sa_block *s, struct isakmp_attribute *a)
 				setenv(strbuf, strbuf2, 1);
 				free(strbuf); free(strbuf2);
 				
-				{ /* this is just here because ip route does not accept netmasks */
-					int len;
-					uint32_t addr;
-					
-					for (len = 0, addr = ntohl(a->u.acl.acl_ent[i].mask.s_addr);
-						addr; addr <<= 1, len++)
-						; /* do nothing */
-					
-					asprintf(&strbuf, "CISCO_SPLIT_INC_%d_MASKLEN", i);
-					asprintf(&strbuf2, "%d", len);
-					DEBUG(2, printf("(%s), ", strbuf2));
-					setenv(strbuf, strbuf2, 1);
-					free(strbuf); free(strbuf2);
-				}
+				/* this is just here because ip route does not accept netmasks */
+				asprintf(&strbuf, "CISCO_SPLIT_INC_%d_MASKLEN", i);
+				asprintf(&strbuf2, "%d", mask_to_masklen(a->u.acl.acl_ent[i].mask));
+				DEBUG(2, printf("(%s), ", strbuf2));
+				setenv(strbuf, strbuf2, 1);
+				free(strbuf); free(strbuf2);
 				
 				asprintf(&strbuf, "CISCO_SPLIT_INC_%d_PROTOCOL", i);
 				asprintf(&strbuf2, "%hu", a->u.acl.acl_ent[i].protocol);
