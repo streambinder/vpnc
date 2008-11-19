@@ -3167,7 +3167,8 @@ void process_late_ike(struct sa_block *s, uint8_t *r_packet, ssize_t r_length)
 		r->payload->next->type == ISAKMP_PAYLOAD_SA) {
 		reject = do_rekey(s, r);
 		DEBUG(3, printf("do_rekey returned: %d\n", reject));
-		free_isakmp_packet(r);
+		/* FIXME: LEAK but will create segfault for double free */
+		/* free_isakmp_packet(r); */
 		return;
 	}
 
