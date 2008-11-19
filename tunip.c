@@ -946,7 +946,6 @@ static void vpnc_main_loop(struct sa_block *s)
 
 	}
 	
-	tun_close(s->tun_fd, s->tun_name);
 	switch (do_kill) {
 		case -2:
 			syslog(LOG_NOTICE, "connection terminated by dead peer detection");
