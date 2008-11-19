@@ -8,7 +8,7 @@
      * Improvements to debug messages, by various authors
      * Support for the NEXT_PIN for SecureID, by Phil Dibowitz and Rob West
      * Print hints on how to fix some error conditions
-     * Add --target-address option, by Stelian Pop and Tom Schneider
+     * Add --target-network option, by Stelian Pop and Tom Schneider
      * Try to work around the "payload too short" message instead
        of aborting, by John Williams
      * Fix some problems with keepalives during xauth on SonicWall and
