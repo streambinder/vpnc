@@ -934,10 +934,12 @@ static int do_config_to_env(struct sa_block *s, struct isakmp_attribute *a)
 			if (a->af != isakmp_attr_lots || a->u.lots.length != 4)
 				reject = ISAKMP_N_ATTRIBUTES_NOT_SUPPORTED;
 			else {
+				uint32_t netaddr = ((struct in_addr *)(s->our_address))->s_addr & ((struct in_addr *)(a->u.lots.data))->s_addr;
 				addenv_ipv4("INTERNAL_IP4_NETMASK", a->u.lots.data);
 				asprintf(&strbuf, "%d", mask_to_masklen(*((struct in_addr *)a->u.lots.data)));
 				setenv("INTERNAL_IP4_NETMASKLEN", strbuf, 1);
 				free(strbuf);
+				addenv_ipv4("INTERNAL_IP4_NETADDR",  (uint8_t *)&netaddr);
 			}
 			break;
 

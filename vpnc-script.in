@@ -5,6 +5,7 @@
 #* INTERNAL_IP4_ADDRESS         -- address (always present)
 #* INTERNAL_IP4_NETMASK         -- netmask (often unset)
 #* INTERNAL_IP4_NETMASKLEN      -- netmask length (often unset)
+#* INTERNAL_IP4_NETADDR         -- address of network (only present if netmask is set)
 #* INTERNAL_IP4_DNS             -- list of dns serverss
 #* INTERNAL_IP4_NBNS            -- list of wins servers
 #* CISCO_DEF_DOMAIN             -- default domain name
@@ -38,6 +39,7 @@
 # 1) Maybe dnsmasq can do something like that
 # 2) Parse dns packets going out via tunnel and redirect them to original dns-server
 
+#env | sort
 #set -x
 
 # =========== script (variable) setup ====================================
@@ -98,7 +100,7 @@ do_ifconfig() {
 	ifconfig "$TUNDEV" inet "$INTERNAL_IP4_ADDRESS" $ifconfig_syntax_ptp "$INTERNAL_IP4_ADDRESS" netmask 255.255.255.255 mtu ${MTU} up
 
 	if [ -n "INTERNAL_IP4_NETMASK" ]; then
-		set_network_route$INTERNAL_IP4_ADDRESS $INTERNAL_IP4_NETMASK $INTERNAL_IP4_NETMASKLEN
+		set_network_route $INTERNAL_IP4_NETADDR $INTERNAL_IP4_NETMASK $INTERNAL_IP4_NETMASKLEN
 	fi
 }
 
