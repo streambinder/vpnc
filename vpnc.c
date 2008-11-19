@@ -1194,6 +1194,11 @@ static void lifetime_ipsec_process(struct sa_block *s, struct isakmp_attribute *
 		s->ipsec.life.seconds = value;
 	else
 		s->ipsec.life.kbytes = value;
+	
+	/* FIXME: for notice-payloads: write a seperate function to handle them */
+	/* bug: this may process lifetime-attributes of SAs twice but to no consequence */
+	if (a->next->next != NULL && a->next->next->type == ISAKMP_IPSEC_ATTRIB_SA_LIFE_TYPE)
+		lifetime_ipsec_process(s, a->next->next);
 }
 
 static void do_phase1_am(const char *key_id, const char *shared_key, struct sa_block *s)
