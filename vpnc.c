@@ -2182,7 +2182,7 @@ static int do_phase2_xauth(struct sa_block *s)
 	/* This can go around for a while.  */
 	for (loopcount = 0;; loopcount++) {
 		struct isakmp_payload *rp;
-		struct isakmp_attribute *a, *ap, *reply_attr;
+		struct isakmp_attribute *a, *ap, *reply_attr, *last_reply_attr;
 		char ntop_buf[32];
 		int seen_answer = 0;
 
@@ -2267,14 +2267,18 @@ static int do_phase2_xauth(struct sa_block *s)
 		inet_ntop(AF_INET, &s->dst, ntop_buf, sizeof(ntop_buf));
 
 		/* Collect data from the user.  */
-		reply_attr = NULL;
-		for (ap = a; ap && reject == 0; ap = ap->next)
+		reply_attr = last_reply_attr = NULL;
+		for (ap = a; ap && reject == 0; ap = ap->next) {
+			struct isakmp_attribute *na = NULL;
+			
 			switch (ap->type) {
+			case ISAKMP_XAUTH_06_ATTRIB_TYPE:
+			{
+				na = new_isakmp_attribute_16(ap->type, ap->u.attr_16, NULL);
+				break;
+			}
 			case ISAKMP_XAUTH_06_ATTRIB_DOMAIN:
-				{
-					struct isakmp_attribute *na;
-					na = new_isakmp_attribute(ap->type, reply_attr);
-					reply_attr = na;
+					na = new_isakmp_attribute(ap->type, NULL);
 					if (!config[CONFIG_DOMAIN])
 						error(1, 0,
 							"server requested domain, but none set (use \"Domain ...\" in config or --domain");
@@ -2283,12 +2287,9 @@ static int do_phase2_xauth(struct sa_block *s)
 					memcpy(na->u.lots.data, config[CONFIG_DOMAIN],
 						na->u.lots.length);
 					break;
-				}
 			case ISAKMP_XAUTH_06_ATTRIB_USER_NAME:
 				{
-					struct isakmp_attribute *na;
-					na = new_isakmp_attribute(ap->type, reply_attr);
-					reply_attr = na;
+					na = new_isakmp_attribute(ap->type, NULL);
 					na->u.lots.length = strlen(config[CONFIG_XAUTH_USERNAME]);
 					na->u.lots.data = xallocc(na->u.lots.length);
 					memcpy(na->u.lots.data, config[CONFIG_XAUTH_USERNAME],
@@ -2305,7 +2306,6 @@ static int do_phase2_xauth(struct sa_block *s)
 					error(2, 0, "authentication unsuccessful");
 				} else if (seen_answer || passwd_used || config[CONFIG_XAUTH_INTERACTIVE]) {
 					char *pass, *prompt = NULL;
-					struct isakmp_attribute *na;
 
 					asprintf(&prompt, "%s for VPN %s@%s: ",
 						(ap->type == ISAKMP_XAUTH_06_ATTRIB_ANSWER) ?
@@ -2316,16 +2316,13 @@ static int do_phase2_xauth(struct sa_block *s)
 					pass = getpass(prompt);
 					free(prompt);
 
-					na = new_isakmp_attribute(ap->type, reply_attr);
-					reply_attr = na;
+					na = new_isakmp_attribute(ap->type, NULL);
 					na->u.lots.length = strlen(pass);
 					na->u.lots.data = xallocc(na->u.lots.length);
 					memcpy(na->u.lots.data, pass, na->u.lots.length);
 					memset(pass, 0, na->u.lots.length);
 				} else {
-					struct isakmp_attribute *na;
-					na = new_isakmp_attribute(ap->type, reply_attr);
-					reply_attr = na;
+					na = new_isakmp_attribute(ap->type, NULL);
 					na->u.lots.length = strlen(config[CONFIG_XAUTH_PASSWORD]);
 					na->u.lots.data = xallocc(na->u.lots.length);
 					memcpy(na->u.lots.data, config[CONFIG_XAUTH_PASSWORD],
@@ -2336,6 +2333,15 @@ static int do_phase2_xauth(struct sa_block *s)
 			default:
 				;
 			}
+			if (na == NULL)
+				continue;
+			if (last_reply_attr != NULL) {
+				last_reply_attr->next = na;
+				last_reply_attr = na;
+			} else {
+				last_reply_attr = reply_attr = na;
+			}
+		}
 
 		/* Send the response.  */
 		rp = new_isakmp_payload(ISAKMP_PAYLOAD_MODECFG_ATTR);
