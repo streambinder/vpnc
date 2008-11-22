@@ -2303,7 +2303,7 @@ static int do_phase2_xauth(struct sa_block *s)
 				if (passwd_used && config[CONFIG_NON_INTERACTIVE]) {
 					reject = ISAKMP_N_AUTHENTICATION_FAILED;
 					phase2_fatal(s, "noninteractive can't reuse password", reject);
-					error(2, 0, "authentication unsuccessful");
+					error(2, 0, "authentication failed (requires interactive mode)");
 				} else if (seen_answer || passwd_used || config[CONFIG_XAUTH_INTERACTIVE]) {
 					char *pass, *prompt = NULL;
 
