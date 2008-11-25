@@ -2670,12 +2670,12 @@ static void do_phase2_qm(struct sa_block *s)
 			"this means the concentrator did not like what we had to offer.\n"
 			"Possible reasons are:\n"
 			"  * concentrator configured to require a firewall\n"
-			"     this locks out even Cisco clients on any platform expect windows\n"
-			"     which is an obvious security improvment. There is no workaround (yet).\n"
+			"     this locks out even Cisco clients on any platform except windows\n"
+			"     which is an obvious security improvement. There is no workaround (yet).\n"
 			"  * concentrator configured to require IP compression\n"
 			"     this is not yet supported by vpnc.\n"
 			"     Note: the Cisco Concentrator Documentation recommends against using\n"
-			"     compression, expect on low-bandwith (read: ISDN) links, because it\n"
+			"     compression, except on low-bandwith (read: ISDN) links, because it\n"
 			"     uses much CPU-resources on the concentrator\n",
 			reject);
 
