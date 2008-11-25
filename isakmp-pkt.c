@@ -6,12 +6,12 @@
    it under the terms of the GNU General Public License as published by
    the Free Software Foundation; either version 2 of the License, or
    (at your option) any later version.
-   
+
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
-   
+
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -472,7 +472,7 @@ static const struct debug_strings *attr_val_to_debug_strings(enum isakmp_ipsec_p
 	}
 }
 
-#define fetch4()  					\
+#define fetch4()					\
   (data += 4, data_len -= 4,				\
    (uint32_t)(data[-4]) << 24 | (uint32_t)(data[-3]) << 16	\
    | (uint32_t)(data[-2]) << 8 | data[-1])
@@ -536,7 +536,7 @@ static struct isakmp_attribute *parse_isakmp_attributes(const uint8_t ** data_p,
 				return r;
 			}
 			r->u.acl.acl_ent = xallocc(r->u.acl.count * sizeof(struct acl_ent_s));
-			
+
 			for (i = 0; i < r->u.acl.count; i++) {
 				fetchn(&r->u.acl.acl_ent[i].addr.s_addr, 4);
 				fetchn(&r->u.acl.acl_ent[i].mask.s_addr, 4);

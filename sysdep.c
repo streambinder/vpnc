@@ -4,7 +4,7 @@
 
     based on VTun - Virtual Tunnel over TCP/IP network.
     Copyright (C) 1998-2000  Maxim Krasnyansky <max_mk@yahoo.com>
-    VTun has been derived from VPPP package by Maxim Krasnyansky. 
+    VTun has been derived from VPPP package by Maxim Krasnyansky.
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -91,8 +91,8 @@ typedef enum {
 } search_if_en;
 #endif
 
-/* 
- * Allocate TUN/TAP device, returns opened fd. 
+/*
+ * Allocate TUN/TAP device, returns opened fd.
  * Stores dev name in the first arg(must be large enough).
  */
 #if defined(__sun__)
@@ -175,22 +175,22 @@ static char *search_if(char *value, char *key, search_if_en type)
 	char conn_string[512];
 	HKEY conn_key;
 	DWORD value_type;
-	
+
 	if (!value || !key) {
 		return NULL;
 	}
-	
+
 	status = RegOpenKeyEx(HKEY_LOCAL_MACHINE,
 		NETWORK_CONNECTIONS_KEY,
 		0,
 		KEY_READ,
 		&net_conn_key);
-	
+
 	if (status != ERROR_SUCCESS) {
 		printf("Error opening registry key: %s\n", NETWORK_CONNECTIONS_KEY);
 		return NULL;
 	}
-	
+
 	while (!found) {
 		len = sizeof(guid);
 		status = RegEnumKeyEx(net_conn_key, i++, guid, &len,
@@ -218,7 +218,7 @@ static char *search_if(char *value, char *key, search_if_en type)
 			RegCloseKey(conn_key);
 			continue;
 		}
-		
+
 		switch (type) {
 		case SEARCH_IF_GUID_FROM_NAME:
 			if (!strcmp(key, ifname)) {
@@ -238,11 +238,11 @@ static char *search_if(char *value, char *key, search_if_en type)
 		RegCloseKey(conn_key);
 	}
 	RegCloseKey(net_conn_key);
-	
+
 	if (found) {
 		return value;
 	}
-	
+
 	return NULL;
 }
 
@@ -254,20 +254,20 @@ static int open_tun_device (char *guid, char *dev, enum if_mode_enum mode)
 	HANDLE handle;
 	ULONG len, status, info[3];
 	char device_path[512];
-	
+
 	printf("Device: %s\n", dev);
-	
+
 	if (mode == IF_MODE_TUN) {
 		printf("TUN mode is not supported\n");
 		return -1;
 	}
-	
+
 	/*
 	 * Let's try to open Windows TAP-Win32 adapter
 	 */
 	snprintf(device_path, sizeof(device_path), "%s%s%s",
 		USERMODEDEVICEDIR, guid, TAPSUFFIX);
-	
+
 	handle = CreateFile(device_path,
 		GENERIC_READ | GENERIC_WRITE,
 		0, /* Don't let other processes share or open
@@ -276,11 +276,11 @@ static int open_tun_device (char *guid, char *dev, enum if_mode_enum mode)
 		OPEN_EXISTING,
 		FILE_ATTRIBUTE_SYSTEM | FILE_FLAG_OVERLAPPED,
 		0);
-	
+
 	if (handle == INVALID_HANDLE_VALUE) {
 		return -1;
 	}
-	
+
 	/*
 	 * get driver version info
 	 */
@@ -293,7 +293,7 @@ static int open_tun_device (char *guid, char *dev, enum if_mode_enum mode)
 		(int) info[1],
 		(info[2] ? "(DEBUG)" : ""));
 	}
-	
+
 	/*
 	 * Set driver media status to 'connected'
 	 */
@@ -304,7 +304,7 @@ static int open_tun_device (char *guid, char *dev, enum if_mode_enum mode)
 		printf("WARNING: The TAP-Win32 driver rejected a "
 		"TAP_IOCTL_SET_MEDIA_STATUS DeviceIoControl call.\n");
 	}
-	
+
 	/*
 	 * Initialize overlapped structures
 	 */
@@ -313,7 +313,7 @@ static int open_tun_device (char *guid, char *dev, enum if_mode_enum mode)
 	if (!overlap_read.hEvent || !overlap_write.hEvent) {
 		return -1;
 	}
-	
+
 	/*
 	 * Return fd
 	 */
@@ -337,11 +337,11 @@ int tun_open (char *dev, enum if_mode_enum mode)
 	DWORD value_type;
 	LONG status;
 	DWORD len;
-	
+
 	if (!dev) {
 		return -1;
 	}
-	
+
 	/*
 	 * Device name has been provided. Open such device.
 	 */
@@ -351,7 +351,7 @@ int tun_open (char *dev, enum if_mode_enum mode)
 		}
 		return open_tun_device(guid, dev, mode);
 	}
-	
+
 	/*
 	 * Device name has non been specified. Look for one available!
 	 */
@@ -365,7 +365,7 @@ int tun_open (char *dev, enum if_mode_enum mode)
 		printf("Error opening registry key: %s", ADAPTER_KEY);
 		return -1;
 	}
-	
+
 	while (!found) {
 		len = sizeof(enum_name);
 		status = RegEnumKeyEx(adapter_key, i++,
@@ -414,7 +414,7 @@ int tun_open (char *dev, enum if_mode_enum mode)
 			RegCloseKey(unit_key);
 			continue;
 		}
-		
+
 		/*
 		 * Let's try to open this device
 		 */
@@ -423,11 +423,11 @@ int tun_open (char *dev, enum if_mode_enum mode)
 		if (fd != -1) {
 			found = TRUE;
 		}
-		
+
 		RegCloseKey(unit_key);
 	}
 	RegCloseKey(adapter_key);
-	
+
 	return fd;
 }
 #elif defined(IFF_TUN)
@@ -482,8 +482,8 @@ int tun_open(char *dev, enum if_mode_enum mode)
 }
 #endif /* New driver support */
 
-/* 
- * Close TUN device. 
+/*
+ * Close TUN device.
  */
 #if defined(__sun__)
 int tun_close(int fd, char *dev)
@@ -544,7 +544,7 @@ int tun_read(int fd, unsigned char *buf, int len)
 int tun_read(int fd, unsigned char *buf, int len)
 {
 	DWORD read_size;
-	
+
 	ResetEvent(overlap_read.hEvent);
 	if (ReadFile((HANDLE) get_osfhandle(fd), buf, len, &read_size, &overlap_read)) {
 		return read_size;
@@ -558,14 +558,14 @@ int tun_read(int fd, unsigned char *buf, int len)
 	default:
 		break;
 	}
-	
+
 	return -1;
 }
 
 int tun_write(int fd, unsigned char *buf, int len)
 {
 	DWORD write_size;
-	
+
 	ResetEvent(overlap_write.hEvent);
 	if (WriteFile((HANDLE) get_osfhandle(fd),
 		buf,
@@ -584,7 +584,7 @@ int tun_write(int fd, unsigned char *buf, int len)
 	default:
 		break;
 	}
-	
+
 	return -1;
 }
 #elif defined(NEW_TUN)
@@ -657,32 +657,32 @@ int tun_get_hwaddr(int fd, char *dev, uint8_t *hwaddr)
 {
 #if defined(__CYGWIN__)
 	ULONG len;
-	
+
 	dev = NULL; /* unused */
 	if (!DeviceIoControl((HANDLE) get_osfhandle(fd), TAP_IOCTL_GET_MAC,
 		hwaddr, ETH_ALEN, hwaddr, ETH_ALEN, &len, NULL)) {
 		printf("Cannot get HW address\n");
 		return -1;
 	}
-	
+
 	return 0;
 #elif defined(SIOCGIFHWADDR)
 	struct ifreq ifr;
-	
+
 	/* Use a new socket fd! */
 	if ((fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
 		return -1;
 	}
-	
+
 	memset(&ifr, 0, sizeof(struct ifreq));
 	strncpy(ifr.ifr_name, dev, IFNAMSIZ);
-	
+
 	if (ioctl(fd, SIOCGIFHWADDR, &ifr) < 0) {
 		return -1;
 	}
-	
+
 	memcpy(hwaddr, &ifr.ifr_hwaddr.sa_data, ETH_ALEN);
-	
+
 	return 0;
 #else
 	/* todo: implement using SIOCGLIFADDR */
@@ -795,7 +795,7 @@ int unsetenv(const char *name)
 
 	for (; environ[i] && environ[i + 1]; i++)
 		environ[i] = environ[i + 1];
-	
+
 	return 0;
 }
 #endif

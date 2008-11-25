@@ -5,12 +5,12 @@
    it under the terms of the GNU General Public License as published by
    the Free Software Foundation; either version 2 of the License, or
    (at your option) any later version.
-   
+
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
-   
+
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -86,27 +86,27 @@ static void config_deobfuscate(int obfuscated, int clear)
 {
 	int ret, len = 0;
 	char *bin = NULL;
-	
+
 	if (config[obfuscated] == NULL)
 		return;
-	
+
 	if (config[clear] != NULL) {
 		config[obfuscated] = NULL;
 		error(0, 0, "warning: ignoring obfuscated password because cleartext password set");
 		return;
 	}
-	
+
 	ret = hex2bin(config[obfuscated], &bin, &len);
 	if (ret != 0) {
 		error(1, 0, "error: deobfuscating of password failed (input not a hex string)");
 	}
-	
+
 	ret = deobfuscate(bin, len, config+clear, NULL);
 	free(bin);
 	if (ret != 0) {
 		error(1, 0, "error: deobfuscating of password failed");
 	}
-	
+
 	config[obfuscated] = NULL;
 	return;
 }
@@ -417,7 +417,7 @@ static const struct config_names_s {
 		"Don't ask anything, exit on missing options",
 		NULL
 	}, {
- 		CONFIG_AUTH_MODE, 1, 1,
+		CONFIG_AUTH_MODE, 1, 1,
 		"--auth-mode",
 		"IKE Authmode ",
 		"<psk/cert/hybrid>",
@@ -455,7 +455,7 @@ static const struct config_names_s {
 static char *get_config_filename(const char *name, int add_dot_conf)
 {
 	char *realname;
-	
+
 	asprintf(&realname, "%s%s%s", index(name, '/') ? "" : "/etc/vpnc/", name, add_dot_conf ? ".conf" : "");
 	return realname;
 }
@@ -563,10 +563,10 @@ static void print_usage(char *argv0, int print_level)
 
 		printf("\n");
 	}
-	
+
 	if (!print_level)
 		printf("Use --long-help to see all options\n\n");
-	
+
 	printf("Report bugs to vpnc@unix-ag.uni-kl.de\n");
 }
 
@@ -673,18 +673,18 @@ void do_config(int argc, char **argv)
 			exit(1);
 		}
 	}
-	
+
 	if (!got_conffile) {
 		read_config_file("/etc/vpnc/default.conf", config, 1);
 		read_config_file("/etc/vpnc.conf", config, 1);
 	}
-	
+
 	if (!print_config) {
 		for (i = 0; config_names[i].name != NULL; i++)
 			if (!config[config_names[i].nm]
 				&& config_names[i].get_def != NULL)
 				config[config_names[i].nm] = config_names[i].get_def();
-		
+
 		opt_debug = (config[CONFIG_DEBUG]) ? atoi(config[CONFIG_DEBUG]) : 0;
 		opt_nd = (config[CONFIG_ND]) ? 1 : 0;
 		opt_1des = (config[CONFIG_ENABLE_1DES]) ? 1 : 0;
@@ -708,7 +708,7 @@ void do_config(int argc, char **argv)
 #endif
 		opt_no_encryption = (config[CONFIG_ENABLE_NO_ENCRYPTION]) ? 1 : 0;
 		opt_udpencapport=atoi(config[CONFIG_UDP_ENCAP_PORT]);
-		
+
 		if (!strcmp(config[CONFIG_NATT_MODE], "natt")) {
 			opt_natt_mode = NATT_NORMAL;
 		} else if (!strcmp(config[CONFIG_NATT_MODE], "none")) {
@@ -721,7 +721,7 @@ void do_config(int argc, char **argv)
 			printf("%s: unknown nat traversal mode %s\nknown modes: natt none force-natt cisco-udp\n", argv[0], config[CONFIG_NATT_MODE]);
 			exit(1);
 		}
-		
+
 		if (!strcmp(config[CONFIG_IF_MODE], "tun")) {
 			opt_if_mode = IF_MODE_TUN;
 		} else if (!strcmp(config[CONFIG_IF_MODE], "tap")) {
@@ -730,7 +730,7 @@ void do_config(int argc, char **argv)
 			printf("%s: unknown interface mode %s\nknown modes: tun tap\n", argv[0], config[CONFIG_IF_MODE]);
 			exit(1);
 		}
-		
+
 		if (!strcmp(config[CONFIG_VENDOR], "cisco")) {
 			opt_vendor = VENDOR_CISCO;
 		} else if (!strcmp(config[CONFIG_VENDOR], "netscreen")) {
@@ -740,22 +740,22 @@ void do_config(int argc, char **argv)
 			exit(1);
 		}
 	}
-	
+
 	if (opt_debug >= 99) {
 		printf("WARNING! active debug level is >= 99, output includes username and password (hex encoded)\n");
 		fprintf(stderr,
 			"WARNING! active debug level is >= 99, output includes username and password (hex encoded)\n");
 	}
-	
+
 	config_deobfuscate(CONFIG_IPSEC_SECRET_OBF, CONFIG_IPSEC_SECRET);
 	config_deobfuscate(CONFIG_XAUTH_PASSWORD_OBF, CONFIG_XAUTH_PASSWORD);
-	
+
 	for (i = 0; i < LAST_CONFIG; i++) {
 		if (config[i] != NULL || config[CONFIG_NON_INTERACTIVE] != NULL)
 			continue;
 		if (config[CONFIG_XAUTH_INTERACTIVE] && i == CONFIG_XAUTH_PASSWORD)
 			continue;
-		
+
 		s = NULL;
 		s_len = 0;
 

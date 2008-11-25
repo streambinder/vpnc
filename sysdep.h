@@ -6,7 +6,7 @@
  * For vpnc, this list should be used as
  * reference:
  *
- * __linux__ 
+ * __linux__
  * __NetBSD__
  * __OpenBSD__
  * __FreeBSD__
