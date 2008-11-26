@@ -33,10 +33,10 @@ const char *val_to_string(unsigned int val, const struct debug_strings *dstrings
 	static const char *unknown = " (unknown)";
 	static const char *na = "";
 	unsigned int i;
-	
+
 	if (dstrings == NULL)
 		return na;
-	
+
 	for (i = 0; dstrings[i].id != 0 || dstrings[i].string != NULL; i++)
 		if (dstrings[i].id == val)
 			return dstrings[i].string;

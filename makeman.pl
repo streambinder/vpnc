@@ -48,12 +48,12 @@ while (<$LONGHELP>) {
 		$indent_needed = 1;
 	    }
 	}
-	
+
 	# Highlight the option and make an optional argument italic.
 	if (s/^ *(--[\w-]+)/\n.TP\n.BI "$1"/) {
 	    s/(<.+>)/ " $1"/;
 	}
-	
+
 	# Highlight conffile-only options.
 	s/^ *(\(configfile only option\))/\n.TP\n.B $1/;
 
@@ -78,7 +78,7 @@ while (<$LONGHELP>) {
 	    $vpnc_options .= ".IP\n";
 	    $indent_needed = 0;
 	}
-	
+
 	# Finalize string and add it to buffer
         s/^ *//;
 	s/ *$//;

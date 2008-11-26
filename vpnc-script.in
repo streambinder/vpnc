@@ -123,18 +123,18 @@ if [ -n "$IPROUTE" ]; then
 		$IPROUTE route add `$IPROUTE route get "$VPNGATEWAY" | fix_ip_get_output`
 		$IPROUTE route flush cache
 	}
-	
+
 	del_vpngateway_route() {
 		$IPROUTE route $route_syntax_del "$VPNGATEWAY"
 		$IPROUTE route flush cache
 	}
-	
+
 	set_default_route() {
 		$IPROUTE route | grep '^default' | fix_ip_get_output > "$DEFAULT_ROUTE_FILE"
 		$IPROUTE route replace default dev "$TUNDEV"
 		$IPROUTE route flush cache
 	}
-	
+
 	set_network_route() {
 		NETWORK="$1"
 		NETMASK="$2"
@@ -142,7 +142,7 @@ if [ -n "$IPROUTE" ]; then
 		$IPROUTE route replace "$NETWORK/$NETMASKLEN" dev "$TUNDEV"
 		$IPROUTE route flush cache
 	}
-	
+
 	reset_default_route() {
 		if [ -s "$DEFAULT_ROUTE_FILE" ]; then
 			$IPROUTE route replace `cat "$DEFAULT_ROUTE_FILE"`
@@ -150,12 +150,12 @@ if [ -n "$IPROUTE" ]; then
 			rm -f -- "$DEFAULT_ROUTE_FILE"
 		fi
 	}
-	
+
 	del_network_route() {
 		NETWORK="$1"
 		NETMASK="$2"
 		NETMASKLEN="$3"
-		$IPROUTE route $route_syntax_del "$NETWORK/$NETMASKLEN" dev "$TUNDEV" 
+		$IPROUTE route $route_syntax_del "$NETWORK/$NETMASKLEN" dev "$TUNDEV"
 		$IPROUTE route flush cache
 	}
 else # use route command
@@ -165,7 +165,7 @@ else # use route command
 		# Get rid of lines containing IPv6 addresses (':')
 		netstat -r -n | awk '/:/ { next; } /^(default|0\.0\.0\.0)/ { print $2; }'
 	}
-	
+
 	set_vpngateway_route() {
 		route add -host "$VPNGATEWAY" $route_syntax_gw "`get_default_gw`"
 	}
@@ -173,14 +173,14 @@ else # use route command
 	del_vpngateway_route() {
 		route $route_syntax_del -host "$VPNGATEWAY"
 	}
-	
+
 	set_default_route() {
 		DEFAULTGW="`get_default_gw`"
 		echo "$DEFAULTGW" > "$DEFAULT_ROUTE_FILE"
 		route $route_syntax_del default
 		route add default $route_syntax_gw "$INTERNAL_IP4_ADDRESS"
 	}
-	
+
 	set_network_route() {
 		NETWORK="$1"
 		NETMASK="$2"
@@ -188,7 +188,7 @@ else # use route command
 		del_network_route "$NETWORK" "$NETMASK" "$NETMASKLEN"
 		route add -net "$NETWORK" $route_syntax_netmask "$NETMASK" $route_syntax_gw "$INTERNAL_IP4_ADDRESS"
 	}
-	
+
 	reset_default_route() {
 		if [ -s "$DEFAULT_ROUTE_FILE" ]; then
 			route $route_syntax_del default
@@ -196,7 +196,7 @@ else # use route command
 			rm -f -- "$DEFAULT_ROUTE_FILE"
 		fi
 	}
-	
+
 	del_network_route() {
 		case "$OS" in
 		Linux|NetBSD|Darwin) # and probably others...
@@ -255,7 +255,7 @@ EOF
 $LINE"
 	done
 	exec 6<&-
-	
+
 	for i in $INTERNAL_IP4_DNS_TEMP ; do
 		NEW_RESOLVCONF="$NEW_RESOLVCONF
 nameserver $i"
@@ -444,7 +444,7 @@ do_connect() {
 		echo "$CISCO_BANNER" | while read LINE ; do echo "|" "$LINE" ; done
 		echo
 	fi
-	
+
 	do_ifconfig
 	set_vpngateway_route
 	if [ -n "$CISCO_SPLIT_INC" ]; then
@@ -466,7 +466,7 @@ do_connect() {
 	else
 		set_default_route
 	fi
-	
+
 	if [ -n "$INTERNAL_IP4_DNS" ]; then
 		$MODIFYRESOLVCONF
 	fi
@@ -494,9 +494,9 @@ do_disconnect() {
 	else
 		reset_default_route
 	fi
-	
+
 	del_vpngateway_route
-	
+
 	if [ -n "$INTERNAL_IP4_DNS" ]; then
 		$RESTORERESOLVCONF
 	fi

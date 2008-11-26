@@ -14,7 +14,7 @@ Project home page: http://www.unix-ag.uni-kl.de/~massar/vpnc/
 ========= Contents of this file ============================================
 
 
-- Gereral configuration of vpnc 
+- Gereral configuration of vpnc
 - Using a modified script
 - Additional steps to configure hybrid authentication
 - Setting up vpnc on Vista 64bit
@@ -38,11 +38,11 @@ It reads configuration data from the following places:
 The configuration information it currently needs is:
 
           Option Config file item
-       --gateway IPSec gateway 
-            --id IPSec ID 
-     (no option) IPSec secret 
-      --username Xauth username 
-     (no option) Xauth password 
+       --gateway IPSec gateway
+            --id IPSec ID
+     (no option) IPSec secret
+      --username Xauth username
+     (no option) Xauth password
 
 A sample configuration file is:
 
@@ -61,10 +61,10 @@ It may be easier to use the --print-config option to generate the
 config file, and then delete any lines (like a password) that you want
 to be prompted for.
 
-If you don't know the Group ID and Secret string, ask your 
-administrator. If (s)he declines and refers to the 
-configuration files provided for the vpnclient program, tell 
-him/her that the contents of that files is (though scrambled) 
+If you don't know the Group ID and Secret string, ask your
+administrator. If (s)he declines and refers to the
+configuration files provided for the vpnclient program, tell
+him/her that the contents of that files is (though scrambled)
 not really protected. If you have a working configuration file
 (.pcf file) for the Cisco client then you can use the pcf2vpnc
 utility instead, which will extract most/all of the required
@@ -162,11 +162,11 @@ The trusted root certificate may be contained in a directory by adding
 to your .conf file or adding
 	--ca-dir <trusted_certificate_directory>
 when starting vpnc.
-The default is 
+The default is
 	/etc/ssl
 
-As the trusted certificate is referenced by the hash of the subject name, 
-the directory has to contain the certificate named like this hash_value. 
+As the trusted certificate is referenced by the hash of the subject name,
+the directory has to contain the certificate named like this hash_value.
 A link can also be used like in /etc/ssl/certs/.
 The hash value can be calculated by e.g.
 	openssl x509 -in <ca_certfile.pem> -noout -hash

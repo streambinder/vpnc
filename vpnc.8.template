@@ -15,7 +15,7 @@ This manual page documents briefly the
 \fBvpnc\fR and
 \fBvpnc\-disconnect\fR commands.
 .PP
-\fBvpnc\fR is a 
+\fBvpnc\fR is a
 VPN client for the Cisco 3000 VPN  Concentrator,  creating  a IPSec-like
 connection as a tunneling network device for the local system. It uses
 the TUN/TAP driver in  Linux  kernel  2.4  and  above  and device tun(4)
@@ -85,7 +85,7 @@ for security reasons) or be stored in a configuration file.
 .PD 0
 .\" ###makeman.pl: Insert options from help-output here!
 
-.HP 
+.HP
 \fB\-\-print\-config\fR
 .IP
 Prints your configuration; output can be used as vpnc.conf
@@ -200,7 +200,7 @@ Christian Lackas <delta(at)lackas.net>, based on vpnc README by
 Maurice Massar <vpnc(at)unix\-ag.uni\-kl.de>.
 Permission is
 granted to copy, distribute and/or modify this document under
-the terms of the GNU General Public License, Version 2 any 
+the terms of the GNU General Public License, Version 2 any
 later version published by the Free Software Foundation.
 .PP
 On Debian systems, the complete text of the GNU General Public

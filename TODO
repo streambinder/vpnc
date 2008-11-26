@@ -13,7 +13,7 @@ TODO list
     for more information
 
 * pass IPSEC target network to script
-  - use it to initialize the tunnel interface and routes 
+  - use it to initialize the tunnel interface and routes
 
 * clean up scripts
   - config-support for vpnc-script

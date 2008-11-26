@@ -47,7 +47,7 @@ I've tried to connect to my corporate VPN, but the only message I got was:
 
 vpnc: xauth packet unsupported: ATTRIBUTES_NOT_SUPPORTED
 
-Problem was found in xauth_type. In my case request attribute "xauth_type" consisted 5 as value. There is quick 
+Problem was found in xauth_type. In my case request attribute "xauth_type" consisted 5 as value. There is quick
 fix for this issue below. But...
 
 In the chapter 6.2 of the draft-beaulieu-ike-xauth-02.txt we can read:
@@ -59,7 +59,7 @@ In the chapter 6.2 of the draft-beaulieu-ike-xauth-02.txt we can read:
    The XAUTH-TYPE in a REPLY MUST be identical to the XAUTH-TYPE in the
    REQUEST."
 
-So I think the better way is to send reply with the same xauth_type value as in request. But I can't test it 
+So I think the better way is to send reply with the same xauth_type value as in request. But I can't test it
 because our server always use 5 and never 0.
 
 Thanks.
