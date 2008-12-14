@@ -21,7 +21,7 @@ TODO list
   - switch to disable resolv.conf rewriting
   - do $something with split_dns
 
-* beautify paket dump output
+* beautify packet dump output
 
 * large code cleanup
   - at least one function per packet (instead of one function per phase)
@@ -43,7 +43,7 @@ TODO list
   - usernames containing "@" unable to login
   - ipsec over tcp
   - nortel support?
-  - segfault if > 100 routes/acls (to large paket? read size?)
+  - segfault if > 100 routes/acls (to large packet? read size?)
     (probably "fixed" by increasing the size in r_packet in vpnc.c,
     but why did it crash?)
   - amd64 somehow broken? maybe gcc bugs??

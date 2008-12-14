@@ -629,7 +629,7 @@ int tun_read(int fd, unsigned char *buf, int len)
 
 	pack -= sz - sizeof(tun.data);
 	if (pack > len)
-		pack = len; /* truncate paket */
+		pack = len; /* truncate packet */
 
 	memcpy(buf, tun.data, pack);
 

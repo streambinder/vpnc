@@ -498,7 +498,7 @@ static int isakmp_crypt(struct sa_block *s, uint8_t * block, size_t blocklen, in
 
 	if (!enc && (memcmp(block + ISAKMP_I_COOKIE_O, s->ike.i_cookie, ISAKMP_COOKIE_LENGTH) != 0
 		|| memcmp(block + ISAKMP_R_COOKIE_O, s->ike.r_cookie, ISAKMP_COOKIE_LENGTH) != 0)) {
-		DEBUG(2, printf("got paket with wrong cookies\n"));
+		DEBUG(2, printf("got packet with wrong cookies\n"));
 		return ISAKMP_N_INVALID_COOKIE;
 	}
 
@@ -3146,8 +3146,8 @@ void process_late_ike(struct sa_block *s, uint8_t *r_packet, ssize_t r_length)
 	struct isakmp_packet *r;
 	struct isakmp_payload *rp;
 
-	DEBUG(2,printf("got late ike paket: %zd bytes\n", r_length));
-	/* we should ignore resent pakets here.
+	DEBUG(2,printf("got late ike packet: %zd bytes\n", r_length));
+	/* we should ignore resent packets here.
 	 * unpack_verify_phase2 will fail to decode them probably */
 	reject = unpack_verify_phase2(s, r_packet, r_length, &r, NULL, 0);
 

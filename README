@@ -87,7 +87,7 @@ $reason == pre-init: this is befor vpnc opens the tun device
    Note that none of the variables mentioned below is available
 $reason == connect: this is what used to be "Config Script".
    The connection is established, but vpnc will not begin forwarding
-   pakets until the script finishs.
+   packets until the script finishs.
 $reason == disconnect: This is called just after vpnc received a signal.
    Note that vpnc will not forward packets anymore while the script is
    running or therafter.
