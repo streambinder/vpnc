@@ -47,14 +47,12 @@ RELEASE_VERSION := $(shell cat VERSION)
 
 # Comment this in to obtain a binary with certificate support which is
 # GPL incompliant though.
-OPENSSL_GPL_VIOLATION = -DOPENSSL_GPL_VIOLATION
-OPENSSLLIBS = -lcrypto
+#OPENSSL_GPL_VIOLATION = -DOPENSSL_GPL_VIOLATION
+#OPENSSLLIBS = -lcrypto
 
 CC=gcc
-CFLAGS ?= -O3 -g -std=gnu9x
-# -pedantic
-CFLAGS += -W -Wall -Wmissing-declarations -Wwrite-strings -Wtype-limits
-#CFLAGS += -W -Wall -Wmissing-declarations -Wwrite-strings
+CFLAGS ?= -O3 -g
+CFLAGS += -W -Wall -Wmissing-declarations -Wwrite-strings
 CFLAGS +=  $(shell libgcrypt-config --cflags)
 CPPFLAGS += -DVERSION=\"$(VERSION)\" $(OPENSSL_GPL_VIOLATION)
 LDFLAGS ?= -g
