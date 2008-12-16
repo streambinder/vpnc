@@ -97,6 +97,7 @@ struct sa_block {
 		uint32_t dpd_seqno_ack;
 		time_t dpd_sent;
 		unsigned int dpd_attempts;
+		unsigned char *psk_hash;
 	} ike;
 	uint8_t our_address[4], our_netmask[4];
 	struct {
@@ -112,6 +113,13 @@ struct sa_block {
 		struct encap_method *em;
 		uint16_t ip_id;
 	} ipsec;
+	struct isakmp_packet *p1;
+	unsigned char *dh_public;
+	struct group *dh_grp;
+	unsigned char i_nonce[20];
+	int seen_natt_vid, seen_natd, seen_natd_them, seen_natd_us, natd_type, natt_draft;
+	unsigned char *natd_us, *natd_them;
+	unsigned char *returned_hash;
 };
 
 extern int volatile do_kill;

@@ -1204,20 +1204,13 @@ static void lifetime_ipsec_process(struct sa_block *s, struct isakmp_attribute *
 		lifetime_ipsec_process(s, a->next->next);
 }
 
-static void do_phase1_am(const char *key_id, const char *shared_key, struct sa_block *s)
+static void do_phase1_am_init(struct sa_block *s)
 {
-	unsigned char i_nonce[20];
-	struct group *dh_grp;
-	unsigned char *dh_public;
-	unsigned char *returned_hash;
-	unsigned char *psk_hash;
 
-	struct isakmp_packet *p1;
-	struct isakmp_packet *r;
-	int seen_natt_vid = 0, seen_natd = 0, seen_natd_them = 0, seen_natd_us = 0, natd_type = 0;
-	unsigned char *natd_us = NULL, *natd_them = NULL;
-	int natt_draft = -1;
-	unsigned char *dh_shared_secret;
+	s->seen_natt_vid = s->seen_natd = s->seen_natd_them = s->natd_type = 0;
+	s->natd_us = s->natd_them = NULL;
+	s->natt_draft = -1;
+	s->p1 = NULL;
 
 	DEBUGTOP(2, printf("S4.1 create_nonce\n"));
 	gcry_create_nonce(s->ike.i_cookie, ISAKMP_COOKIE_LENGTH);
@@ -1226,17 +1219,21 @@ static void do_phase1_am(const char *key_id, const char *shared_key, struct sa_b
 	if (s->ike.i_cookie[0] == 0)
 		s->ike.i_cookie[0] = 1;
 	hex_dump("i_cookie", s->ike.i_cookie, ISAKMP_COOKIE_LENGTH, NULL);
-	gcry_create_nonce(i_nonce, sizeof(i_nonce));
-	hex_dump("i_nonce", i_nonce, sizeof(i_nonce), NULL);
+	gcry_create_nonce(s->i_nonce, sizeof(s->i_nonce));
+	hex_dump("i_nonce", s->i_nonce, sizeof(s->i_nonce), NULL);
 	DEBUGTOP(2, printf("S4.2 dh setup\n"));
 	/* Set up the Diffie-Hellman stuff.  */
 	{
-		dh_grp = group_get(get_dh_group_ike()->my_id);
-		dh_public = xallocc(dh_getlen(dh_grp));
-		dh_create_exchange(dh_grp, dh_public);
-		hex_dump("dh_public", dh_public, dh_getlen(dh_grp), NULL);
+		s->dh_grp = group_get(get_dh_group_ike()->my_id);
+		s->dh_public = xallocc(dh_getlen(s->dh_grp));
+		dh_create_exchange(s->dh_grp, s->dh_public);
+		hex_dump("dh_public", s->dh_public, dh_getlen(s->dh_grp), NULL);
 	}
 
+}
+
+static void do_phase1_am_packet1(const char *key_id, struct sa_block *s)
+{
 	DEBUGTOP(2, printf("S4.3 AM packet_1\n"));
 	/* Create the first packet.  */
 	{
@@ -1244,14 +1241,14 @@ static void do_phase1_am(const char *key_id, const char *shared_key, struct sa_b
 		uint8_t *pkt;
 		size_t pkt_len;
 
-		p1 = new_isakmp_packet();
-		memcpy(p1->i_cookie, s->ike.i_cookie, ISAKMP_COOKIE_LENGTH);
-		p1->isakmp_version = ISAKMP_VERSION;
-		p1->exchange_type = ISAKMP_EXCHANGE_AGGRESSIVE;
-		p1->payload = l = make_our_sa_ike();
-		l->next = new_isakmp_data_payload(ISAKMP_PAYLOAD_KE, dh_public, dh_getlen(dh_grp));
+		s->p1 = new_isakmp_packet();
+		memcpy(s->p1->i_cookie, s->ike.i_cookie, ISAKMP_COOKIE_LENGTH);
+		s->p1->isakmp_version = ISAKMP_VERSION;
+		s->p1->exchange_type = ISAKMP_EXCHANGE_AGGRESSIVE;
+		s->p1->payload = l = make_our_sa_ike();
+		l->next = new_isakmp_data_payload(ISAKMP_PAYLOAD_KE, s->dh_public, dh_getlen(s->dh_grp));
 		l->next->next = new_isakmp_data_payload(ISAKMP_PAYLOAD_NONCE,
-			i_nonce, sizeof(i_nonce));
+			s->i_nonce, sizeof(s->i_nonce));
 		l = l->next->next;
 		l->next = new_isakmp_payload(ISAKMP_PAYLOAD_ID);
 		l = l->next;
@@ -1289,16 +1286,21 @@ static void do_phase1_am(const char *key_id, const char *shared_key, struct sa_b
 			l = l->next = new_isakmp_data_payload(ISAKMP_PAYLOAD_VID,
 				VID_DPD, sizeof(VID_DPD));
 		}
-		flatten_isakmp_packet(p1, &pkt, &pkt_len, 0);
+		flatten_isakmp_packet(s->p1, &pkt, &pkt_len, 0);
 
 		/* Now, send that packet and receive a new one.  */
 		r_length = sendrecv(s, r_packet, sizeof(r_packet), pkt, pkt_len, 0);
 		free(pkt);
 	}
+}
+
+static void do_phase1_am_packet2(const char *shared_key, struct sa_block *s)
+{
 	DEBUGTOP(2, printf("S4.4 AM_packet2\n"));
 	/* Decode the recieved packet.  */
 	{
 		int reject;
+		struct isakmp_packet *r;
 		struct isakmp_payload *rp;
 		struct isakmp_payload *nonce = NULL;
 		struct isakmp_payload *ke = NULL;
@@ -1310,6 +1312,7 @@ static void do_phase1_am(const char *key_id, const char *shared_key, struct sa_b
 		unsigned char *psk_skeyid;
 		unsigned char *skeyid;
 		gcry_md_hd_t skeyid_ctx;
+		unsigned char *dh_shared_secret;
 
 #ifdef OPENSSL_GPL_VIOLATION
 		X509 *current_cert;
@@ -1494,32 +1497,32 @@ static void do_phase1_am(const char *key_id, const char *shared_key, struct sa_b
 				} else if (rp->u.vid.length == sizeof(VID_NATT_RFC)
 					&& memcmp(rp->u.vid.data, VID_NATT_RFC,
 						sizeof(VID_NATT_RFC)) == 0) {
-					seen_natt_vid = 1;
-					if (natt_draft < 1) natt_draft = 2;
+					s->seen_natt_vid = 1;
+					if (s->natt_draft < 1) s->natt_draft = 2;
 					DEBUG(2, printf("peer is NAT-T capable (RFC 3947)\n"));
 				} else if (rp->u.vid.length == sizeof(VID_NATT_02N)
 					&& memcmp(rp->u.vid.data, VID_NATT_02N,
 						sizeof(VID_NATT_02N)) == 0) {
-					seen_natt_vid = 1;
-					if (natt_draft < 1) natt_draft = 2;
+					s->seen_natt_vid = 1;
+					if (s->natt_draft < 1) s->natt_draft = 2;
 					DEBUG(2, printf("peer is NAT-T capable (draft-02)\\n\n")); /* sic! */
 				} else if (rp->u.vid.length == sizeof(VID_NATT_02)
 					&& memcmp(rp->u.vid.data, VID_NATT_02,
 						sizeof(VID_NATT_02)) == 0) {
-					seen_natt_vid = 1;
-					if (natt_draft < 1) natt_draft = 2;
+					s->seen_natt_vid = 1;
+					if (s->natt_draft < 1) s->natt_draft = 2;
 					DEBUG(2, printf("peer is NAT-T capable (draft-02)\n"));
 				} else if (rp->u.vid.length == sizeof(VID_NATT_01)
 					&& memcmp(rp->u.vid.data, VID_NATT_01,
 						sizeof(VID_NATT_01)) == 0) {
-					seen_natt_vid = 1;
-					if (natt_draft < 1) natt_draft = 1;
+					s->seen_natt_vid = 1;
+					if (s->natt_draft < 1) s->natt_draft = 1;
 					DEBUG(2, printf("peer is NAT-T capable (draft-01)\n"));
 				} else if (rp->u.vid.length == sizeof(VID_NATT_00)
 					&& memcmp(rp->u.vid.data, VID_NATT_00,
 						sizeof(VID_NATT_00)) == 0) {
-					seen_natt_vid = 1;
-					if (natt_draft < 0) natt_draft = 0;
+					s->seen_natt_vid = 1;
+					if (s->natt_draft < 0) s->natt_draft = 0;
 					DEBUG(2, printf("peer is NAT-T capable (draft-00)\n"));
 				} else if (rp->u.vid.length == sizeof(VID_DPD)
 					&& memcmp(rp->u.vid.data, VID_DPD,
@@ -1548,34 +1551,34 @@ static void do_phase1_am(const char *key_id, const char *shared_key, struct sa_b
 				break;
 			case ISAKMP_PAYLOAD_NAT_D_OLD:
 			case ISAKMP_PAYLOAD_NAT_D:
-				natd_type = rp->type;
+				s->natd_type = rp->type;
 				DEBUG(2, printf("peer is using type %d%s for NAT-Discovery payloads\n",
-					natd_type, val_to_string(natd_type, isakmp_payload_enum_array)));
-				if (!seen_sa /*|| !seen_natt_vid*/) {
+					s->natd_type, val_to_string(s->natd_type, isakmp_payload_enum_array)));
+				if (!seen_sa /*|| !s->seen_natt_vid*/) {
 					reject = ISAKMP_N_INVALID_PAYLOAD_TYPE;
 				} else if (opt_natt_mode == NATT_NONE) {
 					;
 				} else if (rp->u.natd.length != s->ike.md_len) {
 					reject = ISAKMP_N_PAYLOAD_MALFORMED;
-				} else if (seen_natd == 0) {
+				} else if (s->seen_natd == 0) {
 					gcry_md_hd_t hm;
 					uint16_t n_dst_port = htons(s->ike.dst_port);
 
-					natd_us = xallocc(s->ike.md_len);
-					natd_them = xallocc(s->ike.md_len);
-					memcpy(natd_us, rp->u.natd.data, s->ike.md_len);
+					s->natd_us = xallocc(s->ike.md_len);
+					s->natd_them = xallocc(s->ike.md_len);
+					memcpy(s->natd_us, rp->u.natd.data, s->ike.md_len);
 					gcry_md_open(&hm, s->ike.md_algo, 0);
 					gcry_md_write(hm, s->ike.i_cookie, ISAKMP_COOKIE_LENGTH);
 					gcry_md_write(hm, s->ike.r_cookie, ISAKMP_COOKIE_LENGTH);
 					gcry_md_write(hm, &s->dst, sizeof(struct in_addr));
 					gcry_md_write(hm, &n_dst_port, sizeof(uint16_t));
 					gcry_md_final(hm);
-					memcpy(natd_them, gcry_md_read(hm, 0), s->ike.md_len);
+					memcpy(s->natd_them, gcry_md_read(hm, 0), s->ike.md_len);
 					gcry_md_close(hm);
-					seen_natd = 1;
+					s->seen_natd = 1;
 				} else {
-					if (memcmp(natd_them, rp->u.natd.data, s->ike.md_len) == 0)
-						seen_natd_them = 1;
+					if (memcmp(s->natd_them, rp->u.natd.data, s->ike.md_len) == 0)
+						s->seen_natd_them = 1;
 				}
 				break;
 			default:
@@ -1589,7 +1592,7 @@ static void do_phase1_am(const char *key_id, const char *shared_key, struct sa_b
 			gcry_cipher_algo_info(s->ike.cry_algo, GCRYCTL_GET_KEYLEN, NULL, &(s->ike.keylen));
 		}
 
-		if (reject == 0 && (ke == NULL || ke->u.ke.length != dh_getlen(dh_grp)))
+		if (reject == 0 && (ke == NULL || ke->u.ke.length != dh_getlen(s->dh_grp)))
 			reject = ISAKMP_N_INVALID_KEY_INFORMATION;
 		if (reject == 0 && nonce == NULL)
 			reject = ISAKMP_N_INVALID_HASH_INFORMATION;
@@ -1609,14 +1612,14 @@ static void do_phase1_am(const char *key_id, const char *shared_key, struct sa_b
 			error(1, 0, "response was invalid [3]: %s(%d)", val_to_string(reject, isakmp_notify_enum_array), reject);
 
 		/* Determine the shared secret.  */
-		dh_shared_secret = xallocc(dh_getlen(dh_grp));
-		dh_create_shared(dh_grp, dh_shared_secret, ke->u.ke.data);
-		hex_dump("dh_shared_secret", dh_shared_secret, dh_getlen(dh_grp), NULL);
+		dh_shared_secret = xallocc(dh_getlen(s->dh_grp));
+		dh_create_shared(s->dh_grp, dh_shared_secret, ke->u.ke.data);
+		hex_dump("dh_shared_secret", dh_shared_secret, dh_getlen(s->dh_grp), NULL);
 		/* Generate SKEYID.  */
 		{
 			gcry_md_open(&skeyid_ctx, s->ike.md_algo, GCRY_MD_FLAG_HMAC);
 			gcry_md_setkey(skeyid_ctx, shared_key, strlen(shared_key));
-			gcry_md_write(skeyid_ctx, i_nonce, sizeof(i_nonce));
+			gcry_md_write(skeyid_ctx, s->i_nonce, sizeof(s->i_nonce));
 			gcry_md_write(skeyid_ctx, nonce->u.nonce.data, nonce->u.nonce.length);
 			gcry_md_final(skeyid_ctx);
 			psk_skeyid = xallocc(s->ike.md_len);
@@ -1635,7 +1638,7 @@ static void do_phase1_am(const char *key_id, const char *shared_key, struct sa_b
 				s->ike.auth_algo == IKE_AUTH_XAUTHRespPreShared) {
 				gcry_md_open(&skeyid_ctx, s->ike.md_algo, GCRY_MD_FLAG_HMAC);
 				gcry_md_setkey(skeyid_ctx, shared_key, strlen(shared_key));
-				gcry_md_write(skeyid_ctx, i_nonce, sizeof(i_nonce));
+				gcry_md_write(skeyid_ctx, s->i_nonce, sizeof(s->i_nonce));
 				gcry_md_write(skeyid_ctx, nonce->u.nonce.data, nonce->u.nonce.length);
 				gcry_md_final(skeyid_ctx);
 			} else if (s->ike.auth_algo == IKE_AUTH_DSS ||
@@ -1651,13 +1654,13 @@ static void do_phase1_am(const char *key_id, const char *shared_key, struct sa_b
 				s->ike.auth_algo == IKE_AUTH_XAUTHRespRSA) {
 				unsigned char *key;
 				int key_len;
-				key_len = sizeof(i_nonce) + nonce->u.nonce.length;
+				key_len = sizeof(s->i_nonce) + nonce->u.nonce.length;
 				key = xallocc(key_len);
-				memcpy(key, i_nonce, sizeof(i_nonce));
-				memcpy(key + sizeof(i_nonce), nonce->u.nonce.data, nonce->u.nonce.length);
+				memcpy(key, s->i_nonce, sizeof(s->i_nonce));
+				memcpy(key + sizeof(s->i_nonce), nonce->u.nonce.data, nonce->u.nonce.length);
 				gcry_md_open(&skeyid_ctx, s->ike.md_algo, GCRY_MD_FLAG_HMAC);
 				gcry_md_setkey(skeyid_ctx, key, key_len);
-				gcry_md_write(skeyid_ctx, dh_shared_secret, dh_getlen(dh_grp));
+				gcry_md_write(skeyid_ctx, dh_shared_secret, dh_getlen(s->dh_grp));
 				gcry_md_final(skeyid_ctx);
 			} else
 				error(1, 0, "SKEYID could not be computed: %s", "the selected authentication method is not supported");
@@ -1673,7 +1676,7 @@ static void do_phase1_am(const char *key_id, const char *shared_key, struct sa_b
 			size_t sa_size, idi_size, idp_size;
 			struct isakmp_payload *sa, *idi;
 
-			sa = p1->payload;
+			sa = s->p1->payload;
 			for (idi = sa; idi->type != ISAKMP_PAYLOAD_ID; idi = idi->next) ;
 			flatten_isakmp_payload(sa, &sa_f, &sa_size);
 			flatten_isakmp_payload(idi, &idi_f, &idi_size);
@@ -1682,7 +1685,7 @@ static void do_phase1_am(const char *key_id, const char *shared_key, struct sa_b
 			gcry_md_open(&hm, s->ike.md_algo, GCRY_MD_FLAG_HMAC);
 			gcry_md_setkey(hm, skeyid, s->ike.md_len);
 			gcry_md_write(hm, ke->u.ke.data, ke->u.ke.length);
-			gcry_md_write(hm, dh_public, dh_getlen(dh_grp));
+			gcry_md_write(hm, s->dh_public, dh_getlen(s->dh_grp));
 			gcry_md_write(hm, s->ike.r_cookie, ISAKMP_COOKIE_LENGTH);
 			gcry_md_write(hm, s->ike.i_cookie, ISAKMP_COOKIE_LENGTH);
 			gcry_md_write(hm, sa_f + 4, sa_size - 4);
@@ -1818,27 +1821,27 @@ static void do_phase1_am(const char *key_id, const char *shared_key, struct sa_b
 
 			gcry_md_open(&hm, s->ike.md_algo, GCRY_MD_FLAG_HMAC);
 			gcry_md_setkey(hm, skeyid, s->ike.md_len);
-			gcry_md_write(hm, dh_public, dh_getlen(dh_grp));
+			gcry_md_write(hm, s->dh_public, dh_getlen(s->dh_grp));
 			gcry_md_write(hm, ke->u.ke.data, ke->u.ke.length);
 			gcry_md_write(hm, s->ike.i_cookie, ISAKMP_COOKIE_LENGTH);
 			gcry_md_write(hm, s->ike.r_cookie, ISAKMP_COOKIE_LENGTH);
 			gcry_md_write(hm, sa_f + 4, sa_size - 4);
 			gcry_md_write(hm, idi_f + 4, idi_size - 4);
 			gcry_md_final(hm);
-			returned_hash = xallocc(s->ike.md_len);
-			memcpy(returned_hash, gcry_md_read(hm, 0), s->ike.md_len);
+			s->returned_hash = xallocc(s->ike.md_len);
+			memcpy(s->returned_hash, gcry_md_read(hm, 0), s->ike.md_len);
 			gcry_md_close(hm);
-			hex_dump("returned_hash", returned_hash, s->ike.md_len, NULL);
+			hex_dump("returned_hash", s->returned_hash, s->ike.md_len, NULL);
 
 			/* PRESHARED_KEY_HASH */
 			gcry_md_open(&hm, s->ike.md_algo, GCRY_MD_FLAG_HMAC);
 			gcry_md_setkey(hm, skeyid, s->ike.md_len);
 			gcry_md_write(hm, shared_key, strlen(shared_key));
 			gcry_md_final(hm);
-			psk_hash = xallocc(s->ike.md_len);
-			memcpy(psk_hash, gcry_md_read(hm, 0), s->ike.md_len);
+			s->ike.psk_hash = xallocc(s->ike.md_len);
+			memcpy(s->ike.psk_hash, gcry_md_read(hm, 0), s->ike.md_len);
 			gcry_md_close(hm);
-			hex_dump("psk_hash", psk_hash, s->ike.md_len, NULL);
+			hex_dump("psk_hash", s->ike.psk_hash, s->ike.md_len, NULL);
 			/* End PRESHARED_KEY_HASH */
 
 			free(sa_f);
@@ -1855,13 +1858,13 @@ static void do_phase1_am(const char *key_id, const char *shared_key, struct sa_b
 			unsigned char *dh_shared_secret;
 
 			/* Determine the shared secret.  */
-			dh_shared_secret = xallocc(dh_getlen(dh_grp));
-			dh_create_shared(dh_grp, dh_shared_secret, ke->u.ke.data);
-			hex_dump("dh_shared_secret", dh_shared_secret, dh_getlen(dh_grp), NULL);
+			dh_shared_secret = xallocc(dh_getlen(s->dh_grp));
+			dh_create_shared(s->dh_grp, dh_shared_secret, ke->u.ke.data);
+			hex_dump("dh_shared_secret", dh_shared_secret, dh_getlen(s->dh_grp), NULL);
 
 			gcry_md_open(&hm, s->ike.md_algo, GCRY_MD_FLAG_HMAC);
 			gcry_md_setkey(hm, skeyid, s->ike.md_len);
-			gcry_md_write(hm, dh_shared_secret, dh_getlen(dh_grp));
+			gcry_md_write(hm, dh_shared_secret, dh_getlen(s->dh_grp));
 			gcry_md_write(hm, s->ike.i_cookie, ISAKMP_COOKIE_LENGTH);
 			gcry_md_write(hm, s->ike.r_cookie, ISAKMP_COOKIE_LENGTH);
 			gcry_md_write(hm, c012 + 0, 1);
@@ -1875,7 +1878,7 @@ static void do_phase1_am(const char *key_id, const char *shared_key, struct sa_b
 			gcry_md_open(&hm, s->ike.md_algo, GCRY_MD_FLAG_HMAC);
 			gcry_md_setkey(hm, skeyid, s->ike.md_len);
 			gcry_md_write(hm, s->ike.skeyid_d, s->ike.md_len);
-			gcry_md_write(hm, dh_shared_secret, dh_getlen(dh_grp));
+			gcry_md_write(hm, dh_shared_secret, dh_getlen(s->dh_grp));
 			gcry_md_write(hm, s->ike.i_cookie, ISAKMP_COOKIE_LENGTH);
 			gcry_md_write(hm, s->ike.r_cookie, ISAKMP_COOKIE_LENGTH);
 			gcry_md_write(hm, c012 + 1, 1);
@@ -1889,7 +1892,7 @@ static void do_phase1_am(const char *key_id, const char *shared_key, struct sa_b
 			gcry_md_open(&hm, s->ike.md_algo, GCRY_MD_FLAG_HMAC);
 			gcry_md_setkey(hm, skeyid, s->ike.md_len);
 			gcry_md_write(hm, s->ike.skeyid_a, s->ike.md_len);
-			gcry_md_write(hm, dh_shared_secret, dh_getlen(dh_grp));
+			gcry_md_write(hm, dh_shared_secret, dh_getlen(s->dh_grp));
 			gcry_md_write(hm, s->ike.i_cookie, ISAKMP_COOKIE_LENGTH);
 			gcry_md_write(hm, s->ike.r_cookie, ISAKMP_COOKIE_LENGTH);
 			gcry_md_write(hm, c012 + 2, 1);
@@ -1935,7 +1938,7 @@ static void do_phase1_am(const char *key_id, const char *shared_key, struct sa_b
 
 			assert(s->ike.ivlen <= s->ike.md_len);
 			gcry_md_open(&hm, s->ike.md_algo, 0);
-			gcry_md_write(hm, dh_public, dh_getlen(dh_grp));
+			gcry_md_write(hm, s->dh_public, dh_getlen(s->dh_grp));
 			gcry_md_write(hm, ke->u.ke.data, ke->u.ke.length);
 			gcry_md_final(hm);
 			if (s->ike.current_iv) free(s->ike.current_iv);
@@ -1947,11 +1950,17 @@ static void do_phase1_am(const char *key_id, const char *shared_key, struct sa_b
 		}
 
 		gcry_md_close(skeyid_ctx);
+		free(dh_shared_secret);
 	}
 
+}
+
+static void do_phase1_am_packet3(struct sa_block *s)
+{
 	DEBUGTOP(2, printf("S4.5 AM_packet3\n"));
 	/* Send final phase 1 packet.  */
 	{
+		s->seen_natd_us = 0;
 		struct isakmp_packet *p2;
 		uint8_t *p2kt;
 		size_t p2kt_len;
@@ -1976,7 +1985,7 @@ static void do_phase1_am(const char *key_id, const char *shared_key, struct sa_b
 		p2->exchange_type = ISAKMP_EXCHANGE_AGGRESSIVE;
 	/* XXX CERT Add id(?), cert and sig here in case of cert auth */
 		p2->payload = new_isakmp_data_payload(ISAKMP_PAYLOAD_HASH,
-			returned_hash, s->ike.md_len);
+			s->returned_hash, s->ike.md_len);
 		p2->payload->next = pl = new_isakmp_payload(ISAKMP_PAYLOAD_N);
 		pl->u.n.doi = ISAKMP_DOI_IPSEC;
 		pl->u.n.protocol = ISAKMP_IPSEC_PROTO_ISAKMP;
@@ -2003,7 +2012,7 @@ static void do_phase1_am(const char *key_id, const char *shared_key, struct sa_b
 				s->ike.r_cookie, ISAKMP_COOKIE_LENGTH);
 			pl->u.n.data_length = s->ike.md_len;
 			pl->u.n.data = xallocc(pl->u.n.data_length);
-			memcpy(pl->u.n.data, psk_hash, pl->u.n.data_length);
+			memcpy(pl->u.n.data, s->ike.psk_hash, pl->u.n.data_length);
 			/* End Notify - PRESHARED_KEY_HASH */
 		}
 		pl = pl->next = new_isakmp_data_payload(ISAKMP_PAYLOAD_VID,
@@ -2012,10 +2021,10 @@ static void do_phase1_am(const char *key_id, const char *shared_key, struct sa_b
 			VID_UNITY, sizeof(VID_UNITY));
 
 		/* include NAT traversal discovery payloads */
-		if (seen_natt_vid) {
-			assert(natd_type != 0);
-			pl = pl->next = new_isakmp_data_payload(natd_type,
-				natd_them, s->ike.md_len);
+		if (s->seen_natt_vid) {
+			assert(s->natd_type != 0);
+			pl = pl->next = new_isakmp_data_payload(s->natd_type,
+				s->natd_them, s->ike.md_len);
 			/* this could be repeated fo any known outbound interfaces */
 			{
 				gcry_md_hd_t hm;
@@ -2027,23 +2036,23 @@ static void do_phase1_am(const char *key_id, const char *shared_key, struct sa_b
 				gcry_md_write(hm, &s->src, sizeof(struct in_addr));
 				gcry_md_write(hm, &n_src_port, sizeof(uint16_t));
 				gcry_md_final(hm);
-				pl = pl->next = new_isakmp_data_payload(natd_type,
+				pl = pl->next = new_isakmp_data_payload(s->natd_type,
 					gcry_md_read(hm, 0), s->ike.md_len);
 				if (opt_natt_mode == NATT_FORCE) /* force detection of "this end behind NAT" */
 					pl->u.ke.data[0] ^= 1; /* by flipping a bit in the nat-detection-hash */
-				if (seen_natd && memcmp(natd_us, pl->u.ke.data, s->ike.md_len) == 0)
-					seen_natd_us = 1;
+				if (s->seen_natd && memcmp(s->natd_us, pl->u.ke.data, s->ike.md_len) == 0)
+					s->seen_natd_us = 1;
 				gcry_md_close(hm);
 			}
-			if (seen_natd) {
-				free(natd_us);
-				free(natd_them);
+			if (s->seen_natd) {
+				free(s->natd_us);
+				free(s->natd_them);
 			}
 			/* if there is a NAT, change to port 4500 and select UDP encap */
-			if (!seen_natd_us || !seen_natd_them) {
+			if (!s->seen_natd_us || !s->seen_natd_them) {
 				DEBUG(1, printf("NAT status: this end behind NAT? %s -- remote end behind NAT? %s\n",
-					seen_natd_us ? "no" : "YES", seen_natd_them ? "no" : "YES"));
-				switch (natd_type) {
+					s->seen_natd_us ? "no" : "YES", s->seen_natd_them ? "no" : "YES"));
+				switch (s->natd_type) {
 					case ISAKMP_PAYLOAD_NAT_D:
 						s->ipsec.encap_mode = IPSEC_ENCAP_UDP_TUNNEL;
 						break;
@@ -2053,7 +2062,7 @@ static void do_phase1_am(const char *key_id, const char *shared_key, struct sa_b
 					default:
 						abort();
 				}
-				if (natt_draft >= 2) {
+				if (s->natt_draft >= 2) {
 					s->ipsec.natt_active_mode = NATT_ACTIVE_RFC;
 					close(s->ike_fd);
 					if (s->ike.src_port == ISAKMP_PORT)
@@ -2083,21 +2092,35 @@ static void do_phase1_am(const char *key_id, const char *shared_key, struct sa_b
 		r_length = sendrecv(s, r_packet, sizeof(r_packet), p2kt, p2kt_len, 0);
 		free(p2kt);
 	}
+}
+
+static void do_phase1_am_cleanup(struct sa_block *s)
+{
 	DEBUGTOP(2, printf("S4.6 cleanup\n"));
 
-	free_isakmp_packet(p1);
-	/* This seems to cause a duplicate free of some data:
+	free_isakmp_packet(s->p1);
+	/* This seems to cause a duplicate free of some data when rekeying:
 	 * *** glibc detected *** vpnc-connect: free(): invalid pointer: 0x09d63ba5
 	 * See also: http://bugs.gentoo.org/show_bug.cgi?id=229003
 	 */
 #if 0
 	free_isakmp_packet(r);
 #endif
-	free(returned_hash);
-	free(dh_public);
-	free(dh_shared_secret);
-	free(psk_hash);
-	group_free(dh_grp);
+	free(s->ike.psk_hash);
+	s->ike.psk_hash = NULL;
+	free(s->dh_public);
+	group_free(s->dh_grp);
+	free(s->returned_hash);
+	s->returned_hash = NULL;
+}
+
+static void do_phase1_am(const char *key_id, const char *shared_key, struct sa_block *s)
+{
+	do_phase1_am_init(s);
+	do_phase1_am_packet1(key_id, s);
+	do_phase1_am_packet2(shared_key, s);
+	do_phase1_am_packet3(s);
+	do_phase1_am_cleanup(s);
 }
 
 static int do_phase2_notice_check(struct sa_block *s, struct isakmp_packet **r_p)
