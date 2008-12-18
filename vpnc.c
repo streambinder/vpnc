@@ -715,12 +715,11 @@ static void sendrecv_phase2(struct sa_block *s, struct isakmp_payload *pl,
 		phase2_authpacket(s, pl, exchange_type, msgid, &p_flat, &p_size,
 			nonce_i, ni_len, nonce_r, nr_len);
 		isakmp_crypt(s, p_flat, p_size, 1);
+		s->ike.life.tx += p_size;
 	} else {
 		p_flat = *save_p_flat;
 		p_size = *save_p_size;
 	}
-
-	s->ike.life.tx += p_size;
 
 	recvlen = sendrecv(s, r_packet, sizeof(r_packet), p_flat, p_size, sendonly);
 	if (sendonly == 0)
