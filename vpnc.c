@@ -397,6 +397,8 @@ static int recv_ignore_dup(struct sa_block *s, void *recvbuf, size_t recvbufsize
 	gcry_md_hash_buffer(GCRY_MD_SHA1, resend_check_hash, recvbuf, recvsize);
 	if (s->ike.resend_hash && memcmp(s->ike.resend_hash, resend_check_hash, hash_len) == 0) {
 		free(resend_check_hash);
+		/* FIXME: if we get a retransmission, we probably should do a retransmission too */
+		DEBUG(2, printf("Received duplicated paket, dropping it!\n"));
 		return -1;
 	}
 	if (!s->ike.resend_hash) {
@@ -733,40 +735,12 @@ static void sendrecv_phase2(struct sa_block *s, struct isakmp_payload *pl,
 	}
 }
 
-static void send_phase2_late(struct sa_block *s, struct isakmp_payload *pl,
-	uint8_t exchange_type, uint32_t msgid)
-{
-	struct isakmp_packet *p;
-	uint8_t *p_flat;
-	size_t p_size;
-	ssize_t recvlen;
-
-	/* Build up the packet.  */
-	p = new_isakmp_packet();
-	memcpy(p->i_cookie, s->ike.i_cookie, ISAKMP_COOKIE_LENGTH);
-	memcpy(p->r_cookie, s->ike.r_cookie, ISAKMP_COOKIE_LENGTH);
-	p->flags = ISAKMP_FLAG_E;
-	p->isakmp_version = ISAKMP_VERSION;
-	p->exchange_type = exchange_type;
-	p->message_id = msgid;
-	p->payload = pl;
-
-	flatten_isakmp_packet(p, &p_flat, &p_size, s->ike.ivlen);
-	free_isakmp_packet(p);
-	isakmp_crypt(s, p_flat, p_size, 1);
-
-	s->ike.life.tx += p_size;
-
-	recvlen = sendrecv(s, NULL, 0, p_flat, p_size, 1);
-	free(p_flat);
-}
-
 void keepalive_ike(struct sa_block *s)
 {
 	uint32_t msgid;
 
 	gcry_create_nonce((uint8_t *) & msgid, sizeof(msgid));
-	send_phase2_late(s, NULL, ISAKMP_EXCHANGE_INFORMATIONAL, msgid);
+	sendrecv_phase2(s, NULL, ISAKMP_EXCHANGE_INFORMATIONAL, msgid, 1, 0, 0, 0, 0, 0, 0);
 }
 
 static void send_dpd(struct sa_block *s, int isack, uint32_t seqno)
