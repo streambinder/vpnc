@@ -798,6 +798,57 @@ void dpd_ike(struct sa_block *s)
 	}
 }
 
+static void send_delete_ipsec(struct sa_block *s)
+{
+	/* 2007-08-31 JKU/ZID: Sonicwall doesn't like the chained
+	 * request but wants them split. Cisco does fine with it. */
+	DEBUGTOP(2, printf("S7.10 send ipsec termination message\n"));
+	{
+		struct isakmp_payload *d_ipsec;
+		uint8_t del_msgid;
+
+		gcry_create_nonce((uint8_t *) & del_msgid, sizeof(del_msgid));
+		d_ipsec = new_isakmp_payload(ISAKMP_PAYLOAD_D);
+		d_ipsec->u.d.doi = ISAKMP_DOI_IPSEC;
+		d_ipsec->u.d.protocol = ISAKMP_IPSEC_PROTO_IPSEC_ESP;
+		d_ipsec->u.d.spi_length = 4;
+		d_ipsec->u.d.num_spi = 2;
+		d_ipsec->u.d.spi = xallocc(2 * sizeof(uint8_t *));
+		d_ipsec->u.d.spi[0] = xallocc(d_ipsec->u.d.spi_length);
+		memcpy(d_ipsec->u.d.spi[0], &s->ipsec.rx.spi, 4);
+		d_ipsec->u.d.spi[1] = xallocc(d_ipsec->u.d.spi_length);
+		memcpy(d_ipsec->u.d.spi[1], &s->ipsec.tx.spi, 4);
+		sendrecv_phase2(s, d_ipsec, ISAKMP_EXCHANGE_INFORMATIONAL,
+			del_msgid, 1, NULL, NULL,
+			NULL, 0, NULL, 0);
+	}
+}
+
+static void send_delete_isakmp(struct sa_block *s)
+{
+	DEBUGTOP(2, printf("S7.11 send isakmp termination message\n"));
+	{
+		struct isakmp_payload *d_isakmp;
+		uint8_t del_msgid;
+
+		gcry_create_nonce((uint8_t *) & del_msgid, sizeof(del_msgid));
+		d_isakmp = new_isakmp_payload(ISAKMP_PAYLOAD_D);
+		d_isakmp->u.d.doi = ISAKMP_DOI_IPSEC;
+		d_isakmp->u.d.protocol = ISAKMP_IPSEC_PROTO_ISAKMP;
+		d_isakmp->u.d.spi_length = 2 * ISAKMP_COOKIE_LENGTH;
+		d_isakmp->u.d.num_spi = 1;
+		d_isakmp->u.d.spi = xallocc(1 * sizeof(uint8_t *));
+		d_isakmp->u.d.spi[0] = xallocc(2 * ISAKMP_COOKIE_LENGTH);
+		memcpy(d_isakmp->u.d.spi[0] + ISAKMP_COOKIE_LENGTH * 0, s->ike.i_cookie,
+			ISAKMP_COOKIE_LENGTH);
+		memcpy(d_isakmp->u.d.spi[0] + ISAKMP_COOKIE_LENGTH * 1, s->ike.r_cookie,
+			ISAKMP_COOKIE_LENGTH);
+		sendrecv_phase2(s, d_isakmp, ISAKMP_EXCHANGE_INFORMATIONAL,
+			del_msgid, 1, NULL, NULL,
+			NULL, 0, NULL, 0);
+	}
+}
+
 static void phase2_fatal(struct sa_block *s, const char *msg, int id)
 {
 	struct isakmp_payload *pl;
@@ -811,17 +862,7 @@ static void phase2_fatal(struct sa_block *s, const char *msg, int id)
 	pl->u.n.type = id;
 	sendrecv_phase2(s, pl, ISAKMP_EXCHANGE_INFORMATIONAL, msgid, 1, 0, 0, 0, 0, 0, 0);
 
-	gcry_create_nonce((uint8_t *) & msgid, sizeof(msgid));
-	pl = new_isakmp_payload(ISAKMP_PAYLOAD_D);
-	pl->u.d.doi = ISAKMP_DOI_IPSEC;
-	pl->u.d.protocol = ISAKMP_IPSEC_PROTO_ISAKMP;
-	pl->u.d.spi_length = 2 * ISAKMP_COOKIE_LENGTH;
-	pl->u.d.num_spi = 1;
-	pl->u.d.spi = xallocc(1 * sizeof(uint8_t *));
-	pl->u.d.spi[0] = xallocc(2 * ISAKMP_COOKIE_LENGTH);
-	memcpy(pl->u.d.spi[0] + ISAKMP_COOKIE_LENGTH * 0, s->ike.i_cookie, ISAKMP_COOKIE_LENGTH);
-	memcpy(pl->u.d.spi[0] + ISAKMP_COOKIE_LENGTH * 1, s->ike.r_cookie, ISAKMP_COOKIE_LENGTH);
-	sendrecv_phase2(s, pl, ISAKMP_EXCHANGE_INFORMATIONAL, msgid, 1, 0, 0, 0, 0, 0, 0);
+	send_delete_isakmp(s);
 
 	error(1, 0, msg, val_to_string(id, isakmp_notify_enum_array), id);
 }
@@ -2853,57 +2894,6 @@ static void do_phase2_qm(struct sa_block *s)
 		s->ipsec.rx.seq_id = s->ipsec.tx.seq_id = 1;
 	}
 	free(dh_public);
-}
-
-static void send_delete_ipsec(struct sa_block *s)
-{
-	/* 2007-08-31 JKU/ZID: Sonicwall doesn't like the chained
-	 * request but wants them split. Cisco does fine with it. */
-	DEBUGTOP(2, printf("S7.10 send ipsec termination message\n"));
-	{
-		struct isakmp_payload *d_ipsec;
-		uint8_t del_msgid;
-
-		gcry_create_nonce((uint8_t *) & del_msgid, sizeof(del_msgid));
-		d_ipsec = new_isakmp_payload(ISAKMP_PAYLOAD_D);
-		d_ipsec->u.d.doi = ISAKMP_DOI_IPSEC;
-		d_ipsec->u.d.protocol = ISAKMP_IPSEC_PROTO_IPSEC_ESP;
-		d_ipsec->u.d.spi_length = 4;
-		d_ipsec->u.d.num_spi = 2;
-		d_ipsec->u.d.spi = xallocc(2 * sizeof(uint8_t *));
-		d_ipsec->u.d.spi[0] = xallocc(d_ipsec->u.d.spi_length);
-		memcpy(d_ipsec->u.d.spi[0], &s->ipsec.rx.spi, 4);
-		d_ipsec->u.d.spi[1] = xallocc(d_ipsec->u.d.spi_length);
-		memcpy(d_ipsec->u.d.spi[1], &s->ipsec.tx.spi, 4);
-		sendrecv_phase2(s, d_ipsec, ISAKMP_EXCHANGE_INFORMATIONAL,
-			del_msgid, 1, NULL, NULL,
-			NULL, 0, NULL, 0);
-	}
-}
-
-static void send_delete_isakmp(struct sa_block *s)
-{
-	DEBUGTOP(2, printf("S7.11 send isakmp termination message\n"));
-	{
-		struct isakmp_payload *d_isakmp;
-		uint8_t del_msgid;
-
-		gcry_create_nonce((uint8_t *) & del_msgid, sizeof(del_msgid));
-		d_isakmp = new_isakmp_payload(ISAKMP_PAYLOAD_D);
-		d_isakmp->u.d.doi = ISAKMP_DOI_IPSEC;
-		d_isakmp->u.d.protocol = ISAKMP_IPSEC_PROTO_ISAKMP;
-		d_isakmp->u.d.spi_length = 2 * ISAKMP_COOKIE_LENGTH;
-		d_isakmp->u.d.num_spi = 1;
-		d_isakmp->u.d.spi = xallocc(1 * sizeof(uint8_t *));
-		d_isakmp->u.d.spi[0] = xallocc(2 * ISAKMP_COOKIE_LENGTH);
-		memcpy(d_isakmp->u.d.spi[0] + ISAKMP_COOKIE_LENGTH * 0, s->ike.i_cookie,
-			ISAKMP_COOKIE_LENGTH);
-		memcpy(d_isakmp->u.d.spi[0] + ISAKMP_COOKIE_LENGTH * 1, s->ike.r_cookie,
-			ISAKMP_COOKIE_LENGTH);
-		sendrecv_phase2(s, d_isakmp, ISAKMP_EXCHANGE_INFORMATIONAL,
-			del_msgid, 1, NULL, NULL,
-			NULL, 0, NULL, 0);
-	}
 }
 
 static int do_rekey(struct sa_block *s, struct isakmp_packet *r)
