@@ -2096,13 +2096,14 @@ static void do_phase1_am(const char *key_id, const char *shared_key, struct sa_b
 	do_phase1_am_cleanup(s);
 }
 
-static int do_phase2_notice_check(struct sa_block *s, struct isakmp_packet **r_p)
+static int do_phase2_notice_check(struct sa_block *s, struct isakmp_packet **r_p,
+	const uint8_t * nonce, size_t nonce_size)
 {
 	int reject = 0;
 	struct isakmp_packet *r;
 
 	while (1) {
-		reject = unpack_verify_phase2(s, r_packet, r_length, r_p, NULL, 0);
+		reject = unpack_verify_phase2(s, r_packet, r_length, r_p, nonce, nonce_size);
 		if (reject == ISAKMP_N_INVALID_COOKIE) {
 			r_length = sendrecv(s, r_packet, sizeof(r_packet), NULL, 0, 0);
 			continue;
@@ -2187,7 +2188,7 @@ static int do_phase2_xauth(struct sa_block *s)
 		/* recv and check for notices */
 		if (r) free_isakmp_packet(r);
 		r = NULL;
-		reject = do_phase2_notice_check(s, &r);
+		reject = do_phase2_notice_check(s, &r, NULL, 0);
 		if (reject == -1) {
 			if (r) free_isakmp_packet(r);
 			return 1;
@@ -2366,7 +2367,7 @@ static int do_phase2_xauth(struct sa_block *s)
 			ISAKMP_EXCHANGE_MODECFG_TRANSACTION,
 			r->message_id, 0, 0, 0, 0, 0, 0, 0);
 
-		reject = do_phase2_notice_check(s, &r);
+		reject = do_phase2_notice_check(s, &r, NULL, 0);
 		if (reject == -1) {
 			free_isakmp_packet(r);
 			return 1;
@@ -2455,7 +2456,7 @@ static int do_phase2_config(struct sa_block *s)
 
 	DEBUGTOP(2, printf("S6.2 phase2_config receive modecfg\n"));
 	/* recv and check for notices */
-	reject = do_phase2_notice_check(s, &r);
+	reject = do_phase2_notice_check(s, &r, NULL, 0);
 	if (reject == -1) {
 		if (r) free_isakmp_packet(r);
 		return 1;
@@ -2561,10 +2562,7 @@ static void do_phase2_qm(struct sa_block *s)
 	struct group *dh_grp = NULL;
 	uint32_t msgid;
 	int reject;
-	uint8_t *p_flat = NULL;
-	size_t p_size = 0;
 	uint8_t nonce_i[20], *dh_public = NULL;
-	int i;
 
 	DEBUGTOP(2, printf("S7.1 QM_packet1\n"));
 	/* Set up the Diffie-Hellman stuff.  */
@@ -2607,49 +2605,23 @@ static void do_phase2_qm(struct sa_block *s)
 	if (msgid == 0)
 		msgid = 1;
 
-	for (i = 0; i < 4; i++) {
-		DEBUGTOP(2, printf("S7.2 QM_packet2 send_receive\n"));
-		sendrecv_phase2(s, rp, ISAKMP_EXCHANGE_IKE_QUICK,
-			msgid, 0, &p_flat, &p_size, 0, 0, 0, 0);
+	DEBUGTOP(2, printf("S7.2 QM_packet2 send_receive\n"));
+	sendrecv_phase2(s, rp, ISAKMP_EXCHANGE_IKE_QUICK,
+		msgid, 0, 0, 0, 0, 0, 0, 0);
 
-		DEBUGTOP(2, printf("S7.3 QM_packet2 validate type\n"));
-		reject = unpack_verify_phase2(s, r_packet, r_length, &r, nonce_i, sizeof(nonce_i)); /* FIXME: LEAK */
+	DEBUGTOP(2, printf("S7.3 QM_packet2 validate type\n"));
+	reject = do_phase2_notice_check(s, &r, nonce_i, sizeof(nonce_i)); /* FIXME: LEAK */
 
-		if (((reject == 0) || (reject == ISAKMP_N_AUTHENTICATION_FAILED))
-			&& r->exchange_type == ISAKMP_EXCHANGE_INFORMATIONAL) {
-			DEBUGTOP(2, printf("S7.4 process and skip lifetime notice\n"));
-			/* handle notify responder-lifetime */
-			/* (broken hash => ignore AUTHENTICATION_FAILED) */
-			if (reject == 0 && r->payload->next->type != ISAKMP_PAYLOAD_N)
-				reject = ISAKMP_N_INVALID_PAYLOAD_TYPE;
+	/* Check the transaction type & message ID are OK.  */
+	if (reject == 0 && r->message_id != msgid)
+		reject = ISAKMP_N_INVALID_MESSAGE_ID;
 
-			if (reject == 0
-				&& r->payload->next->u.n.type == ISAKMP_N_IPSEC_RESPONDER_LIFETIME) {
-				if (r->payload->next->u.n.protocol == ISAKMP_IPSEC_PROTO_ISAKMP)
-					lifetime_ike_process(s, r->payload->next->u.n.attributes);
-				else if (r->payload->next->u.n.protocol == ISAKMP_IPSEC_PROTO_IPSEC_ESP)
-					lifetime_ipsec_process(s, r->payload->next->u.n.attributes);
-				else
-					DEBUG(2, printf("got unknown lifetime notice, ignoring..\n"));
-				continue;
-			}
-		}
+	if (reject == 0 && r->exchange_type != ISAKMP_EXCHANGE_IKE_QUICK)
+		reject = ISAKMP_N_INVALID_EXCHANGE_TYPE;
 
-		/* Check the transaction type & message ID are OK.  */
-		if (reject == 0 && r->message_id != msgid)
-			reject = ISAKMP_N_INVALID_MESSAGE_ID;
-
-		if (reject == 0 && r->exchange_type != ISAKMP_EXCHANGE_IKE_QUICK)
-			reject = ISAKMP_N_INVALID_EXCHANGE_TYPE;
-
-		/* The SA payload must be second.  */
-		if (reject == 0 && r->payload->next->type != ISAKMP_PAYLOAD_SA)
-			reject = ISAKMP_N_INVALID_PAYLOAD_TYPE;
-
-		free(p_flat);
-
-		break;
-	}
+	/* The SA payload must be second.  */
+	if (reject == 0 && r->payload->next->type != ISAKMP_PAYLOAD_SA)
+		reject = ISAKMP_N_INVALID_PAYLOAD_TYPE;
 
 	DEBUGTOP(2, printf("S7.5 QM_packet2 check reject offer\n"));
 	if (reject != 0)
