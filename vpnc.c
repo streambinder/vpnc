@@ -706,33 +706,22 @@ phase2_authpacket(struct sa_block *s, struct isakmp_payload *pl,
 
 static void sendrecv_phase2(struct sa_block *s, struct isakmp_payload *pl,
 	uint8_t exchange_type, uint32_t msgid, int sendonly,
-	uint8_t ** save_p_flat, size_t * save_p_size,
 	uint8_t * nonce_i, int ni_len, uint8_t * nonce_r, int nr_len)
 {
 	uint8_t *p_flat;
 	size_t p_size;
 	ssize_t recvlen;
 
-	if ((save_p_flat == NULL) || (*save_p_flat == NULL)) {
-		phase2_authpacket(s, pl, exchange_type, msgid, &p_flat, &p_size,
-			nonce_i, ni_len, nonce_r, nr_len);
-		isakmp_crypt(s, p_flat, p_size, 1);
-		s->ike.life.tx += p_size;
-	} else {
-		p_flat = *save_p_flat;
-		p_size = *save_p_size;
-	}
+	phase2_authpacket(s, pl, exchange_type, msgid, &p_flat, &p_size,
+		nonce_i, ni_len, nonce_r, nr_len);
+	isakmp_crypt(s, p_flat, p_size, 1);
+	s->ike.life.tx += p_size;
 
 	recvlen = sendrecv(s, r_packet, sizeof(r_packet), p_flat, p_size, sendonly);
 	if (sendonly == 0)
 		r_length = recvlen;
 
-	if (save_p_flat == NULL) {
-		free(p_flat);
-	} else {
-		*save_p_flat = p_flat;
-		*save_p_size = p_size;
-	}
+	free(p_flat);
 }
 
 void keepalive_ike(struct sa_block *s)
@@ -740,7 +729,7 @@ void keepalive_ike(struct sa_block *s)
 	uint32_t msgid;
 
 	gcry_create_nonce((uint8_t *) & msgid, sizeof(msgid));
-	sendrecv_phase2(s, NULL, ISAKMP_EXCHANGE_INFORMATIONAL, msgid, 1, 0, 0, 0, 0, 0, 0);
+	sendrecv_phase2(s, NULL, ISAKMP_EXCHANGE_INFORMATIONAL, msgid, 1, 0, 0, 0, 0);
 }
 
 static void send_dpd(struct sa_block *s, int isack, uint32_t seqno)
@@ -762,7 +751,7 @@ static void send_dpd(struct sa_block *s, int isack, uint32_t seqno)
 	gcry_create_nonce((uint8_t *) & msgid, sizeof(msgid));
 	/* 2007-09-06 JKU/ZID: Sonicwall drops non hashed r_u_there-requests */
 	sendrecv_phase2(s, pl, ISAKMP_EXCHANGE_INFORMATIONAL, msgid,
-		1 , NULL, NULL, NULL, 0, NULL, 0);
+		1 , NULL, 0, NULL, 0);
 }
 
 void dpd_ike(struct sa_block *s)
@@ -819,8 +808,7 @@ static void send_delete_ipsec(struct sa_block *s)
 		d_ipsec->u.d.spi[1] = xallocc(d_ipsec->u.d.spi_length);
 		memcpy(d_ipsec->u.d.spi[1], &s->ipsec.tx.spi, 4);
 		sendrecv_phase2(s, d_ipsec, ISAKMP_EXCHANGE_INFORMATIONAL,
-			del_msgid, 1, NULL, NULL,
-			NULL, 0, NULL, 0);
+			del_msgid, 1, NULL, 0, NULL, 0);
 	}
 }
 
@@ -844,8 +832,7 @@ static void send_delete_isakmp(struct sa_block *s)
 		memcpy(d_isakmp->u.d.spi[0] + ISAKMP_COOKIE_LENGTH * 1, s->ike.r_cookie,
 			ISAKMP_COOKIE_LENGTH);
 		sendrecv_phase2(s, d_isakmp, ISAKMP_EXCHANGE_INFORMATIONAL,
-			del_msgid, 1, NULL, NULL,
-			NULL, 0, NULL, 0);
+			del_msgid, 1, NULL, 0, NULL, 0);
 	}
 }
 
@@ -860,7 +847,7 @@ static void phase2_fatal(struct sa_block *s, const char *msg, int id)
 	pl->u.n.doi = ISAKMP_DOI_IPSEC;
 	pl->u.n.protocol = ISAKMP_IPSEC_PROTO_ISAKMP;
 	pl->u.n.type = id;
-	sendrecv_phase2(s, pl, ISAKMP_EXCHANGE_INFORMATIONAL, msgid, 1, 0, 0, 0, 0, 0, 0);
+	sendrecv_phase2(s, pl, ISAKMP_EXCHANGE_INFORMATIONAL, msgid, 1, 0, 0, 0, 0);
 
 	send_delete_isakmp(s);
 
@@ -2396,7 +2383,7 @@ static int do_phase2_xauth(struct sa_block *s)
 		rp->u.modecfg.id = r->payload->next->u.modecfg.id;
 		rp->u.modecfg.attributes = reply_attr;
 		sendrecv_phase2(s, rp, ISAKMP_EXCHANGE_MODECFG_TRANSACTION,
-			r->message_id, 0, 0, 0, 0, 0, 0, 0);
+			r->message_id, 0, 0, 0, 0, 0);
 
 	}
 
@@ -2415,7 +2402,7 @@ static int do_phase2_xauth(struct sa_block *s)
 		r->payload->next->u.modecfg.type = ISAKMP_MODECFG_CFG_ACK;
 		sendrecv_phase2(s, r->payload->next,
 			ISAKMP_EXCHANGE_MODECFG_TRANSACTION,
-			r->message_id, 0, 0, 0, 0, 0, 0, 0);
+			r->message_id, 0, 0, 0, 0, 0);
 
 		reject = do_phase2_notice_check(s, &r, NULL, 0);
 		if (reject == -1) {
@@ -2442,7 +2429,7 @@ static int do_phase2_xauth(struct sa_block *s)
 		/* ACK the SET.  */
 		r->payload->next->u.modecfg.type = ISAKMP_MODECFG_CFG_ACK;
 		sendrecv_phase2(s, r->payload->next, ISAKMP_EXCHANGE_MODECFG_TRANSACTION,
-			r->message_id, 1, 0, 0, 0, 0, 0, 0);
+			r->message_id, 1, 0, 0, 0, 0);
 		r->payload->next = NULL;
 		free_isakmp_packet(r);
 
@@ -2502,7 +2489,7 @@ static int do_phase2_config(struct sa_block *s)
 
 	rp->u.modecfg.attributes = a;
 	DEBUGTOP(2, printf("S6.1 phase2_config send modecfg\n"));
-	sendrecv_phase2(s, rp, ISAKMP_EXCHANGE_MODECFG_TRANSACTION, msgid, 0, 0, 0, 0, 0, 0, 0);
+	sendrecv_phase2(s, rp, ISAKMP_EXCHANGE_MODECFG_TRANSACTION, msgid, 0, 0, 0, 0, 0);
 
 	DEBUGTOP(2, printf("S6.2 phase2_config receive modecfg\n"));
 	/* recv and check for notices */
@@ -2657,7 +2644,7 @@ static void do_phase2_qm(struct sa_block *s)
 
 	DEBUGTOP(2, printf("S7.2 QM_packet2 send_receive\n"));
 	sendrecv_phase2(s, rp, ISAKMP_EXCHANGE_IKE_QUICK,
-		msgid, 0, 0, 0, 0, 0, 0, 0);
+		msgid, 0, 0, 0, 0, 0);
 
 	DEBUGTOP(2, printf("S7.3 QM_packet2 validate type\n"));
 	reject = do_phase2_notice_check(s, &r, nonce_i, sizeof(nonce_i)); /* FIXME: LEAK */
@@ -2847,7 +2834,7 @@ static void do_phase2_qm(struct sa_block *s)
 
 	/* send final packet */
 	sendrecv_phase2(s, NULL, ISAKMP_EXCHANGE_IKE_QUICK,
-		msgid, 1, 0, 0, nonce_i, sizeof(nonce_i),
+		msgid, 1, nonce_i, sizeof(nonce_i),
 		nonce_r->u.nonce.data, nonce_r->u.nonce.length);
 
 	DEBUGTOP(2, printf("S7.7 QM_packet3 sent\n"));
@@ -3090,7 +3077,7 @@ static int do_rekey(struct sa_block *s, struct isakmp_packet *r)
 		}
 
 	sendrecv_phase2(s, r->payload->next, ISAKMP_EXCHANGE_IKE_QUICK,
-		r->message_id, 0, 0, 0, nonce_i_copy, nonce_i_copy_len, 0,0);
+		r->message_id, 0, nonce_i_copy, nonce_i_copy_len, 0,0);
 	unpack_verify_phase2(s, r_packet, r_length, &r, NULL, 0);
 	free(nonce_i_copy);
 	/* don't care about answer ... */
