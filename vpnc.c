@@ -2212,7 +2212,7 @@ static int do_phase2_xauth(struct sa_block *s)
 	int reject;
 	int passwd_used = 0;
 
-	DEBUGTOP(2, printf("S5.1 xauth_start\n"));
+	DEBUGTOP(2, printf("S5.1 xauth_request\n"));
 	/* This can go around for a while.  */
 	for (loopcount = 0;; loopcount++) {
 		struct isakmp_payload *rp;
@@ -2243,8 +2243,11 @@ static int do_phase2_xauth(struct sa_block *s)
 				|| r->payload->next->type != ISAKMP_PAYLOAD_MODECFG_ATTR))
 			reject = ISAKMP_N_INVALID_PAYLOAD_TYPE;
 
-		if (reject == 0 && r->payload->next->u.modecfg.type == ISAKMP_MODECFG_CFG_SET)
+		if (reject == 0 && r->payload->next->u.modecfg.type == ISAKMP_MODECFG_CFG_SET) {
+			/* OK, the server has finished requesting information, go for the final set/ack */
 			break;
+		}
+
 		if (reject == 0 && r->payload->next->u.modecfg.type != ISAKMP_MODECFG_CFG_REQUEST)
 			reject = ISAKMP_N_INVALID_PAYLOAD_TYPE;
 
@@ -2297,7 +2300,7 @@ static int do_phase2_xauth(struct sa_block *s)
 		if (reject != 0)
 			phase2_fatal(s, "xauth packet unsupported: %s(%d)", reject);
 
-		DEBUGTOP(2, printf("S5.5 do xauth authentication\n"));
+		DEBUGTOP(2, printf("S5.5 do xauth reply\n"));
 		inet_ntop(AF_INET, &s->dst, ntop_buf, sizeof(ntop_buf));
 
 		/* Collect data from the user.  */
@@ -2411,7 +2414,7 @@ static int do_phase2_xauth(struct sa_block *s)
 		}
 	}
 
-	DEBUGTOP(2, printf("S5.6 process xauth response\n"));
+	DEBUGTOP(2, printf("S5.6 process xauth set\n"));
 	{
 		/* The final SET should have just one attribute.  */
 		struct isakmp_attribute *a = r->payload->next->u.modecfg.attributes;
@@ -2421,12 +2424,13 @@ static int do_phase2_xauth(struct sa_block *s)
 			|| a->type != ISAKMP_XAUTH_06_ATTRIB_STATUS
 			|| a->af != isakmp_attr_16 || a->next != NULL) {
 			reject = ISAKMP_N_INVALID_PAYLOAD_TYPE;
-			phase2_fatal(s, "xauth SET response rejected: %s(%d)", reject);
+			phase2_fatal(s, "xauth SET message rejected: %s(%d)", reject);
 		} else {
 			set_result = a->u.attr_16;
 		}
 
 		/* ACK the SET.  */
+		DEBUGTOP(2, printf("S5.7 send xauth ack\n"));
 		r->payload->next->u.modecfg.type = ISAKMP_MODECFG_CFG_ACK;
 		sendrecv_phase2(s, r->payload->next, ISAKMP_EXCHANGE_MODECFG_TRANSACTION,
 			r->message_id, 1, 0, 0, 0, 0);
@@ -2436,7 +2440,7 @@ static int do_phase2_xauth(struct sa_block *s)
 		if (set_result == 0)
 			error(2, 0, "authentication unsuccessful");
 	}
-	DEBUGTOP(2, printf("S5.7 xauth done\n"));
+	DEBUGTOP(2, printf("S5.8 xauth done\n"));
 	return 0;
 }
 
