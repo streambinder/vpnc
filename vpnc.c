@@ -398,7 +398,7 @@ static int recv_ignore_dup(struct sa_block *s, void *recvbuf, size_t recvbufsize
 	if (s->ike.resend_hash && memcmp(s->ike.resend_hash, resend_check_hash, hash_len) == 0) {
 		free(resend_check_hash);
 		/* FIXME: if we get a retransmission, we probably should do a retransmission too */
-		DEBUG(2, printf("Received duplicated paket, dropping it!\n"));
+		DEBUG(2, printf("Received duplicated packet, dropping it!\n"));
 		return -1;
 	}
 	if (!s->ike.resend_hash) {
