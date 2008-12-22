@@ -2434,8 +2434,8 @@ static int do_phase2_xauth(struct sa_block *s)
 		r->payload->next->u.modecfg.type = ISAKMP_MODECFG_CFG_ACK;
 		sendrecv_phase2(s, r->payload->next, ISAKMP_EXCHANGE_MODECFG_TRANSACTION,
 			r->message_id, 1, 0, 0, 0, 0);
-		r->payload->next = NULL;
-		free_isakmp_packet(r);
+		r->payload->next = NULL; /* this part is already free()d by sendrecv_phase2 */
+		free_isakmp_packet(r); /* this frees the received set packet (header+hash) */
 
 		if (set_result == 0)
 			error(2, 0, "authentication unsuccessful");
