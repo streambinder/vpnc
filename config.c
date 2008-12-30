@@ -778,6 +778,8 @@ void do_config(int argc, char **argv)
 				config[CONFIG_XAUTH_USERNAME],
 				config[CONFIG_IPSEC_GATEWAY]);
 			break;
+		default:
+			continue;
 		}
 		fflush(stdout);
 		switch (i) {
