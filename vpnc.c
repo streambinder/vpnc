@@ -40,12 +40,7 @@
 
 #include <gcrypt.h>
 
-#ifdef OPENSSL_GPL_VIOLATION
-/* OpenSSL */
-#include <openssl/x509.h>
-#include <openssl/err.h>
-#endif /* OPENSSL_GPL_VIOLATION */
-
+#include "crypto.h"
 #include "sysdep.h"
 #include "config.h"
 #include "isakmp-pkt.h"
@@ -1303,13 +1298,12 @@ static void do_phase1_am_packet2(struct sa_block *s, const char *shared_key)
 	DEBUGTOP(2, printf("S4.4 AM_packet2\n"));
 	/* Decode the recieved packet.  */
 	{
-		int reject;
+		int reject, ret;
 		struct isakmp_packet *r;
 		struct isakmp_payload *rp;
 		struct isakmp_payload *nonce = NULL;
 		struct isakmp_payload *ke = NULL;
 		struct isakmp_payload *hash = NULL;
-		struct isakmp_payload *last_cert = NULL;
 		struct isakmp_payload *sig = NULL;
 		struct isakmp_payload *idp = NULL;
 		int seen_sa = 0, seen_xauth_vid = 0;
@@ -1319,12 +1313,12 @@ static void do_phase1_am_packet2(struct sa_block *s, const char *shared_key)
 		uint8_t *dh_shared_secret;
 		int seen_natt_vid = 0, seen_natd = 0, seen_natd_them = 0, seen_natd_us = 0;
 		int natt_draft = -1;
+		crypto_ctx *cctx;
+		crypto_error *crerr = NULL;
 
-#ifdef OPENSSL_GPL_VIOLATION
-		X509 *current_cert;
-		/* structure to store the certificate chain */
-		STACK_OF(X509) *cert_stack = sk_X509_new_null();
-#endif /* OPENSSL_GPL_VIOLATION */
+		cctx = crypto_ctx_new (&crerr);
+		if (crerr)
+			crypto_call_error(crerr);
 
 		reject = 0;
 		r = parse_isakmp_packet(r_packet, r_length, &reject);
@@ -1482,14 +1476,15 @@ static void do_phase1_am_packet2(struct sa_block *s, const char *shared_key)
 				hash = rp;
 				break;
 			case ISAKMP_PAYLOAD_CERT:
-				last_cert = rp;
-				if (last_cert->u.cert.encoding == ISAKMP_CERT_X509_SIG) {
-#ifdef OPENSSL_GPL_VIOLATION
-					/* convert the certificate to an openssl-X509 structure and push it onto the chain stack */
-					current_cert = d2i_X509(NULL, (const unsigned char **)&last_cert->u.cert.data, last_cert->u.cert.length);
-					sk_X509_push(cert_stack, current_cert);
-					last_cert->u.cert.data -= last_cert->u.cert.length; /* 'rewind' the pointer */
-#endif /* OPENSSL_GPL_VIOLATION */
+				if (rp->u.cert.encoding == ISAKMP_CERT_X509_SIG) {
+					hex_dump("cert", rp->u.cert.data, rp->u.cert.length, NULL);
+
+					ret = crypto_push_cert(cctx,
+					                       (const unsigned char *) rp->u.cert.data,
+					                       rp->u.cert.length,
+					                       &crerr);
+					if (ret)
+						crypto_call_error(crerr);
 				}
 				break;
 			case ISAKMP_PAYLOAD_SIG:
@@ -1677,9 +1672,10 @@ static void do_phase1_am_packet2(struct sa_block *s, const char *shared_key)
 		/* Verify the hash.  */
 		{
 			gcry_md_hd_t hm;
-			unsigned char *expected_hash;
+			unsigned char *expected_hash, *rec_hash;
 			uint8_t *idp_f;
 			size_t idp_size;
+			size_t decr_size = 0;
 
 			flatten_isakmp_payload(idp, &idp_f, &idp_size);
 
@@ -1703,104 +1699,34 @@ static void do_phase1_am_packet2(struct sa_block *s, const char *shared_key)
 				hex_dump("received hash", hash->u.hash.data, hash->u.hash.length, NULL);
 			} else if (opt_auth_mode == AUTH_MODE_CERT ||
 				opt_auth_mode == AUTH_MODE_HYBRID) {
-#ifdef OPENSSL_GPL_VIOLATION
-
-				/* BEGIN - check the signature using OpenSSL */
-
-				X509		*x509;
-				EVP_PKEY	*pkey;
-				RSA		*rsa;
-				X509_STORE	*store;
-				/* X509_LOOKUP	*lookup; */
-				X509_STORE_CTX	*verify_ctx;
-				unsigned char	*rec_hash;
-				int		decr_size;
-
 				hex_dump("received signature", sig->u.sig.data, sig->u.sig.length, NULL);
-				OpenSSL_add_all_ciphers();
-				OpenSSL_add_all_digests();
-				OpenSSL_add_all_algorithms();
 
-				ERR_load_crypto_strings();
+				ret = crypto_verify_chain(cctx,
+				                          config[CONFIG_CA_FILE],
+				                          config[CONFIG_CA_DIR],
+				                          &crerr);
+				if (ret)
+					crypto_call_error(crerr);
 
-				hex_dump("last cert", last_cert->u.cert.data, last_cert->u.cert.length, NULL);
-				x509 = d2i_X509(NULL, (const unsigned char **)&last_cert->u.cert.data, last_cert->u.cert.length);
-				if (x509 == NULL) {
-					ERR_print_errors_fp (stderr);
-					error(1, 0, "x509 error\n");
-				}
-				DEBUG(3, printf("Subject name hash: %08lx\n",X509_subject_name_hash(x509)));
+				/* Verify signature */
+				rec_hash = crypto_decrypt_signature (cctx,
+				                                     sig->u.sig.data,
+				                                     sig->u.sig.length,
+				                                     &decr_size,
+				                                     CRYPTO_PAD_PKCS1,
+				                                     &crerr);
+				if (!rec_hash)
+					crypto_call_error(crerr);
 
-				/* BEGIN - verify certificate chain */
-				/* create the cert store */
-				if (!(store = X509_STORE_new())) {
-					error(1, 0, "Error creating X509_STORE object\n");
-				}
-				/* load the CA certificates */
-				if (X509_STORE_load_locations (store, config[CONFIG_CA_FILE], config[CONFIG_CA_DIR]) != 1) {
-					error(1, 0, "Error loading the CA file or directory\n");
-				}
-				if (X509_STORE_set_default_paths (store) != 1) {
-					error(1, 0, "Error loading the system-wide CA certificates\n");
-				}
-
-#if 0
-				/* check CRLs */
-				/* add the corresponding CRL for each CA in the chain to the lookup */
-#define CRL_FILE "root-ca-crl.crl.pem"
-
-				if (!(lookup = X509_STORE_add_lookup(store, X509_LOOKUP_file()))) {
-					error(1, 0, "Error creating X509 lookup object.\n");
-				}
-				if (X509_load_crl_file(lookup, CRL_FILE, X509_FILETYPE_PEM) != 1) {
-					ERR_print_errors_fp(stderr);
-					error(1, 0, "Error reading CRL file\n");
-				}
-				X509_STORE_set_flags(store, X509_V_FLAG_CRL_CHECK | X509_V_FLAG_CRL_CHECK_ALL);
-#endif /* 0 */
-				/* create a verification context and initialize it */
-				if (!(verify_ctx = X509_STORE_CTX_new ())) {
-					error(1, 0, "Error creating X509_STORE_CTX object\n");
-				}
-				/* X509_STORE_CTX_init did not return an error condition
-				in prior versions */
-				if (X509_STORE_CTX_init (verify_ctx, store, x509, cert_stack) != 1)
-					printf("Error intializing verification context\n");
-
-				/* verify the certificate */
-				if (X509_verify_cert(verify_ctx) != 1) {
-					ERR_print_errors_fp(stderr);
-					error(2, 0, "Error verifying the certificate-chain\n");
-				} else
-					DEBUG(3, printf("Certificate-chain verified correctly!\n"));
-
-				/* END   - verify certificate chain */
-
-
-				/* BEGIN - Signature Verification */
-				pkey = X509_get_pubkey(x509);
-				if (pkey == NULL) {
-					ERR_print_errors_fp (stderr);
-					exit (1);
-				}
-
-				rsa = EVP_PKEY_get1_RSA(pkey);
-				if (rsa == NULL) {
-					ERR_print_errors_fp (stderr);
-					exit (1);
-				}
-				rec_hash = xallocc(s->ike.md_len);
-				decr_size = RSA_public_decrypt(sig->u.sig.length, sig->u.sig.data, rec_hash, rsa, RSA_PKCS1_PADDING);
-
-				if (decr_size != (int) s->ike.md_len) {
-					printf("Decrypted-Size: %d\n",decr_size);
+				if (decr_size != s->ike.md_len) {
+					printf("Decrypted-Size: %lu\n",decr_size);
 					hex_dump("    decr_hash", rec_hash, decr_size, NULL);
 					hex_dump("expected hash", expected_hash, s->ike.md_len, NULL);
 
 					error(2, 0, "The hash-value, which was decrypted from the received signature, and the expected hash-value differ in size.\n");
 				} else {
 					if (memcmp(rec_hash, expected_hash, decr_size) != 0) {
-						printf("Decrypted-Size: %d\n",decr_size);
+						printf("Decrypted-Size: %lu\n",decr_size);
 						hex_dump("    decr_hash", rec_hash, decr_size, NULL);
 						hex_dump("expected hash", expected_hash, s->ike.md_len, NULL);
 
@@ -1811,11 +1737,7 @@ static void do_phase1_am_packet2(struct sa_block *s, const char *shared_key)
 				}
 				/* END - Signature Verification */
 
-				EVP_PKEY_free(pkey);
 				free(rec_hash);
-
-				/* END   - check the signature using OpenSSL */
-#endif /* OPENSSL_GPL_VIOLATION */
 			}
 
 			gcry_md_close(hm);
@@ -1953,6 +1875,7 @@ static void do_phase1_am_packet2(struct sa_block *s, const char *shared_key)
 		}
 
 		gcry_md_close(skeyid_ctx);
+		crypto_ctx_free(cctx);
 		free(dh_shared_secret);
 
 		/* Determine presence of NAT */
@@ -2030,17 +1953,6 @@ static void do_phase1_am_packet3(struct sa_block *s)
 		uint8_t *p2kt;
 		size_t p2kt_len;
 		struct isakmp_payload *pl;
-#if 0 /* cert support */
-#ifdef OPENSSL_GPL_VIOLATION
-		struct isakmp_payload *last_cert = NULL;
-		struct isakmp_payload *sig = NULL;
-
-
-		X509 *current_cert;
-		/* structure to store the certificate chain */
-		STACK_OF(X509) *cert_stack = sk_X509_new_null();
-#endif /* OPENSSL_GPL_VIOLATION */
-#endif /* 0 */
 
 		p2 = new_isakmp_packet();
 		memcpy(p2->i_cookie, s->ike.i_cookie, ISAKMP_COOKIE_LENGTH);
@@ -2883,6 +2795,10 @@ static void do_phase2_qm(struct sa_block *s)
 				close_tunnel(s);
 				error(1, errno, "Couldn't open socket of ESP. Maybe something registered ESP already.\nPlease try '--natt-mode force-natt' or disable whatever is using ESP.\nsocket(PF_INET, SOCK_RAW, IPPROTO_ESP)");
 			}
+#ifdef FD_CLOEXEC
+			/* do not pass socket to vpnc-script, etc. */
+			fcntl(s->esp_fd, F_SETFD, FD_CLOEXEC);
+#endif
 #ifdef IP_HDRINCL
 			if (setsockopt(s->esp_fd, IPPROTO_IP, IP_HDRINCL, &hincl, sizeof(hincl)) == -1) {
 				close_tunnel(s);

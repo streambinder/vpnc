@@ -27,16 +27,8 @@ SBINDIR=$(PREFIX)/sbin
 MANDIR=$(PREFIX)/share/man
 DOCDIR=$(PREFIX)/share/doc/vpnc
 
-SRCS = sysdep.c vpnc-debug.c isakmp-pkt.c tunip.c config.c dh.c math_group.c supp.c decrypt-utils.c
-BINS = vpnc cisco-decrypt
-OBJS = $(addsuffix .o,$(basename $(SRCS)))
-BINOBJS = $(addsuffix .o,$(BINS))
-BINSRCS = $(addsuffix .c,$(BINS))
-VERSION := $(shell sh mk-version)
-RELEASE_VERSION := $(shell cat VERSION)
-
 # The license of vpnc (Gpl >= 2) is quite likely incompatible with the
-# openssl license. Openssl is currently used to provide certificate
+# openssl license. Openssl is one possible library used to provide certificate
 # support for vpnc (hybrid only).
 # While it is OK for users to build their own binaries linking in openssl
 # with vpnc and even providing dynamically linked binaries it is probably
@@ -47,16 +39,34 @@ RELEASE_VERSION := $(shell cat VERSION)
 
 # Comment this in to obtain a binary with certificate support which is
 # GPL incompliant though.
-#OPENSSL_GPL_VIOLATION = -DOPENSSL_GPL_VIOLATION
-#OPENSSLLIBS = -lcrypto
+#OPENSSL_GPL_VIOLATION=yes
+
+CRYPTO_LDADD = $(shell libgnutls-config --libs)
+CRYPTO_CFLAGS = $(shell libgnutls-config --cflags) -DCRYPTO_GNUTLS
+CRYPTO_SRCS = crypto-gnutls.c
+
+ifeq ($(OPENSSL_GPL_VIOLATION), yes)
+CRYPTO_LDADD = -lcrypto
+CRYPTO_CFLAGS = -DOPENSSL_GPL_VIOLATION -DCRYPTO_OPENSSL
+CRYPTO_SRCS = crypto-openssl.c
+endif
+
+SRCS = sysdep.c vpnc-debug.c isakmp-pkt.c tunip.c config.c dh.c math_group.c supp.c decrypt-utils.c crypto.c $(CRYPTO_SRCS)
+BINS = vpnc cisco-decrypt test-crypto
+OBJS = $(addsuffix .o,$(basename $(SRCS)))
+CRYPTO_OBJS = $(addsuffix .o,$(basename $(CRYPTO_SRCS)))
+BINOBJS = $(addsuffix .o,$(BINS))
+BINSRCS = $(addsuffix .c,$(BINS))
+VERSION := $(shell sh mk-version)
+RELEASE_VERSION := $(shell cat VERSION)
 
 CC=gcc
 CFLAGS ?= -O3 -g
 CFLAGS += -W -Wall -Wmissing-declarations -Wwrite-strings
-CFLAGS +=  $(shell libgcrypt-config --cflags)
-CPPFLAGS += -DVERSION=\"$(VERSION)\" $(OPENSSL_GPL_VIOLATION)
+CFLAGS +=  $(shell libgcrypt-config --cflags) $(CRYPTO_CFLAGS)
+CPPFLAGS += -DVERSION=\"$(VERSION)\"
 LDFLAGS ?= -g
-LDFLAGS += $(shell libgcrypt-config --libs) $(OPENSSLLIBS)
+LDFLAGS += $(shell libgcrypt-config --libs) $(CRYPTO_LDADD)
 
 ifeq ($(shell uname -s), SunOS)
 LDFLAGS += -lnsl -lresolv -lsocket
@@ -78,6 +88,9 @@ vpnc-script : vpnc-script.in
 	sed -e 's,@''PREFIX''@,$(PREFIX),g' $< > $@ && chmod 755 $@
 
 cisco-decrypt : cisco-decrypt.o decrypt-utils.o
+	$(CC) -o $@ $^ $(LDFLAGS)
+
+test-crypto : test-crypto.o crypto.o $(CRYPTO_OBJS)
 	$(CC) -o $@ $^ $(LDFLAGS)
 
 .depend: $(SRCS) $(BINSRCS)
@@ -102,6 +115,10 @@ vpnc-%.tar.gz :
 		tar -cf - -T - | tar -xf - -C vpnc-$*/
 	tar -czf ../$@ vpnc-$*
 	rm -rf vpnc-$*
+
+test : all
+	./test-crypto test/cert.pem test/cert0.pem test/cert1.pem test/cert2.pem test/root.pem
+	#./test-crypto test/cert.pem test/cert0.crt test/cert1.crt test/cert2.crt test/root.crt
 
 dist : VERSION vpnc.8 vpnc-$(RELEASE_VERSION).tar.gz
 
