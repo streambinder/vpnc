@@ -41,8 +41,8 @@ DOCDIR=$(PREFIX)/share/doc/vpnc
 # GPL incompliant though.
 #OPENSSL_GPL_VIOLATION=yes
 
-CRYPTO_LDADD = $(shell libgnutls-config --libs)
-CRYPTO_CFLAGS = $(shell libgnutls-config --cflags) -DCRYPTO_GNUTLS
+CRYPTO_LDADD = $(shell pkg-config --libs gnutls)
+CRYPTO_CFLAGS = $(shell pkg-config --cflags gnutls) -DCRYPTO_GNUTLS
 CRYPTO_SRCS = crypto-gnutls.c
 
 ifeq ($(OPENSSL_GPL_VIOLATION), yes)
