@@ -1,8 +1,9 @@
-#!/usr/bin/perl -w
+#!/usr/bin/env perl
 
 # Usage: ./enum2debug.pl isakmp.h  >vpnc-debug.c 2>vpnc-debug.h
 
 use strict;
+use warnings;
 
 my $in_enum = 0;
 my $element;

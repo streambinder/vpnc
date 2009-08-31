@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 # Stefan Tomanek <stefan@pico.ruhr.de>
 # updated by Wolfram Sang <ninja@the-dreams.de> on 21.10.06 and on 26.06.07
 ##

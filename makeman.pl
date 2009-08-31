@@ -1,4 +1,4 @@
-#! /usr/bin/perl -w
+#! /usr/bin/env perl
 
 # $Id$
 
@@ -16,6 +16,7 @@
 # Distributed under the same licence as vpnc.
 
 use strict;
+use warnings;
 use Fatal    qw(open close);
 use filetest qw(access);	# to always get errno-values on filetests
 use POSIX    qw(strftime setlocale LC_ALL);
