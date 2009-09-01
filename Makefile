@@ -90,7 +90,7 @@ vpnc-script : vpnc-script.in
 cisco-decrypt : cisco-decrypt.o decrypt-utils.o
 	$(CC) -o $@ $^ $(LDFLAGS)
 
-test-crypto : test-crypto.o crypto.o $(CRYPTO_OBJS)
+test-crypto : sysdep.o test-crypto.o crypto.o $(CRYPTO_OBJS)
 	$(CC) -o $@ $^ $(LDFLAGS)
 
 .depend: $(SRCS) $(BINSRCS)

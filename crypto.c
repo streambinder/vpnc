@@ -19,13 +19,13 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
-#include <error.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <limits.h>
 #include <unistd.h>
 #include <errno.h>
 
+#include "sysdep.h"
 #include "crypto.h"
 
 
