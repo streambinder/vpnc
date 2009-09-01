@@ -1719,14 +1719,14 @@ static void do_phase1_am_packet2(struct sa_block *s, const char *shared_key)
 					crypto_call_error(crerr);
 
 				if (decr_size != s->ike.md_len) {
-					printf("Decrypted-Size: %lu\n",decr_size);
+					printf("Decrypted-Size: %zd\n",decr_size);
 					hex_dump("    decr_hash", rec_hash, decr_size, NULL);
 					hex_dump("expected hash", expected_hash, s->ike.md_len, NULL);
 
 					error(2, 0, "The hash-value, which was decrypted from the received signature, and the expected hash-value differ in size.\n");
 				} else {
 					if (memcmp(rec_hash, expected_hash, decr_size) != 0) {
-						printf("Decrypted-Size: %lu\n",decr_size);
+						printf("Decrypted-Size: %zd\n",decr_size);
 						hex_dump("    decr_hash", rec_hash, decr_size, NULL);
 						hex_dump("expected hash", expected_hash, s->ike.md_len, NULL);
 

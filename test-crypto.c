@@ -114,7 +114,7 @@ int main(int argc, char *argv[])
 
 	if (size != sizeof(dec_data)) {
 		fprintf(stderr, "Error decrypting signature: unexpected "
-		        "decrypted size %lu (expected %lu)\n", size, sizeof(dec_data));
+		        "decrypted size %zd (expected %u)\n", size, sizeof(dec_data));
 		return 1;
 	}
 
