@@ -696,7 +696,7 @@ void do_config(int argc, char **argv)
 		} else if (!strcmp(config[CONFIG_AUTH_MODE], "hybrid")) {
 			opt_auth_mode = AUTH_MODE_HYBRID;
 		} else {
-			printf("%s: unknown authentication mode %s\nknown modes: psk-plain psk-xauth cert hybrid\n", argv[0], config[CONFIG_AUTH_MODE]);
+			printf("%s: unknown authentication mode %s\nknown modes: psk cert hybrid\n", argv[0], config[CONFIG_AUTH_MODE]);
 			exit(1);
 		}
 		opt_no_encryption = (config[CONFIG_ENABLE_NO_ENCRYPTION]) ? 1 : 0;
