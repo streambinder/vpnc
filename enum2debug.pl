@@ -54,6 +54,8 @@ while (<>) {
 	} elsif ($in_enum && /^}/) {
 		print "\t{ 0,\t(const char *) 0 }\n};\n\n";
 		$in_enum = 0;
+	} elsif (/^\s*\/\*.*\*\/\s*$/) {
+		next;
 	} elsif ($in_enum && /^\W*(\w+)\W*/) {
 		print "\t{ $1,\t\" ($1)\" },\n";
 	}
