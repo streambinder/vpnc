@@ -107,7 +107,7 @@ struct sa_block {
 		int natd_type;
 		uint8_t *natd_us, *natd_them;
 	} ike;
-	struct in_addr our_address, our_netmask;
+	struct in_addr our_address;
 	struct {
 		int do_pfs;
 		int cry_algo, md_algo;
