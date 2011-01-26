@@ -742,7 +742,7 @@ static void send_dpd(struct sa_block *s, int isack, uint32_t seqno)
 	memcpy(pl->u.n.spi + ISAKMP_COOKIE_LENGTH * 1, s->ike.r_cookie, ISAKMP_COOKIE_LENGTH);
 	pl->u.n.data_length = 4;
 	pl->u.n.data = xallocc(4);
-	memcpy(pl->u.n.data, &seqno, 4);
+	*((uint32_t *) pl->u.n.data) = seqno;
 	gcry_create_nonce((uint8_t *) & msgid, sizeof(msgid));
 	/* 2007-09-06 JKU/ZID: Sonicwall drops non hashed r_u_there-requests */
 	sendrecv_phase2(s, pl, ISAKMP_EXCHANGE_INFORMATIONAL, msgid,
@@ -760,9 +760,7 @@ void dpd_ike(struct sa_block *s)
 		*/
 		s->ike.dpd_attempts = 6;
 		s->ike.dpd_sent = time(NULL);
-		s->ike.dpd_seqno = ntohl(s->ike.dpd_seqno);
-		++s->ike.dpd_seqno;
-		s->ike.dpd_seqno = htonl(s->ike.dpd_seqno);
+		s->ike.dpd_seqno++;
 		send_dpd(s, 0, s->ike.dpd_seqno);
 	} else {
 		/* Our last dpd request has not yet been acked.  If it's been
@@ -1533,7 +1531,6 @@ static void do_phase1_am_packet2(struct sa_block *s, const char *shared_key)
 					if (s->ike.dpd_idle != 0) {
 						gcry_create_nonce(&s->ike.dpd_seqno, sizeof(s->ike.dpd_seqno));
 						s->ike.dpd_seqno &= 0x7FFFFFFF;
-						s->ike.dpd_seqno = htonl(s->ike.dpd_seqno);
 						s->ike.dpd_seqno_ack = s->ike.dpd_seqno;
 						s->ike.do_dpd = 1;
 						DEBUG(2, printf("peer is DPD capable (RFC3706)\n"));
@@ -3063,7 +3060,7 @@ void process_late_ike(struct sa_block *s, uint8_t *r_packet, ssize_t r_length)
 					DEBUG(2, printf("ignoring bad data length R-U-THERE request\n"));
 					continue;
 				}
-				memcpy(&seq, rp->u.n.data, 4);
+				seq = ntohl(*((uint32_t *) rp->u.n.data));
 				send_dpd(s, 1, seq);
 				DEBUG(2, printf("got r-u-there request sent ack\n"));
 				continue;
@@ -3073,7 +3070,7 @@ void process_late_ike(struct sa_block *s, uint8_t *r_packet, ssize_t r_length)
 					DEBUG(2, printf("ignoring bad data length R-U-THERE-ACK\n"));
 					continue;
 				}
-				memcpy(&seqack, rp->u.n.data, 4);
+				seqack = ntohl(*((uint32_t *) rp->u.n.data));
 				if (seqack == s->ike.dpd_seqno) {
 					s->ike.dpd_seqno_ack = seqack;
 				} else {
