@@ -3097,9 +3097,14 @@ void process_late_ike(struct sa_block *s, uint8_t *r_packet, ssize_t r_length)
 			 */
 			/* FIXME: any cleanup needed??? */
 
-			free_isakmp_packet(r);
-			do_phase2_qm(s);
-			return;
+			if (rp->u.d.num_spi >= 1 && memcmp(rp->u.d.spi[0], &s->ipsec.tx.spi, 4) == 0) {
+				free_isakmp_packet(r);
+				do_phase2_qm(s);
+				return;
+			} else {
+				DEBUG(2, printf("got isakmp delete with bogus spi (expected %d, received %d), ignoring...\n", s->ipsec.tx.spi, *(rp->u.d.spi[0]) ));
+				continue;
+			}
 		}
 		/* skip ipsec-esp delete */
 		if (rp->u.d.protocol != ISAKMP_IPSEC_PROTO_ISAKMP) {
