@@ -177,7 +177,7 @@ static int encap_rawip_recv(struct sa_block *s, unsigned char *buf, unsigned int
 		return -1;
 	}
 	if (r < (p->ip_hl << 2) + s->ipsec.em->fixed_header_size) {
-		syslog(LOG_ALERT, "packet too short. got %d, expected %d", r, (p->ip_hl << 2) + s->ipsec.em->fixed_header_size);
+		syslog(LOG_ALERT, "packet too short. got %zd, expected %d", r, (p->ip_hl << 2) + s->ipsec.em->fixed_header_size);
 		return -1;
 	}
 
@@ -216,7 +216,7 @@ static int encap_udp_recv(struct sa_block *s, unsigned char *buf, unsigned int b
 		return -1;
 	}
 	if (r < s->ipsec.em->fixed_header_size) {
-		syslog(LOG_ALERT, "packet too short from %s. got %d, expected %d",
+		syslog(LOG_ALERT, "packet too short from %s. got %zd, expected %d",
 			inet_ntoa(s->dst), r, s->ipsec.em->fixed_header_size);
 		return -1;
 	}
@@ -616,7 +616,7 @@ static int process_arp(struct sa_block *s, uint8_t *frame)
 		ntohs(arp->arp_op) != ARPOP_REQUEST ||
 		!memcmp(arp->arp_spa, arp->arp_tpa, 4) ||
 		memcmp(eth->ether_shost, s->tun_hwaddr, ETH_ALEN) ||
-		!memcmp(arp->arp_tpa, s->our_address, 4)) {
+		!memcmp(arp->arp_tpa, &s->our_address, 4)) {
 		/* whatever .. just drop it */
 		return 1;
 	}

@@ -820,7 +820,7 @@ struct isakmp_packet *parse_isakmp_packet(const uint8_t * data, size_t data_len,
 	}
 
 	DEBUG(3, printf("BEGIN_PARSE\n"));
-	DEBUG(3, printf("Recieved Packet Len: %d\n", data_len));
+	DEBUG(3, printf("Recieved Packet Len: %zu\n", data_len));
 	fetchn(r->i_cookie, ISAKMP_COOKIE_LENGTH);
 	hex_dump("i_cookie", r->i_cookie, ISAKMP_COOKIE_LENGTH, NULL);
 	fetchn(r->r_cookie, ISAKMP_COOKIE_LENGTH);

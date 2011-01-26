@@ -918,7 +918,7 @@ static int do_config_to_env(struct sa_block *s, struct isakmp_attribute *a)
 				reject = ISAKMP_N_ATTRIBUTES_NOT_SUPPORTED;
 			else {
 				addenv_ipv4("INTERNAL_IP4_ADDRESS", a->u.lots.data);
-				memcpy(s->our_address, a->u.lots.data, 4);
+				memcpy(&s->our_address, a->u.lots.data, 4);
 			}
 			seen_address = 1;
 			break;
@@ -931,7 +931,7 @@ static int do_config_to_env(struct sa_block *s, struct isakmp_attribute *a)
 			if (a->af != isakmp_attr_lots || a->u.lots.length != 4)
 				reject = ISAKMP_N_ATTRIBUTES_NOT_SUPPORTED;
 			else {
-				uint32_t netaddr = ((struct in_addr *)(s->our_address))->s_addr & ((struct in_addr *)(a->u.lots.data))->s_addr;
+				uint32_t netaddr = s->our_address.s_addr & ((struct in_addr *)(a->u.lots.data))->s_addr;
 				addenv_ipv4("INTERNAL_IP4_NETMASK", a->u.lots.data);
 				asprintf(&strbuf, "%d", mask_to_masklen(*((struct in_addr *)a->u.lots.data)));
 				setenv("INTERNAL_IP4_NETMASKLEN", strbuf, 1);
@@ -2536,7 +2536,7 @@ static void do_phase2_qm(struct sa_block *s)
 	us->u.id.type = ISAKMP_IPSEC_ID_IPV4_ADDR;
 	us->u.id.length = 4;
 	us->u.id.data = xallocc(4);
-	memcpy(us->u.id.data, s->our_address, sizeof(struct in_addr));
+	memcpy(us->u.id.data, &s->our_address, sizeof(struct in_addr));
 	them = new_isakmp_payload(ISAKMP_PAYLOAD_ID);
 	them->u.id.type = ISAKMP_IPSEC_ID_IPV4_ADDR_SUBNET;
 	them->u.id.length = 8;
