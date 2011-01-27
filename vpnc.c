@@ -742,7 +742,7 @@ static void send_dpd(struct sa_block *s, int isack, uint32_t seqno)
 	memcpy(pl->u.n.spi + ISAKMP_COOKIE_LENGTH * 1, s->ike.r_cookie, ISAKMP_COOKIE_LENGTH);
 	pl->u.n.data_length = 4;
 	pl->u.n.data = xallocc(4);
-	*((uint32_t *) pl->u.n.data) = seqno;
+	*((uint32_t *) pl->u.n.data) = htonl(seqno);
 	gcry_create_nonce((uint8_t *) & msgid, sizeof(msgid));
 	/* 2007-09-06 JKU/ZID: Sonicwall drops non hashed r_u_there-requests */
 	sendrecv_phase2(s, pl, ISAKMP_EXCHANGE_INFORMATIONAL, msgid,
