@@ -109,6 +109,9 @@ int tun_get_hwaddr(int fd, char *dev, uint8_t *hwaddr);
 #define HAVE_FGETLN    1
 #define HAVE_UNSETENV  1
 #define HAVE_SETENV    1
+#if (__ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__-0) >= 1070
+#define HAVE_GETLINE 1
+#endif
 #endif
 
 /***************************************************************************/
