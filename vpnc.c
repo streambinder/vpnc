@@ -1161,8 +1161,11 @@ static void lifetime_ike_process(struct sa_block *s, struct isakmp_attribute *a)
 		value = a->next->u.attr_16;
 	else if (a->next->af == isakmp_attr_lots && a->next->u.lots.length == 4)
 		value = ntohl(*((uint32_t *) a->next->u.lots.data));
-	else
-		assert(0);
+	else {
+		DEBUG(2, printf("got unknown ike lifetime attributes af %d len %d\n",
+					a->next->af, a->next->u.lots.length));
+		return;
+	}
 
 	DEBUG(2, printf("got ike lifetime attributes: %d %s\n", value,
 		(a->u.attr_16 == IKE_LIFE_TYPE_SECONDS) ? "seconds" : "kilobyte"));
@@ -1593,6 +1596,19 @@ static void do_phase1_am_packet2(struct sa_block *s, const char *shared_key)
 				} else {
 					if (memcmp(s->ike.natd_them, rp->u.natd.data, s->ike.md_len) == 0)
 						seen_natd_them = 1;
+				}
+				break;
+			case ISAKMP_PAYLOAD_N:
+				if (rp->u.n.type == ISAKMP_N_IPSEC_RESPONDER_LIFETIME) {
+					if (rp->u.n.protocol == ISAKMP_IPSEC_PROTO_ISAKMP)
+						lifetime_ike_process(s, rp->u.n.attributes);
+					else if (rp->u.n.protocol == ISAKMP_IPSEC_PROTO_IPSEC_ESP)
+						lifetime_ipsec_process(s, rp->u.n.attributes);
+					else
+						DEBUG(2, printf("got unknown lifetime notice, ignoring..\n"));
+				} else {
+					DEBUG(1, printf("rejecting ISAKMP_PAYLOAD_N, type is not lifetime\n"));
+					reject = ISAKMP_N_INVALID_PAYLOAD_TYPE;
 				}
 				break;
 			default:
