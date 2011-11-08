@@ -521,7 +521,7 @@ static int encap_esp_recv_peer(struct sa_block *s)
 	}
 
 	blksz = s->ipsec.blk_len;
-	if ((len % blksz) != 0) {
+	if (s->ipsec.cry_algo && ((len % blksz) != 0)) {
 		syslog(LOG_ALERT,
 			"payload len %d not a multiple of algorithm block size %lu", len,
 			(unsigned long)blksz);
