@@ -88,6 +88,10 @@ const unsigned char VID_NATT_02N[] = { /* "draft-ietf-ipsec-nat-t-ike-02\n" */
 	0x90, 0xCB, 0x80, 0x91, 0x3E, 0xBB, 0x69, 0x6E,
 	0x08, 0x63, 0x81, 0xB5, 0xEC, 0x42, 0x7B, 0x1F
 };
+const unsigned char VID_NATT_03[] = { /* "draft-ietf-ipsec-nat-t-ike-03" */
+	0x7d, 0x94, 0x19, 0xa6, 0x53, 0x10, 0xca, 0x6f,
+	0x2c, 0x17, 0x9d, 0x92, 0x15, 0x52, 0x9d, 0x56
+};
 const unsigned char VID_NATT_RFC[] = { /* "RFC 3947" */
 	0x4A, 0x13, 0x1C, 0x81, 0x07, 0x03, 0x58, 0x45,
 	0x5C, 0x57, 0x28, 0xF2, 0x0E, 0x95, 0x45, 0x2F
@@ -141,6 +145,7 @@ const struct vid_element vid_list[] = {
 	{ VID_NATT_01,		sizeof(VID_NATT_01),	"Nat-T 01" },
 	{ VID_NATT_02,		sizeof(VID_NATT_02),	"Nat-T 02" },
 	{ VID_NATT_02N,		sizeof(VID_NATT_02N),	"Nat-T 02N" },
+	{ VID_NATT_03,		sizeof(VID_NATT_03),	"Nat-T 03" },
 	{ VID_NATT_RFC,		sizeof(VID_NATT_RFC),	"Nat-T RFC" },
 	{ VID_DWR,		sizeof(VID_DWR),	"Delete With Reason" },
 	{ VID_CISCO_FRAG,	sizeof(VID_CISCO_FRAG),	"Cisco Fragmentation" },
@@ -1267,6 +1272,8 @@ static void do_phase1_am_packet1(struct sa_block *s, const char *key_id)
 			l = l->next = new_isakmp_data_payload(ISAKMP_PAYLOAD_VID,
 				VID_NATT_RFC, sizeof(VID_NATT_RFC));
 			l = l->next = new_isakmp_data_payload(ISAKMP_PAYLOAD_VID,
+				VID_NATT_03, sizeof(VID_NATT_03));
+			l = l->next = new_isakmp_data_payload(ISAKMP_PAYLOAD_VID,
 				VID_NATT_02N, sizeof(VID_NATT_02N));
 			l = l->next = new_isakmp_data_payload(ISAKMP_PAYLOAD_VID,
 				VID_NATT_02, sizeof(VID_NATT_02));
@@ -1501,6 +1508,12 @@ static void do_phase1_am_packet2(struct sa_block *s, const char *shared_key)
 					seen_natt_vid = 1;
 					if (natt_draft < 1) natt_draft = 2;
 					DEBUG(2, printf("peer is NAT-T capable (RFC 3947)\n"));
+				} else if (rp->u.vid.length == sizeof(VID_NATT_03)
+					&& memcmp(rp->u.vid.data, VID_NATT_03,
+						sizeof(VID_NATT_03)) == 0) {
+					seen_natt_vid = 1;
+					if (natt_draft < 1) natt_draft = 2;
+					DEBUG(2, printf("peer is NAT-T capable (draft-03)\n"));
 				} else if (rp->u.vid.length == sizeof(VID_NATT_02N)
 					&& memcmp(rp->u.vid.data, VID_NATT_02N,
 						sizeof(VID_NATT_02N)) == 0) {
