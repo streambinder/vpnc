@@ -300,6 +300,19 @@ struct isakmp_attribute *new_isakmp_attribute_16(uint16_t type, uint16_t data,
 	return r;
 }
 
+static void free_isakmp_attributes(struct isakmp_attribute *attributes)
+{
+	struct isakmp_attribute *att, *nextatt;
+	for (att = attributes; att; att = nextatt) {
+		nextatt = att->next;
+		if (att->af == isakmp_attr_lots)
+			free(att->u.lots.data);
+		if (att->af == isakmp_attr_acl)
+			free(att->u.acl.acl_ent);
+		free(att);
+	}
+}
+
 struct isakmp_packet *new_isakmp_packet(void)
 {
 	return xallocc(sizeof(struct isakmp_packet));
@@ -347,15 +360,7 @@ static void free_isakmp_payload(struct isakmp_payload *p)
 		free_isakmp_payload(p->u.p.transforms);
 		break;
 	case ISAKMP_PAYLOAD_T:
-		{
-			struct isakmp_attribute *att, *natt;
-			for (att = p->u.t.attributes; att; att = natt) {
-				natt = att->next;
-				if (att->af == isakmp_attr_lots)
-					free(att->u.lots.data);
-				free(att);
-			}
-		}
+		free_isakmp_attributes(p->u.t.attributes);
 		break;
 	case ISAKMP_PAYLOAD_KE:
 	case ISAKMP_PAYLOAD_HASH:
@@ -386,17 +391,7 @@ static void free_isakmp_payload(struct isakmp_payload *p)
 		}
 		break;
 	case ISAKMP_PAYLOAD_MODECFG_ATTR:
-		{
-			struct isakmp_attribute *att, *natt;
-			for (att = p->u.modecfg.attributes; att; att = natt) {
-				natt = att->next;
-				if (att->af == isakmp_attr_lots)
-					free(att->u.lots.data);
-				if (att->af == isakmp_attr_acl)
-					free(att->u.acl.acl_ent);
-				free(att);
-			}
-		}
+		free_isakmp_attributes(p->u.modecfg.attributes);
 		break;
 	default:
 		abort();
