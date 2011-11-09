@@ -2498,7 +2498,7 @@ static struct isakmp_attribute *make_transform_ipsec(struct sa_block *s, int dh_
 
 static struct isakmp_payload *make_our_sa_ipsec(struct sa_block *s)
 {
-	struct isakmp_payload *r = new_isakmp_payload(ISAKMP_PAYLOAD_SA);
+	struct isakmp_payload *r;
 	struct isakmp_payload *p = NULL, *pn;
 	struct isakmp_attribute *a;
 	int dh_grp = get_dh_group_ipsec(s->ipsec.do_pfs)->ipsec_sa_id;
@@ -2508,12 +2508,6 @@ static struct isakmp_payload *make_our_sa_ipsec(struct sa_block *s)
 	r = new_isakmp_payload(ISAKMP_PAYLOAD_SA);
 	r->u.sa.doi = ISAKMP_DOI_IPSEC;
 	r->u.sa.situation = ISAKMP_IPSEC_SIT_IDENTITY_ONLY;
-	r->u.sa.proposals = new_isakmp_payload(ISAKMP_PAYLOAD_P);
-	r->u.sa.proposals->u.p.spi_size = 4;
-	r->u.sa.proposals->u.p.spi = xallocc(4);
-	/* The sadb_sa_spi field is already in network order.  */
-	memcpy(r->u.sa.proposals->u.p.spi, &s->ipsec.rx.spi, 4);
-	r->u.sa.proposals->u.p.prot_id = ISAKMP_IPSEC_PROTO_IPSEC_ESP;
 	for (crypt = 0; supp_crypt[crypt].name != NULL; crypt++) {
 		keylen = supp_crypt[crypt].keylen;
 		for (hash = 0; supp_hash[hash].name != NULL; hash++) {

@@ -381,6 +381,7 @@ static void free_isakmp_payload(struct isakmp_payload *p)
 	case ISAKMP_PAYLOAD_N:
 		free(p->u.n.spi);
 		free(p->u.n.data);
+		free_isakmp_attributes(p->u.n.attributes);
 		break;
 	case ISAKMP_PAYLOAD_D:
 		if (p->u.d.spi) {
