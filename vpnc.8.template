@@ -95,7 +95,7 @@ Prints your configuration; output can be used as vpnc.conf
 .I /etc/vpnc/default.conf
 .RS
 The default configuration file. You can specify the same config
-directives as with command line options and additionaly
+directives as with command line options and additionally
 .B IPSec secret
 and
 .B Xauth password

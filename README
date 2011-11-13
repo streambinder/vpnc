@@ -14,7 +14,7 @@ Project home page: http://www.unix-ag.uni-kl.de/~massar/vpnc/
 ========= Contents of this file ============================================
 
 
-- Gereral configuration of vpnc
+- General configuration of vpnc
 - Using a modified script
 - Additional steps to configure hybrid authentication
 - Setting up vpnc on Vista 64bit
@@ -82,24 +82,24 @@ settings, these are used to setup routes.
 
 This option is passed to system(), so you can use any shell-specials you
 like. This script gets called three times:
-$reason == pre-init: this is befor vpnc opens the tun device
-   so you can do what is neccessary to ensure that it is available.
+$reason == pre-init: this is before vpnc opens the tun device
+   so you can do what is necessary to ensure that it is available.
    Note that none of the variables mentioned below is available
 $reason == connect: this is what used to be "Config Script".
    The connection is established, but vpnc will not begin forwarding
-   packets until the script finishs.
+   packets until the script finishes.
 $reason == disconnect: This is called just after vpnc received a signal.
    Note that vpnc will not forward packets anymore while the script is
-   running or therafter.
+   running or thereafter.
 
-Information is passed from vpnc via enviroment variables:
+Information is passed from vpnc via environment variables:
 
 #* reason                       -- why this script was called, one of: pre-init connect disconnect
 #* VPNGATEWAY                   -- vpn gateway address (always present)
 #* TUNDEV                       -- tunnel device (always present)
 #* INTERNAL_IP4_ADDRESS         -- address (always present)
 #* INTERNAL_IP4_NETMASK         -- netmask (often unset)
-#* INTERNAL_IP4_DNS             -- list of dns serverss
+#* INTERNAL_IP4_DNS             -- list of dns servers
 #* INTERNAL_IP4_NBNS            -- list of wins servers
 #* CISCO_DEF_DOMAIN             -- default domain name
 #* CISCO_BANNER                 -- banner from server
@@ -178,7 +178,7 @@ The hash value can be calculated by e.g.
 1. Install cygwin onto vista.  Details here: http://www.cygwin.com/
 2. Make sure you install the development options for cygwin to give you
    access to make and gcc etc
-3. Make sure you install libcrypt for cygwin as it is needed in the make
+3. Make sure you install libgcrypt for cygwin as it is needed in the make
 4. Modify the bash.exe to run as administrator or you will have
    privilege issues later, this is done on the properties tab of the
    executable in c:/cygwin/bin
@@ -186,7 +186,7 @@ The hash value can be calculated by e.g.
    http://www.unix-ag.uni-kl.de/~massar/vpnc/
 5. Unzip and explode the tarball
 6. modify tap-win32.h to change #define TAP_COMPONENT_ID "tap0801" to
-   "tap0901" (No sure if this is necesary but I did it and it is working
+   "tap0901" (No sure if this is necessary but I did it and it is working
    for me)
 7. make
 8. You should have a shinny new vpnc.exe
