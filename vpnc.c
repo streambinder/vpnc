@@ -1321,7 +1321,7 @@ static void do_phase1_am_packet2(struct sa_block *s, const char *shared_key)
 		uint8_t *skeyid;
 		gcry_md_hd_t skeyid_ctx;
 		uint8_t *dh_shared_secret;
-		int seen_natt_vid = 0, seen_natd = 0, seen_natd_them = 0, seen_natd_us = 0;
+		int seen_natd = 0, seen_natd_them = 0, seen_natd_us = 0;
 		int natt_draft = -1;
 		crypto_ctx *cctx;
 		crypto_error *crerr = NULL;
@@ -1508,37 +1508,31 @@ static void do_phase1_am_packet2(struct sa_block *s, const char *shared_key)
 				} else if (rp->u.vid.length == sizeof(VID_NATT_RFC)
 					&& memcmp(rp->u.vid.data, VID_NATT_RFC,
 						sizeof(VID_NATT_RFC)) == 0) {
-					seen_natt_vid = 1;
 					if (natt_draft < 1) natt_draft = 2;
 					DEBUG(2, printf("peer is NAT-T capable (RFC 3947)\n"));
 				} else if (rp->u.vid.length == sizeof(VID_NATT_03)
 					&& memcmp(rp->u.vid.data, VID_NATT_03,
 						sizeof(VID_NATT_03)) == 0) {
-					seen_natt_vid = 1;
 					if (natt_draft < 1) natt_draft = 2;
 					DEBUG(2, printf("peer is NAT-T capable (draft-03)\n"));
 				} else if (rp->u.vid.length == sizeof(VID_NATT_02N)
 					&& memcmp(rp->u.vid.data, VID_NATT_02N,
 						sizeof(VID_NATT_02N)) == 0) {
-					seen_natt_vid = 1;
 					if (natt_draft < 1) natt_draft = 2;
 					DEBUG(2, printf("peer is NAT-T capable (draft-02)\\n\n")); /* sic! */
 				} else if (rp->u.vid.length == sizeof(VID_NATT_02)
 					&& memcmp(rp->u.vid.data, VID_NATT_02,
 						sizeof(VID_NATT_02)) == 0) {
-					seen_natt_vid = 1;
 					if (natt_draft < 1) natt_draft = 2;
 					DEBUG(2, printf("peer is NAT-T capable (draft-02)\n"));
 				} else if (rp->u.vid.length == sizeof(VID_NATT_01)
 					&& memcmp(rp->u.vid.data, VID_NATT_01,
 						sizeof(VID_NATT_01)) == 0) {
-					seen_natt_vid = 1;
 					if (natt_draft < 1) natt_draft = 1;
 					DEBUG(2, printf("peer is NAT-T capable (draft-01)\n"));
 				} else if (rp->u.vid.length == sizeof(VID_NATT_00)
 					&& memcmp(rp->u.vid.data, VID_NATT_00,
 						sizeof(VID_NATT_00)) == 0) {
-					seen_natt_vid = 1;
 					if (natt_draft < 0) natt_draft = 0;
 					DEBUG(2, printf("peer is NAT-T capable (draft-00)\n"));
 				} else if (rp->u.vid.length == sizeof(VID_DPD)
@@ -1571,7 +1565,7 @@ static void do_phase1_am_packet2(struct sa_block *s, const char *shared_key)
 				s->ike.natd_type = rp->type;
 				DEBUG(2, printf("peer is using type %d%s for NAT-Discovery payloads\n",
 					s->ike.natd_type, val_to_string(s->ike.natd_type, isakmp_payload_enum_array)));
-				if (!seen_sa /*|| !seen_natt_vid*/) {
+				if (!seen_sa) {
 					reject = ISAKMP_N_INVALID_PAYLOAD_TYPE;
 				} else if (opt_natt_mode == NATT_NONE) {
 					;
