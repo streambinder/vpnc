@@ -265,7 +265,7 @@ static gnutls_x509_crt_t *load_ca_list_file(const char *path,
                                             size_t *out_list_size,
                                             crypto_error **error)
 {
-	gnutls_x509_crt_t *list = NULL;
+	gnutls_x509_crt_t *list;
 	gnutls_datum dt = { NULL, 0 };
 	size_t fsize = 0;
 	int err;
