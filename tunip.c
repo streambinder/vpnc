@@ -490,9 +490,7 @@ static int encap_esp_recv_peer(struct sa_block *s)
 	unsigned char padlen, next_header;
 	unsigned char *pad;
 	unsigned char *iv;
-	struct esp_encap_header *eh;
 
-	eh = (struct esp_encap_header *)(s->ipsec.rx.buf + s->ipsec.rx.bufpayload);
 	s->ipsec.rx.var_header_size = s->ipsec.iv_len;
 	iv = s->ipsec.rx.buf + s->ipsec.rx.bufpayload + s->ipsec.em->fixed_header_size;
 

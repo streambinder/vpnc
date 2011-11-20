@@ -265,7 +265,7 @@ static gnutls_x509_crt_t *load_ca_list_file(const char *path,
                                             size_t *out_list_size,
                                             crypto_error **error)
 {
-	gnutls_x509_crt_t *list = NULL, *old;
+	gnutls_x509_crt_t *list = NULL;
 	gnutls_datum dt = { NULL, 0 };
 	size_t fsize = 0;
 	int err;
@@ -276,7 +276,7 @@ static gnutls_x509_crt_t *load_ca_list_file(const char *path,
 		return NULL;
 
 	dt.size = (unsigned int) fsize;
-	old = list = gnutls_malloc(sizeof(gnutls_x509_crt_t) * num);
+	list = gnutls_malloc(sizeof(gnutls_x509_crt_t) * num);
 	if (!list) {
 		crypto_error_set(error, 1, ENOMEM, "not enough memory for CA list");
 		goto out;
