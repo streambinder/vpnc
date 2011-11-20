@@ -110,37 +110,37 @@ int tun_open(char *dev, enum if_mode_enum mode)
 	}
 
 	if ((ip_fd = open("/dev/ip", O_RDWR, 0)) < 0) {
-		syslog(LOG_ERR, "Can't open /dev/ip");
+		logmsg(LOG_ERR, "Can't open /dev/ip");
 		return -1;
 	}
 
 	if ((tun_fd = open(((mode == IF_MODE_TUN) ? "/dev/tun" : "/dev/tap"), O_RDWR, 0)) < 0) {
-		syslog(LOG_ERR, "Can't open /dev/tun");
+		logmsg(LOG_ERR, "Can't open /dev/tun");
 		return -1;
 	}
 
 	/* Assign a new PPA and get its unit number. */
 	if ((ppa = ioctl(tun_fd, TUNNEWPPA, ppa)) < 0) {
-		syslog(LOG_ERR, "Can't assign new interface");
+		logmsg(LOG_ERR, "Can't assign new interface");
 		return -1;
 	}
 
 	if ((if_fd = open(((mode == IF_MODE_TUN) ? "/dev/tun" : "/dev/tap"), O_RDWR, 0)) < 0) {
-		syslog(LOG_ERR, "Can't open /dev/tun (2)");
+		logmsg(LOG_ERR, "Can't open /dev/tun (2)");
 		return -1;
 	}
 	if (ioctl(if_fd, I_PUSH, "ip") < 0) {
-		syslog(LOG_ERR, "Can't push IP module");
+		logmsg(LOG_ERR, "Can't push IP module");
 		return -1;
 	}
 
 	/* Assign ppa according to the unit number returned by tun device */
 	if (ioctl(if_fd, IF_UNITSEL, (char *)&ppa) < 0 && errno != EEXIST) {
-		syslog(LOG_ERR, "Can't set PPA %d", ppa);
+		logmsg(LOG_ERR, "Can't set PPA %d", ppa);
 		return -1;
 	}
 	if ((muxid = ioctl(ip_fd, I_PLINK, if_fd)) < 0) {
-		syslog(LOG_ERR, "Can't link TUN device to IP");
+		logmsg(LOG_ERR, "Can't link TUN device to IP");
 		return -1;
 	}
 	close(if_fd);
@@ -153,7 +153,7 @@ int tun_open(char *dev, enum if_mode_enum mode)
 
 	if (ioctl(ip_fd, SIOCSIFMUXID, &ifr) < 0) {
 		ioctl(ip_fd, I_PUNLINK, muxid);
-		syslog(LOG_ERR, "Can't set multiplexor id");
+		logmsg(LOG_ERR, "Can't set multiplexor id");
 		return -1;
 	}
 
@@ -493,12 +493,12 @@ int tun_close(int fd, char *dev)
 	memset(&ifr, 0, sizeof(ifr));
 	strcpy(ifr.ifr_name, dev);
 	if (ioctl(ip_fd, SIOCGIFFLAGS, &ifr) < 0) {
-		syslog(LOG_ERR, "Can't get iface flags");
+		logmsg(LOG_ERR, "Can't get iface flags");
 		return 0;
 	}
 
 	if (ioctl(ip_fd, I_PUNLINK, muxid) < 0) {
-		syslog(LOG_ERR, "Can't unlink interface");
+		logmsg(LOG_ERR, "Can't unlink interface");
 		return 0;
 	}
 
