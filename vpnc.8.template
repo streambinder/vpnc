@@ -176,7 +176,7 @@ named something like 722d15bd.X, where X is a manually assigned number to
 make sure that files with colliding hashes have different names. The number
 can be derived from the certificate file itself:
 .P
-openssl x509 -subject_hash -noout -in /etc/vpnc/vpn-example-com.pem
+openssl x509 \-subject_hash \-noout \-in /etc/vpnc/vpn\-example\-com.pem
 
 See also the
 .B \-\-print\-config
@@ -207,7 +207,7 @@ On Debian systems, the complete text of the GNU General Public
 License can be found in /usr/share/common\-licenses/GPL.
 .SH "SEE ALSO"
 .BR pcf2vpnc (1),
-.BR cisco-decrypt (1),
+.BR cisco\-decrypt (1),
 .BR ip (8),
 .BR ifconfig (8),
 .BR route (1),

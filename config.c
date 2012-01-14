@@ -309,7 +309,7 @@ static const struct config_names_s {
 		"Script ",
 		"<command>",
 		"command is executed using system() to configure the interface,\n"
-		"routing and so on. Device name, IP, etc. are passed using enviroment\n"
+		"routing and so on. Device name, IP, etc. are passed using environment\n"
 		"variables, see README. This script is executed right after ISAKMP is\n"
 		"done, but before tunneling is enabled. It is called when vpnc\n"
 		"terminates, too\n",

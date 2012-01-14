@@ -6,8 +6,6 @@ use strict;
 use warnings;
 
 my $in_enum = 0;
-my $element;
-my $arrayname;
 
 print STDERR << 'EOF';
 /* Automatically generated with enum2debug.pl: Don't edit! */

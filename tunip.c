@@ -649,11 +649,9 @@ static int process_arp(struct sa_block *s, uint8_t *frame)
  * Process non-IP packets
  * Return 1 if packet has been processed, 0 otherwise
  */
-static int process_non_ip(struct sa_block *s, uint8_t *frame)
+static int process_non_ip(uint8_t *frame)
 {
 	struct ether_header *eth = (struct ether_header *) frame;
-
-	s = NULL; /* unused */
 
 	if (ntohs(eth->ether_type) != ETHERTYPE_IP) {
 		/* drop non-ip traffic */
@@ -684,7 +682,7 @@ static void process_tun(struct sa_block *s)
 		if (process_arp(s, start)) {
 			return;
 		}
-		if (process_non_ip(s, start)) {
+		if (process_non_ip(start)) {
 			return;
 		}
 		pack -= ETH_HLEN;
