@@ -55,6 +55,7 @@ SCRIPTNAME=`basename $0`
 # some systems, eg. Darwin & FreeBSD, prune /var/run on boot
 if [ ! -d "/var/run/vpnc" ]; then
 	mkdir -p /var/run/vpnc
+	[ -x /sbin/restorecon ] && /sbin/restorecon /var/run/vpnc
 fi
 
 # stupid SunOS: no blubber in /usr/local/bin ... (on stdout)
@@ -497,6 +498,7 @@ do_pre_init() {
 			if [ ! -e /dev/net/tun ]; then
 				mkdir -p /dev/net
 				mknod -m 0640 /dev/net/tun c 10 200
+				[ -x /sbin/restorecon ] && /sbin/restorecon /dev/net/tun
 			fi
 			# workaround for a possible latency caused by udev, sleep max. 10s
 			if kernel_is_2_6_or_above ; then
