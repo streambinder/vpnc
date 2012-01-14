@@ -607,7 +607,7 @@ do_disconnect() {
 		for i in $INTERNAL_IP6_DNS ; do
 			del_ipv6_network_route "$i" "128"
 		done
-	else
+	elif [ -n "$INTERNAL_IP6_NETMASK" -o -n "$INTERNAL_IP6_ADDRESS" ]; then
 		reset_ipv6_default_route
 	fi
 
