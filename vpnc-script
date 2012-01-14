@@ -8,6 +8,9 @@
 #* INTERNAL_IP4_NETADDR         -- address of network (only present if netmask is set)
 #* INTERNAL_IP4_DNS             -- list of dns serverss
 #* INTERNAL_IP4_NBNS            -- list of wins servers
+#* INTERNAL_IP6_ADDRESS         -- IPv6 address
+#* INTERNAL_IP6_NETMASK         -- IPv6 netmask
+#* INTERNAL_IP6_DNS             -- IPv6 list of dns servers
 #* CISCO_DEF_DOMAIN             -- default domain name
 #* CISCO_BANNER                 -- banner from server
 #* CISCO_SPLIT_INC              -- number of networks in split-network-list
@@ -17,6 +20,9 @@
 #* CISCO_SPLIT_INC_%d_PROTOCOL  -- protocol (often just 0)
 #* CISCO_SPLIT_INC_%d_SPORT     -- source port (often just 0)
 #* CISCO_SPLIT_INC_%d_DPORT     -- destination port (often just 0)
+#* CISCO_IPV6_SPLIT_INC         -- number of networks in IPv6 split-network-list
+#* CISCO_IPV6_SPLIT_INC_%d_ADDR -- IPv6 network address
+#* CISCO_IPV6_SPLIT_INC_$%d_MASKLEN -- IPv6 subnet masklen
 
 # FIXMEs:
 
