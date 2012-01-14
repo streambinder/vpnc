@@ -911,10 +911,12 @@ static int do_config_to_env(struct sa_block *s, struct isakmp_attribute *a)
 	unsetenv("CISCO_BANNER");
 	unsetenv("CISCO_DEF_DOMAIN");
 	unsetenv("CISCO_SPLIT_INC");
+	unsetenv("CISCO_IPV6_SPLIT_INC");
 	unsetenv("INTERNAL_IP4_NBNS");
 	unsetenv("INTERNAL_IP4_DNS");
 	unsetenv("INTERNAL_IP4_NETMASK");
 	unsetenv("INTERNAL_IP4_ADDRESS");
+	unsetenv("INTERNAL_IP6_DNS");
 	unsetenv("INTERNAL_IP6_NETMASK");
 	unsetenv("INTERNAL_IP6_ADDRESS");
 

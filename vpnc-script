@@ -169,6 +169,31 @@ if [ -n "$IPROUTE" ]; then
 		$IPROUTE route $route_syntax_del "$NETWORK/$NETMASKLEN" dev "$TUNDEV"
 		$IPROUTE route flush cache
 	}
+
+	set_ipv6_default_route() {
+		# We don't save/restore IPv6 default route; just add a higher-priority one.
+		$IPROUTE -6 route add default dev "$TUNDEV" metric 1
+		$IPROUTE -6 route flush cache
+	}
+
+	set_ipv6_network_route() {
+		NETWORK="$1"
+		NETMASKLEN="$2"
+		$IPROUTE -6 route replace "$NETWORK/$NETMASKLEN" dev "$TUNDEV"
+		$IPROUTE route flush cache
+	}
+
+	reset_ipv6_default_route() {
+		$IPROUTE -6 route del default dev "$TUNDEV"
+		$IPROUTE route flush cache
+	}
+
+	del_ipv6_network_route() {
+		NETWORK="$1"
+		NETMASKLEN="$2"
+		$IPROUTE -6 route del "$NETWORK/$NETMASKLEN" dev "$TUNDEV"
+		$IPROUTE -6 route flush cache
+	}
 else # use route command
 	get_default_gw() {
 		# isn't -n supposed to give --numeric output?
@@ -221,6 +246,27 @@ else # use route command
 		NETMASKLEN="$3"
 		route $route_syntax_del -net "$NETWORK" $route_syntax_netmask "$NETMASK" $route_syntax_gw "$INTERNAL_IP4_ADDRESS"
 	}
+
+	set_ipv6_default_route() {
+		# FIXME
+		:
+	}
+
+	set_ipv6_network_route() {
+		# FIXME
+		:
+	}
+
+	reset_ipv6_default_route() {
+		# FIXME
+		:
+	}
+
+	del_ipv6_network_route() {
+		# FIXME
+		:
+	}
+
 fi
 
 # =========== resolv.conf handling ====================================
@@ -477,8 +523,26 @@ do_connect() {
 		for i in $INTERNAL_IP4_DNS ; do
 			set_network_route "$i" "255.255.255.255" "32"
 		done
-	else
+	elif [ -n "$INTERNAL_IP4_ADDRESS" ]; then
 		set_default_route
+	fi
+	if [ -n "$CISCO_IPV6_SPLIT_INC" ]; then
+		i=0
+		while [ $i -lt $CISCO_IPV6_SPLIT_INC ] ; do
+			eval NETWORK="\${CISCO_IPV6_SPLIT_INC_${i}_ADDR}"
+			eval NETMASKLEN="\${CISCO_IPV6_SPLIT_INC_${i}_MASKLEN}"
+			if [ $NETMASKLEN -lt 128 ]; then
+				set_ipv6_network_route "$NETWORK" "$NETMASKLEN"
+			else
+				set_ipv6_default_route
+			fi
+			i=`expr $i + 1`
+		done
+		for i in $INTERNAL_IP6_DNS ; do
+			set_ipv6_network_route "$i" "128"
+		done
+	elif [ -n "$INTERNAL_IP6_NETMASK" -o -n "$INTERNAL_IP6_ADDRESS" ]; then
+		set_ipv6_default_route
 	fi
 
 	if [ -n "$INTERNAL_IP4_DNS" ]; then
@@ -507,6 +571,24 @@ do_disconnect() {
 		done
 	else
 		reset_default_route
+	fi
+	if [ -n "$CISCO_IPV6_SPLIT_INC" ]; then
+		i=0
+		while [ $i -lt $CISCO_IPV6_SPLIT_INC ] ; do
+			eval NETWORK="\${CISCO_IPV6_SPLIT_INC_${i}_ADDR}"
+			eval NETMASKLEN="\${CISCO_IPV6_SPLIT_INC_${i}_MASKLEN}"
+			if [ $NETMASKLEN -eq 128 ]; then
+				del_ipv6_network_route "$NETWORK" "$NETMASKLEN"
+			else
+				reset_ipv6_default_route
+			fi
+			i=`expr $i + 1`
+		done
+		for i in $INTERNAL_IP6_DNS ; do
+			del_ipv6_network_route "$i" "128"
+		done
+	else
+		reset_ipv6_default_route
 	fi
 
 	del_vpngateway_route
