@@ -3,14 +3,69 @@
 # print vpnc version from file VERSION, appending the string printed
 # by svnversion(1) if appropriate
 
+function git_svn_version ()
+{
+	local key value svn_log svn_commit svn_ver
+
+	# exit if not in git repository
+	if [ "true" != "$(git rev-parse --is-inside-work-tree 2>/dev/null)" ]; then
+		return
+	fi
+
+	# search for svn-remote defined in git configuration
+	while read key value; do
+		svn_url_pattern+="\\|$value"
+	done << EOF
+	$(git config --get-regexp '^svn-remote\..*\.url$' 2>/dev/null)
+EOF
+
+	# exit if no svn-remote defined
+	if [ ${#svn_url_pattern} -eq 0 ]; then
+		return
+	fi
+
+	# scan git-log for latest commit from any svn-remote above
+	svn_log=($(git log --first-parent -1 \
+		--grep="^git-svn-id: \(${svn_url_pattern:2}\)@" 2>/dev/null))
+
+	# check commit hash is 40 hex digits
+	svn_commit=${svn_log[1]}
+	if [ ${#svn_commit} -ne 40 -o -n "${svn_commit//[0-9a-f]/}" ]; then
+		return
+	fi
+
+	# check svn version is numeric
+	svn_ver=${svn_log[ ${#svn_log[@]} - 2 ]}
+	svn_ver=${svn_ver#*@}
+	if [ -z "${#svn_ver}" -o -n "${svn_ver//[0-9]/}" ]; then
+		return
+	fi
+
+	if [ $(git rev-list --count HEAD...${svn_commit}) -eq 0 ]; then
+		if [ `git status -s | grep -vc '^??'` -eq 0 ]; then
+			# no git commits and tree clean
+			echo "${svn_ver}"
+			return
+		fi
+	fi
+	# there are local git commits after latest svn commit or tree is dirty
+	echo "${svn_ver}M"
+}
+
+
 _version="`cat VERSION`"
 
 if [ -d .svn ]; then
-		if command -v svnversion >/dev/null; then
-				_version="$_version-`svnversion`"
-		else
-				_version="$_version-`sed -n '/^dir$/{n;p;q;}' .svn/entries`"
-		fi
+	if command -v svnversion >/dev/null; then
+		_version="$_version-`svnversion`"
+	else
+		_version="$_version-`sed -n '/^dir$/{n;p;q;}' .svn/entries`"
+	fi
+elif command -v git >/dev/null; then
+	git_ext=$(git_svn_version)
+	if [ -n "${git_ext}" ]; then
+		_version="$_version-${git_ext}"
+	fi
 fi
 
 echo "$_version"
