@@ -116,9 +116,7 @@ do_ifconfig() {
 		$IPROUTE -6 addr add $INTERNAL_IP6_ADDRESS/128 dev $TUNDEV
 	    fi
 	else
-	    if [ -n "$INTERNAL_IP6_NETMASK" ]; then
-	        ifconfig "$TUNDEV" inet6 $route_syntax_plumb $INTERNAL_IP6_NETMASK $ifconfig_syntax_ptp $INTERNAL_IP6_ADDRESS mtu $MTU up
-	    elif [ -n "$INTERNAL_IP6_ADDRESS" ]; then
+	    if [ -n "$INTERNAL_IP6_ADDRESS" ]; then
 	        ifconfig "$TUNDEV" inet6 $route_syntax_plumb $INTERNAL_IP6_ADDRESS/128 $ifconfig_syntax_ptp $INTERNAL_IP6_ADDRESS mtu $MTU up
 	    fi
 	fi
@@ -126,7 +124,7 @@ do_ifconfig() {
 
 destroy_tun_device() {
 	case "$OS" in
-	NetBSD) # and probably others...
+	NetBSD|FreeBSD) # and probably others...
 		ifconfig "$TUNDEV" destroy
 		;;
         SunOS)
