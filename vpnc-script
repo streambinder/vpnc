@@ -128,7 +128,7 @@ do_ifconfig() {
 	    else
 		if [ "$OS" = "SunOS" ]; then
 		    # Solaris 11 needs link-local addrs to be assigned manually
-		    ifconfig "$TUNDEV" inet6 plumb fe80::1 fe80::2 mtu $MTU up
+		    ifconfig "$TUNDEV" inet6 fe80::1 fe80::2 mtu $MTU up
 		    ifconfig "$TUNDEV" inet6 addif $INTERNAL_IP6_NETMASK $INTERNAL_IP6_ADDRESS up
 		else
 		    # Unlike for Legacy IP, we don't specify the dest_address
@@ -146,11 +146,6 @@ destroy_tun_device() {
 	case "$OS" in
 	NetBSD|FreeBSD) # and probably others...
 		ifconfig "$TUNDEV" destroy
-		;;
-        SunOS)
-		if [ -n "$INTERNAL_IP6_ADDRESS" ]; then
-		    ifconfig "$TUNDEV" inet6 unplumb
-		fi
 		;;
 	esac
 }
