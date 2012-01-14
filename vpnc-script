@@ -6,7 +6,7 @@
 #* INTERNAL_IP4_NETMASK         -- netmask (often unset)
 #* INTERNAL_IP4_NETMASKLEN      -- netmask length (often unset)
 #* INTERNAL_IP4_NETADDR         -- address of network (only present if netmask is set)
-#* INTERNAL_IP4_DNS             -- list of dns serverss
+#* INTERNAL_IP4_DNS             -- list of dns servers
 #* INTERNAL_IP4_NBNS            -- list of wins servers
 #* INTERNAL_IP6_ADDRESS         -- IPv6 address
 #* INTERNAL_IP6_NETMASK         -- IPv6 netmask
