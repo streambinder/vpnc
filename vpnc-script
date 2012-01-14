@@ -73,8 +73,10 @@ else
 fi
 if [ "$OS" = "SunOS" ]; then
     route_syntax_interface="-interface"
+    route_syntax_plumb="plumb"
 else
     route_syntax_interface=""
+    route_syntax_plumb=""
 fi
 
 if [ -x /sbin/resolvconf ]; then # Optional tool on Debian, Ubuntu, Gentoo
@@ -107,10 +109,18 @@ do_ifconfig() {
 	fi
 
 	# If the netmask is provided, it contains the address _and_ netmask
-	if [ -n "$INTERNAL_IP6_NETMASK" -a -n "$IPROUTE" ]; then
+	if [ -n "$IPROUTE" ]; then
+	    if [ -n "$INTERNAL_IP6_NETMASK" ]; then
 		$IPROUTE -6 addr add $INTERNAL_IP6_NETMASK dev $TUNDEV
-	elif [ -n "$INTERNAL_IP6_ADDRESS" -a -n "$IPROUTE" ]; then
+	    elif [ -n "$INTERNAL_IP6_ADDRESS" ]; then
 		$IPROUTE -6 addr add $INTERNAL_IP6_ADDRESS/128 dev $TUNDEV
+	    fi
+	else
+	    if [ -n "$INTERNAL_IP6_NETMASK" ]; then
+	        ifconfig "$TUNDEV" inet6 $route_syntax_plumb $INTERNAL_IP6_NETMASK $ifconfig_syntax_ptp $INTERNAL_IP6_ADDRESS mtu $MTU up
+	    elif [ -n "$INTERNAL_IP6_ADDRESS" ]; then
+	        ifconfig "$TUNDEV" inet6 $route_syntax_plumb $INTERNAL_IP6_ADDRESS/128 $ifconfig_syntax_ptp $INTERNAL_IP6_ADDRESS mtu $MTU up
+	    fi
 	fi
 }
 
@@ -118,6 +128,11 @@ destroy_tun_device() {
 	case "$OS" in
 	NetBSD) # and probably others...
 		ifconfig "$TUNDEV" destroy
+		;;
+        SunOS)
+		if [ -n "$INTERNAL_IP6_ADDRESS" ]; then
+		    ifconfig "$TUNDEV" inet6 unplumb
+		fi
 		;;
 	esac
 }
@@ -248,22 +263,25 @@ else # use route command
 	}
 
 	set_ipv6_default_route() {
-		# FIXME
-		:
+		route add -inet6 default "$INTERNAL_IP6_ADDRESS" $route_syntax_interface
 	}
 
 	set_ipv6_network_route() {
-		# FIXME
+		NETWORK="$1"
+		NETMASK="$2"
+		route add -inet6 -net "$NETWORK/$NETMASK" "$INTERNAL_IP6_ADDRESS" $route_syntax_interface
 		:
 	}
 
 	reset_ipv6_default_route() {
-		# FIXME
+		route $route_syntax_del -inet6 default "$INTERNAL_IP6_ADDRESS"
 		:
 	}
 
 	del_ipv6_network_route() {
-		# FIXME
+		NETWORK="$1"
+		NETMASK="$2"
+		route $route_syntax_del -inet6 "$NETWORK/$NETMASK" "$INTERNAL_IP6_ADDRESS"
 		:
 	}
 
@@ -581,10 +599,10 @@ do_disconnect() {
 		while [ $i -lt $CISCO_IPV6_SPLIT_INC ] ; do
 			eval NETWORK="\${CISCO_IPV6_SPLIT_INC_${i}_ADDR}"
 			eval NETMASKLEN="\${CISCO_IPV6_SPLIT_INC_${i}_MASKLEN}"
-			if [ $NETMASKLEN -eq 128 ]; then
-				del_ipv6_network_route "$NETWORK" "$NETMASKLEN"
-			else
+			if [ $NETMASKLEN -eq 0 ]; then
 				reset_ipv6_default_route
+			else
+				del_ipv6_network_route "$NETWORK" "$NETMASKLEN"
 			fi
 			i=`expr $i + 1`
 		done
