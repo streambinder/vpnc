@@ -72,18 +72,10 @@ else
 	route_syntax_del="delete"
 	route_syntax_netmask="-netmask"
 fi
-# Only Solaris needs 'plumb', and only Solaris needs to be given a dest_address
-# for the IPv6. At least, OpenVPN doesn't do it for anything but Solaris, and
-# OpenBSD is definitely *not* happy if given a dest_address that matches the
-# local address.
 if [ "$OS" = "SunOS" ]; then
     route_syntax_interface="-interface"
-    route_syntax_plumb="plumb"
-    ifconfig_syntax_ptpv6="$INTERNAL_IP6_ADDRESS"
 else
     route_syntax_interface=""
-    route_syntax_plumb=""
-    ifconfig_syntax_ptpv6=""
 fi
 
 if [ -x /sbin/resolvconf ]; then # Optional tool on Debian, Ubuntu, Gentoo
@@ -134,7 +126,18 @@ do_ifconfig() {
 	    if [ -n "$IPROUTE" ]; then
 		$IPROUTE -6 addr add $INTERNAL_IP6_NETMASK dev $TUNDEV
 	    else
-	        ifconfig "$TUNDEV" inet6 $route_syntax_plumb $INTERNAL_IP6_NETMASK $ifconfig_syntax_ptpv6 mtu $MTU up
+		if [ "$OS" = "SunOS" ]; then
+		    # Solaris 11 needs link-local addrs to be assigned manually
+		    ifconfig "$TUNDEV" inet6 plumb fe80::1 fe80::2 mtu $MTU up
+		    ifconfig "$TUNDEV" inet6 addif $INTERNAL_IP6_NETMASK $INTERNAL_IP6_ADDRESS up
+		else
+		    # Unlike for Legacy IP, we don't specify the dest_address
+		    # here on *BSD. OpenBSD for one will refuse to accept
+		    # incoming packets to that address if we do.
+		    # OpenVPN does the same (gives dest_address for Legacy IP
+		    # but not for IPv6)
+	            ifconfig "$TUNDEV" inet6 $INTERNAL_IP6_NETMASK mtu $MTU up
+		fi
 	    fi
 	fi
 }
