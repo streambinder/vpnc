@@ -99,7 +99,7 @@ do_ifconfig() {
 		MTUDEV=$($IPROUTE route get "$VPNGATEWAY" | sed -ne 's/^.*dev \([a-z0-9]*\).*$/\1/p')
 		MTU=$($IPROUTE link show "$MTUDEV" | sed -ne 's/^.*mtu \([[:digit:]]\+\).*$/\1/p')
 		if [ -n "$MTU" ]; then
-			MTU=$(( "$MTU" - 88 ))
+			MTU=$(( $MTU - 88 ))
 		fi
 	fi
 
