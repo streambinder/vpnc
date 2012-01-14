@@ -59,7 +59,7 @@ if [ ! -d "/var/run/vpnc" ]; then
 fi
 
 # stupid SunOS: no blubber in /usr/local/bin ... (on stdout)
-IPROUTE="`which ip | grep '^/' 2> /dev/null`"
+IPROUTE="`which ip | grep '^/'`" 2> /dev/null
 
 if [ "$OS" = "Linux" ]; then
 	ifconfig_syntax_ptp="pointopoint"
