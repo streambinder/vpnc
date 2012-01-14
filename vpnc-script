@@ -1,8 +1,10 @@
 #!/bin/sh
+# List of parameters passed through environment
 #* reason                       -- why this script was called, one of: pre-init connect disconnect
 #* VPNGATEWAY                   -- vpn gateway address (always present)
 #* TUNDEV                       -- tunnel device (always present)
 #* INTERNAL_IP4_ADDRESS         -- address (always present)
+#* INTERNAL_IP4_MTU             -- mtu (often unset)
 #* INTERNAL_IP4_NETMASK         -- netmask (often unset)
 #* INTERNAL_IP4_NETMASKLEN      -- netmask length (often unset)
 #* INTERNAL_IP4_NETADDR         -- address of network (only present if netmask is set)
