@@ -521,8 +521,8 @@ do_connect() {
 		echo
 	fi
 
-	do_ifconfig
 	set_vpngateway_route
+	do_ifconfig
 	if [ -n "$CISCO_SPLIT_INC" ]; then
 		i=0
 		while [ $i -lt $CISCO_SPLIT_INC ] ; do
