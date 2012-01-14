@@ -89,6 +89,9 @@ fi
 if [ -x /sbin/resolvconf ]; then # Optional tool on Debian, Ubuntu, Gentoo
 	MODIFYRESOLVCONF=modify_resolvconf_manager
 	RESTORERESOLVCONF=restore_resolvconf_manager
+elif [ -x /sbin/netconfig ]; then # tool on Suse after 11.1
+	MODIFYRESOLVCONF=modify_resolvconf_suse_netconfig
+	RESTORERESOLVCONF=restore_resolvconf_suse_netconfig
 elif [ -x /sbin/modify_resolvconf ]; then # Mandatory tool on Suse earlier than 11.1
 	MODIFYRESOLVCONF=modify_resolvconf_suse
 	RESTORERESOLVCONF=restore_resolvconf_suse
@@ -435,6 +438,25 @@ restore_resolvconf_generic() {
 		esac
 	fi
 }
+# === resolv.conf handling via /sbin/netconfig (Suse 11.1) =====================
+
+# Suse provides a script that modifies resolv.conf. Use it because it will
+# restart/reload all other services that care about it (e.g. lwresd).  [unclear if this is still true, but probably --mlk]
+
+modify_resolvconf_suse_netconfig()
+{
+	/sbin/netconfig modify -s vpnc -i "$TUNDEV" <<-EOF
+		INTERFACE='$TUNDEV'
+		DNSSERVERS='$INTERNAL_IP4_DNS'
+		DNSDOMAIN='$CISCO_DEF_DOMAIN'
+		EOF
+}
+# Restore resolv.conf to old contents on Suse
+restore_resolvconf_suse_netconfig()
+{
+	/sbin/netconfig remove -s vpnc -i "$TUNDEV"
+}
+
 # === resolv.conf handling via /sbin/modify_resolvconf (Suse) =====================
 
 # Suse provides a script that modifies resolv.conf. Use it because it will
