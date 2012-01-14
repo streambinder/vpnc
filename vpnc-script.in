@@ -50,8 +50,7 @@ OS="`uname -s`"
 
 DEFAULT_ROUTE_FILE=/var/run/vpnc/defaultroute
 RESOLV_CONF_BACKUP=/var/run/vpnc/resolv.conf-backup
-FULL_SCRIPTNAME=@PREFIX@/sbin/vpnc
-SCRIPTNAME=`basename $FULL_SCRIPTNAME`
+SCRIPTNAME=`basename $0`
 
 # some systems, eg. Darwin & FreeBSD, prune /var/run on boot
 if [ ! -d "/var/run/vpnc" ]; then
@@ -352,15 +351,17 @@ restore_resolvconf_generic() {
 
 modify_resolvconf_suse()
 {
+	FULL_SCRIPTNAME=`readlink -f $0`
 	RESOLV_OPTS=''
 	test -n "$INTERNAL_IP4_DNS" && RESOLV_OPTS="-n \"$INTERNAL_IP4_DNS\""
 	test -n "$CISCO_DEF_DOMAIN" && RESOLV_OPTS="$RESOLV_OPTS -d $CISCO_DEF_DOMAIN"
-	test -n "$RESOLV_OPTS" && eval /sbin/modify_resolvconf modify -s $SCRIPTNAME -p $SCRIPTNAME -f $FULL_SCRIPTNAME -e $TUNDEV $RESOLV_OPTS -t \"This file was created by $SCRIPTNAME\"
+	test -n "$RESOLV_OPTS" && eval /sbin/modify_resolvconf modify -s vpnc -p $SCRIPTNAME -f $FULL_SCRIPTNAME -e $TUNDEV $RESOLV_OPTS -t \"This file was created by $SCRIPTNAME\"
 }
 
 # Restore resolv.conf to old contents on Suse
 restore_resolvconf_suse()
 {
+	FULL_SCRIPTNAME=`readlink -f $0`
 	/sbin/modify_resolvconf restore -s vpnc -p $SCRIPTNAME -f $FULL_SCRIPTNAME -e $TUNDEV
 }
 
