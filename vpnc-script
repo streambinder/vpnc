@@ -232,14 +232,13 @@ else # use route command
 	}
 
 	del_vpngateway_route() {
-	        vpngw_route=`netstat -r -n | awk '/:/ { next; } /^(default|0\.0\.0\.0)/ { print $2; }'`
-		route $route_syntax_del -host "$VPNGATEWAY" $route_syntax_gw "$vpngw_route"
+		route $route_syntax_del -host "$VPNGATEWAY" $route_syntax_gw "`get_default_gw`"
 	}
 
 	set_default_route() {
 		DEFAULTGW="`get_default_gw`"
 		echo "$DEFAULTGW" > "$DEFAULT_ROUTE_FILE"
-		route $route_syntax_del default $route_syntax_gw "`get_default_gw`"
+		route $route_syntax_del default $route_syntax_gw "$DEFAULTGW"
 		route add default $route_syntax_gw "$INTERNAL_IP4_ADDRESS" $route_syntax_interface
 	}
 
