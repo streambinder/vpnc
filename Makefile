@@ -76,16 +76,13 @@ ifneq (,$(findstring Apple,$(shell $(CC) --version)))
 CFLAGS += -fstrict-aliasing -freorder-blocks -fsched-interblock
 endif
 
-all : $(BINS) vpnc.8 vpnc-script
+all : $(BINS) vpnc.8
 
 vpnc : $(OBJS) vpnc.o
 	$(CC) -o $@ $^ $(LDFLAGS)
 
 vpnc.8 : vpnc.8.template makeman.pl vpnc
 	./makeman.pl
-
-vpnc-script : vpnc-script.in
-	sed -e 's,@''PREFIX''@,$(PREFIX),g' $< > $@ && chmod 755 $@
 
 cisco-decrypt : cisco-decrypt.o decrypt-utils.o
 	$(CC) -o $@ $^ $(LDFLAGS)
@@ -126,7 +123,7 @@ clean :
 	-rm -f $(OBJS) $(BINOBJS) $(BINS) tags
 
 distclean : clean
-	-rm -f vpnc-debug.c vpnc-debug.h vpnc.ps vpnc.8 .depend vpnc-script
+	-rm -f vpnc-debug.c vpnc-debug.h vpnc.ps vpnc.8 .depend
 
 install-common: all
 	install -d $(DESTDIR)$(ETCDIR) $(DESTDIR)$(BINDIR) $(DESTDIR)$(SBINDIR) $(DESTDIR)$(MANDIR)/man1 $(DESTDIR)$(MANDIR)/man8 $(DESTDIR)$(DOCDIR)
