@@ -521,7 +521,9 @@ do_connect() {
 			i=`expr $i + 1`
 		done
 		for i in $INTERNAL_IP4_DNS ; do
-			set_network_route "$i" "255.255.255.255" "32"
+			if ! echo "$i" | grep -q : ; then
+				set_network_route "$i" "255.255.255.255" "32"
+			fi
 		done
 	elif [ -n "$INTERNAL_IP4_ADDRESS" ]; then
 		set_default_route
@@ -538,8 +540,10 @@ do_connect() {
 			fi
 			i=`expr $i + 1`
 		done
-		for i in $INTERNAL_IP6_DNS ; do
-			set_ipv6_network_route "$i" "128"
+		for i in $INTERNAL_IP4_DNS ; do
+			if echo "$i" | grep -q : ; then
+				set_ipv6_network_route "$i" "128"
+			fi
 		done
 	elif [ -n "$INTERNAL_IP6_NETMASK" -o -n "$INTERNAL_IP6_ADDRESS" ]; then
 		set_ipv6_default_route
