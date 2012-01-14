@@ -127,15 +127,14 @@ do_ifconfig() {
 	fi
 
 	# If the netmask is provided, it contains the address _and_ netmask
-	if [ -n "$IPROUTE" ]; then
-	    if [ -n "$INTERNAL_IP6_NETMASK" ]; then
+	if [ -n "$INTERNAL_IP6_ADDRESS" ] && [ -z "$INTERNAL_IP6_NETMASK" ]; then
+	    INTERNAL_IP6_NETMASK="$INTERNAL_IP6_ADDRESS/128"
+	fi
+	if [ -n "$INTERNAL_IP6_NETMASK" ]; then
+	    if [ -n "$IPROUTE" ]; then
 		$IPROUTE -6 addr add $INTERNAL_IP6_NETMASK dev $TUNDEV
-	    elif [ -n "$INTERNAL_IP6_ADDRESS" ]; then
-		$IPROUTE -6 addr add $INTERNAL_IP6_ADDRESS/128 dev $TUNDEV
-	    fi
-	else
-	    if [ -n "$INTERNAL_IP6_ADDRESS" ]; then
-	        ifconfig "$TUNDEV" inet6 $route_syntax_plumb $INTERNAL_IP6_ADDRESS/128 $ifconfig_syntax_ptpv6 mtu $MTU up
+	    else
+	        ifconfig "$TUNDEV" inet6 $route_syntax_plumb $INTERNAL_IP6_NETMASK $ifconfig_syntax_ptpv6 mtu $MTU up
 	    fi
 	fi
 }
