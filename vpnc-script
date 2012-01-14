@@ -105,6 +105,13 @@ do_ifconfig() {
 	if [ -n "$INTERNAL_IP4_NETMASK" ]; then
 		set_network_route $INTERNAL_IP4_NETADDR $INTERNAL_IP4_NETMASK $INTERNAL_IP4_NETMASKLEN
 	fi
+
+	# If the netmask is provided, it contains the address _and_ netmask
+	if [ -n "$INTERNAL_IP6_NETMASK" -a -n "$IPROUTE" ]; then
+		$IPROUTE -6 addr add $INTERNAL_IP6_NETMASK dev $TUNDEV
+	elif [ -n "$INTERNAL_IP6_ADDRESS" -a -n "$IPROUTE" ]; then
+		$IPROUTE -6 addr add $INTERNAL_IP6_ADDRESS/128 dev $TUNDEV
+	fi
 }
 
 destroy_tun_device() {

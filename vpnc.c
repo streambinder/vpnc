@@ -915,6 +915,8 @@ static int do_config_to_env(struct sa_block *s, struct isakmp_attribute *a)
 	unsetenv("INTERNAL_IP4_DNS");
 	unsetenv("INTERNAL_IP4_NETMASK");
 	unsetenv("INTERNAL_IP4_ADDRESS");
+	unsetenv("INTERNAL_IP6_NETMASK");
+	unsetenv("INTERNAL_IP6_ADDRESS");
 
 	for (; a && reject == 0; a = a->next)
 		switch (a->type) {
