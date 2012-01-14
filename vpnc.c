@@ -354,6 +354,23 @@ static void setup_tunnel(struct sa_block *s)
 		}
 		hex_dump("interface HW addr", s->tun_hwaddr, ETH_ALEN, NULL);
 	}
+
+	unsetenv("INTERNAL_IP4_MTU");
+	if (config[CONFIG_IF_MTU]) {
+		int mtu;
+
+		mtu = atoi(config[CONFIG_IF_MTU]);
+		if (mtu < 0 || mtu > 65535) {
+			DEBUG(1, printf("ignore MTU option. Use automatic detection\n"));
+			mtu = 0;
+		}
+		if (mtu > 0) {
+			char *strbuf;
+			asprintf(&strbuf, "%d", mtu);
+			setenv("INTERNAL_IP4_MTU", strbuf, 1);
+			free(strbuf);
+		}
+	}
 }
 
 static void config_tunnel(struct sa_block *s)

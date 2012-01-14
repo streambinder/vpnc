@@ -366,6 +366,13 @@ static const struct config_names_s {
 		" * tap: virtual ethernet interface\n",
 		config_def_if_mode
 	}, {
+		CONFIG_IF_MTU, 1, 1,
+		"--ifmtu",
+		"Interface MTU ",
+		"<0-65535>",
+		"Set MTU for TUN/TAP interface (default 0 == automatic detect)",
+		NULL
+	}, {
 		CONFIG_DEBUG, 1, 1,
 		"--debug",
 		"Debug ",
