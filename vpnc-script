@@ -71,6 +71,11 @@ else
 	route_syntax_del="delete"
 	route_syntax_netmask="-netmask"
 fi
+if [ "$OS" = "SunOS" ]; then
+    route_syntax_interface="-interface"
+else
+    route_syntax_interface=""
+fi
 
 if [ -x /sbin/resolvconf ]; then # Optional tool on Debian, Ubuntu, Gentoo
 	MODIFYRESOLVCONF=modify_resolvconf_manager
@@ -171,14 +176,15 @@ else # use route command
 	}
 
 	del_vpngateway_route() {
-		route $route_syntax_del -host "$VPNGATEWAY"
+	        vpngw_route=`netstat -r -n | awk '/:/ { next; } /^(default|0\.0\.0\.0)/ { print $2; }'`
+		route $route_syntax_del -host "$VPNGATEWAY" $route_syntax_gw "$vpngw_route"
 	}
 
 	set_default_route() {
 		DEFAULTGW="`get_default_gw`"
 		echo "$DEFAULTGW" > "$DEFAULT_ROUTE_FILE"
-		route $route_syntax_del default
-		route add default $route_syntax_gw "$INTERNAL_IP4_ADDRESS"
+		route $route_syntax_del default $route_syntax_gw "`get_default_gw`"
+		route add default $route_syntax_gw "$INTERNAL_IP4_ADDRESS" $route_syntax_interface
 	}
 
 	set_network_route() {
@@ -186,12 +192,12 @@ else # use route command
 		NETMASK="$2"
 		NETMASKLEN="$3"
 		del_network_route "$NETWORK" "$NETMASK" "$NETMASKLEN"
-		route add -net "$NETWORK" $route_syntax_netmask "$NETMASK" $route_syntax_gw "$INTERNAL_IP4_ADDRESS"
+		route add -net "$NETWORK" $route_syntax_netmask "$NETMASK" $route_syntax_gw "$INTERNAL_IP4_ADDRESS" $route_syntax_interface
 	}
 
 	reset_default_route() {
 		if [ -s "$DEFAULT_ROUTE_FILE" ]; then
-			route $route_syntax_del default
+			route $route_syntax_del default $route_syntax_gw "`get_default_gw`" $route_syntax_interface
 			route add default $route_syntax_gw `cat "$DEFAULT_ROUTE_FILE"`
 			rm -f -- "$DEFAULT_ROUTE_FILE"
 		fi
@@ -199,7 +205,7 @@ else # use route command
 
 	del_network_route() {
 		case "$OS" in
-		Linux|NetBSD|Darwin) # and probably others...
+		Linux|NetBSD|Darwin|SunOS) # and probably others...
 			# routes are deleted automatically on device shutdown
 			return
 			;;
