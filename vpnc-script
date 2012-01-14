@@ -94,8 +94,7 @@ do_ifconfig() {
 	if [ -n "$INTERNAL_IP4_MTU" ]; then
 		MTU=$INTERNAL_IP4_MTU
 	elif [ -n "$IPROUTE" ]; then
-		DEV=$($IPROUTE route | grep ^default | sed 's/^.* dev \([[:alnum:]-]\+\).*$/\1/')
-		MTU=$(($($IPROUTE link show "$DEV" | grep mtu | sed 's/^.* mtu \([[:digit:]]\+\).*$/\1/') - 88))
+		MTU=$(($($IPROUTE route get "$VPNGATEWAY" | sed -ne 's/^.*mtu \([[:digit:]]\+\).*$/\1/p') - 88))
 	else
 		MTU=1412
 	fi
