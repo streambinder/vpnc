@@ -41,7 +41,7 @@ EOF
 		return
 	fi
 
-	if [ $(git rev-list --count HEAD...${svn_commit}) -eq 0 ]; then
+	if [ $(git rev-list HEAD...${svn_commit} | wc -l) -eq 0 ]; then
 		if [ `git status -s | grep -vc '^??'` -eq 0 ]; then
 			# no git commits and tree clean
 			echo "${svn_ver}"
