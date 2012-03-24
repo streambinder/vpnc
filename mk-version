@@ -3,41 +3,41 @@
 # print vpnc version from file VERSION, appending the string printed
 # by svnversion(1) if appropriate
 
-function git_svn_version ()
+in_git_repository ()
 {
-	local key value svn_log svn_commit svn_ver
+	git rev-parse --is-inside-work-tree > /dev/null 2>&1
+	return $?
+}
 
-	# exit if not in git repository
-	if [ "true" != "$(git rev-parse --is-inside-work-tree 2>/dev/null)" ]; then
-		return
-	fi
-
+git_svn_version ()
+{
 	# search for svn-remote defined in git configuration
+	svn_url_pattern=""
 	while read key value; do
-		svn_url_pattern+="\\|$value"
+		svn_url_pattern="${svn_url_pattern}\\|${value}"
 	done << EOF
 	$(git config --get-regexp '^svn-remote\..*\.url$' 2>/dev/null)
 EOF
 
 	# exit if no svn-remote defined
-	if [ ${#svn_url_pattern} -eq 0 ]; then
+	if [ -z "${svn_url_pattern}" ]; then
 		return
 	fi
 
 	# scan git-log for latest commit from any svn-remote above
-	svn_log=($(git log --first-parent -1 \
-		--grep="^git-svn-id: \(${svn_url_pattern:2}\)@" 2>/dev/null))
+	set -- $(git log --first-parent -1 \
+		--grep="^git-svn-id: \(${svn_url_pattern#??}\)@" 2>/dev/null)
 
 	# check commit hash is 40 hex digits
-	svn_commit=${svn_log[1]}
-	if [ ${#svn_commit} -ne 40 -o -n "${svn_commit//[0-9a-f]/}" ]; then
+	svn_commit=$2
+	if [ ${#svn_commit} -ne 40 -o -z "${svn_commit##*[!0-9a-f]*}" ]; then
 		return
 	fi
 
 	# check svn version is numeric
-	svn_ver=${svn_log[ ${#svn_log[@]} - 2 ]}
-	svn_ver=${svn_ver#*@}
-	if [ -z "${#svn_ver}" -o -n "${svn_ver//[0-9]/}" ]; then
+	shift $(($# - 2))
+	svn_ver=${1#*@}
+	if [ -z "${svn_ver}" -o -z "${svn_ver##*[!0-9]*}" ]; then
 		return
 	fi
 
@@ -56,12 +56,12 @@ EOF
 _version="`cat VERSION`"
 
 if [ -d .svn ]; then
-	if command -v svnversion >/dev/null; then
+	if which svnversion > /dev/null; then
 		_version="$_version-`svnversion`"
 	else
 		_version="$_version-`sed -n '/^dir$/{n;p;q;}' .svn/entries`"
 	fi
-elif command -v git >/dev/null; then
+elif which git > /dev/null && in_git_repository; then
 	git_ext=$(git_svn_version)
 	if [ -n "${git_ext}" ]; then
 		_version="$_version-${git_ext}"
