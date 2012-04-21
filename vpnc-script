@@ -108,10 +108,10 @@ do_ifconfig() {
 	if [ -n "$INTERNAL_IP4_MTU" ]; then
 		MTU=$INTERNAL_IP4_MTU
 	elif [ -n "$IPROUTE" ]; then
-		MTUDEV=$($IPROUTE route get "$VPNGATEWAY" | sed -ne 's/^.*dev \([a-z0-9]*\).*$/\1/p')
-		MTU=$($IPROUTE link show "$MTUDEV" | sed -ne 's/^.*mtu \([[:digit:]]\+\).*$/\1/p')
+		MTUDEV=`$IPROUTE route get "$VPNGATEWAY" | sed -ne 's/^.*dev \([a-z0-9]*\).*$/\1/p'`
+		MTU=`$IPROUTE link show "$MTUDEV" | sed -ne 's/^.*mtu \([[:digit:]]\+\).*$/\1/p'`
 		if [ -n "$MTU" ]; then
-			MTU=$(( $MTU - 88 ))
+			MTU=`expr $MTU - 88`
 		fi
 	fi
 
@@ -417,7 +417,7 @@ search $CISCO_DEF_DOMAIN"
 }
 
 restore_resolvconf_generic() {
-	if [ ! -e "$RESOLV_CONF_BACKUP" ]; then
+	if [ ! -f "$RESOLV_CONF_BACKUP" ]; then
 		return
 	fi
 	grep '^#@VPNC_GENERATED@' /etc/resolv.conf > /dev/null 2>&1 && cat "$RESOLV_CONF_BACKUP" > /etc/resolv.conf
@@ -579,9 +579,8 @@ do_connect() {
 			i=`expr $i + 1`
 		done
 		for i in $INTERNAL_IP4_DNS ; do
-			if ! echo "$i" | grep : >/dev/null; then
+			echo "$i" | grep : >/dev/null || \
 				set_network_route "$i" "255.255.255.255" "32"
-			fi
 		done
 	elif [ -n "$INTERNAL_IP4_ADDRESS" ]; then
 		set_default_route
