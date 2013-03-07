@@ -16,7 +16,7 @@
 
 use strict;
 use warnings;
-use Fatal    qw(open close);
+use autodie  qw(open close);
 use filetest qw(access);	# to always get errno-values on filetests
 use POSIX    qw(strftime setlocale LC_ALL);
 use File::Basename;
