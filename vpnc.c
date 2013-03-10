@@ -2236,6 +2236,7 @@ static int do_phase2_xauth(struct sa_block *s)
 			case ISAKMP_XAUTH_06_ATTRIB_ANSWER:
 			case ISAKMP_XAUTH_06_ATTRIB_NEXT_PIN:
 			case ISAKMP_XAUTH_ATTRIB_CISCOEXT_VENDOR:
+			case ISAKMP_MODECFG_ATTRIB_CISCO_UNKNOWN_0X0015:
 				break;
 			case ISAKMP_XAUTH_06_ATTRIB_MESSAGE:
 				if (opt_debug || seen_answer || config[CONFIG_XAUTH_INTERACTIVE]) {
@@ -2266,6 +2267,7 @@ static int do_phase2_xauth(struct sa_block *s)
 
 			switch (ap->type) {
 			case ISAKMP_XAUTH_06_ATTRIB_TYPE:
+			case ISAKMP_MODECFG_ATTRIB_CISCO_UNKNOWN_0X0015:
 			{
 				na = new_isakmp_attribute_16(ap->type, ap->u.attr_16, NULL);
 				break;
