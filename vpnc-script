@@ -198,7 +198,7 @@ do_ifconfig() {
 
 destroy_tun_device() {
 	case "$OS" in
-	NetBSD|FreeBSD) # and probably others...
+	NetBSD|FreeBSD|OpenBSD) # and probably others...
 		ifconfig "$TUNDEV" destroy
 		;;
 	esac
@@ -317,7 +317,7 @@ else # use route command
 
 	del_network_route() {
 		case "$OS" in
-		Linux|NetBSD|Darwin|SunOS) # and probably others...
+		Linux|NetBSD|OpenBSD|Darwin|SunOS) # and probably others...
 			# routes are deleted automatically on device shutdown
 			return
 			;;
@@ -603,6 +603,9 @@ do_pre_init() {
 	elif [ "$OS" = "NetBSD" ]; then
 		:
 	elif [ "$OS" = "OpenBSD" ]; then
+		if ! ifconfig $TUNDEV > /dev/null; then
+			ifconfig $TUNDEV create
+		fi
 		:
 	elif [ "$OS" = "SunOS" ]; then
 		:
