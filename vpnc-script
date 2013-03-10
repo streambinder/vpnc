@@ -94,7 +94,12 @@ else
 	ifconfig_syntax_ptpv6=""
 fi
 
-if [ -x /sbin/resolvconf ]; then # Optional tool on Debian, Ubuntu, Gentoo
+if [ -r /etc/openwrt_release ] && [ -n "$OPENWRT_INTERFACE" ]; then
+        . /etc/functions.sh
+	include /lib/network
+	MODIFYRESOLVCONF=modify_resolvconf_openwrt
+	RESTORERESOLVCONF=restore_resolvconf_openwrt
+elif [ -x /sbin/resolvconf ]; then # Optional tool on Debian, Ubuntu, Gentoo
 	MODIFYRESOLVCONF=modify_resolvconf_manager
 	RESTORERESOLVCONF=restore_resolvconf_manager
 elif [ -x /sbin/netconfig ]; then # tool on Suse after 11.1
@@ -486,6 +491,15 @@ restore_resolvconf_suse()
 	/sbin/modify_resolvconf restore -s vpnc -p $SCRIPTNAME -f $FULL_SCRIPTNAME -e $TUNDEV
 }
 
+# === resolv.conf handling via UCI (OpenWRT) =========
+
+modify_resolvconf_openwrt() {
+	add_dns $OPENWRT_INTERFACE $INTERNAL_IP4_DNS
+}
+
+restore_resolvconf_openwrt() {
+	remove_dns $OPENWRT_INTERFACE
+}
 # === resolv.conf handling via /sbin/resolvconf (Debian, Ubuntu, Gentoo)) =========
 
 modify_resolvconf_manager() {
