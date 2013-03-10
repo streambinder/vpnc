@@ -69,6 +69,12 @@ fi
 # stupid SunOS: no blubber in /usr/local/bin ... (on stdout)
 IPROUTE="`which ip | grep '^/'`" 2> /dev/null
 
+if ifconfig --help 2>&1 | grep BusyBox > /dev/null; then
+	ifconfig_syntax_inet=""
+else
+	ifconfig_syntax_inet="inet"
+fi
+
 if [ "$OS" = "Linux" ]; then
 	ifconfig_syntax_ptp="pointopoint"
 	route_syntax_gw="gw"
@@ -124,7 +130,7 @@ do_ifconfig() {
 		$IPROUTE link set dev "$TUNDEV" up mtu "$MTU"
 		$IPROUTE addr add "$INTERNAL_IP4_ADDRESS/255.255.255.255" peer "$INTERNAL_IP4_ADDRESS" dev "$TUNDEV"
 	else
-		ifconfig "$TUNDEV" inet "$INTERNAL_IP4_ADDRESS" $ifconfig_syntax_ptp "$INTERNAL_IP4_ADDRESS" netmask 255.255.255.255 mtu ${MTU} up
+		ifconfig "$TUNDEV" ${ifconfig_syntax_inet} "$INTERNAL_IP4_ADDRESS" $ifconfig_syntax_ptp "$INTERNAL_IP4_ADDRESS" netmask 255.255.255.255 mtu ${MTU} up
 	fi
 
 	if [ -n "$INTERNAL_IP4_NETMASK" ]; then
