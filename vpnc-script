@@ -121,7 +121,7 @@ if [ -r /etc/openwrt_release ] && [ -n "$OPENWRT_INTERFACE" ]; then
 	include /lib/network
 	MODIFYRESOLVCONF=modify_resolvconf_openwrt
 	RESTORERESOLVCONF=restore_resolvconf_openwrt
-elif [ -x /sbin/resolvconf ]; then # Optional tool on Debian, Ubuntu, Gentoo
+elif [ -x /sbin/resolvconf ] && [ "$OS" != "FreeBSD" ]; then # Optional tool on Debian, Ubuntu, Gentoo - but not FreeBSD, it seems to work different
 	MODIFYRESOLVCONF=modify_resolvconf_manager
 	RESTORERESOLVCONF=restore_resolvconf_manager
 elif [ -x /sbin/netconfig ]; then # tool on Suse after 11.1
@@ -198,8 +198,11 @@ do_ifconfig() {
 
 destroy_tun_device() {
 	case "$OS" in
-	NetBSD|FreeBSD|OpenBSD) # and probably others...
+	NetBSD|OpenBSD) # and probably others...
 		ifconfig "$TUNDEV" destroy
+		;;
+	FreeBSD)
+		ifconfig "$TUNDEV" destroy > /dev/null 2>&1 &
 		;;
 	esac
 }
@@ -593,8 +596,12 @@ do_pre_init() {
 			fi
 		fi
 	elif [ "$OS" = "FreeBSD" ]; then
-		if [ ! -e /dev/tun ]; then
+		if ! kldstat -q -m if_tun > /dev/null; then
 			kldload if_tun
+		fi
+
+		if ! ifconfig $TUNDEV > /dev/null; then
+			ifconfig $TUNDEV create
 		fi
 	elif [ "$OS" = "GNU/kFreeBSD" ]; then
 		if [ ! -e /dev/tun ]; then
