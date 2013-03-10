@@ -89,7 +89,7 @@ if [ ! -d "/var/run/vpnc" ]; then
 fi
 
 # stupid SunOS: no blubber in /usr/local/bin ... (on stdout)
-IPROUTE="`which ip | grep '^/'`" 2> /dev/null
+IPROUTE="`which ip 2> /dev/null | grep '^/'`"
 
 if ifconfig --help 2>&1 | grep BusyBox > /dev/null; then
 	ifconfig_syntax_inet=""
