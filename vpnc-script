@@ -168,7 +168,7 @@ do_ifconfig() {
 	# Point to point interface require a netmask of 255.255.255.255 on some systems
 	if [ -n "$IPROUTE" ]; then
 		$IPROUTE link set dev "$TUNDEV" up mtu "$MTU"
-		$IPROUTE addr add "$INTERNAL_IP4_ADDRESS/255.255.255.255" peer "$INTERNAL_IP4_ADDRESS" dev "$TUNDEV"
+		$IPROUTE addr add "$INTERNAL_IP4_ADDRESS/32" peer "$INTERNAL_IP4_ADDRESS" dev "$TUNDEV"
 	else
 		ifconfig "$TUNDEV" ${ifconfig_syntax_inet} "$INTERNAL_IP4_ADDRESS" $ifconfig_syntax_ptp "$INTERNAL_IP4_ADDRESS" netmask 255.255.255.255 mtu ${MTU} up
 	fi
