@@ -56,6 +56,7 @@ PATH=/sbin:/usr/sbin:$PATH
 
 OS="`uname -s`"
 
+HOOKS_DIR=/etc/vpnc
 DEFAULT_ROUTE_FILE=/var/run/vpnc/defaultroute
 RESOLV_CONF_BACKUP=/var/run/vpnc/resolv.conf-backup
 SCRIPTNAME=`basename $0`
@@ -112,6 +113,19 @@ else # Generic for any OS
 	MODIFYRESOLVCONF=modify_resolvconf_generic
 	RESTORERESOLVCONF=restore_resolvconf_generic
 fi
+
+
+# =========== script hooks =================================================
+
+run_hooks() {
+	HOOK="$1"
+
+	if [ -d ${HOOKS_DIR}/${HOOK}.d ]; then
+	    for script in ${HOOKS_DIR}/${HOOK}.d/* ; do
+		[ -f $script ] && . $script
+	    done
+	fi
+}
 
 # =========== tunnel interface handling ====================================
 
@@ -689,13 +703,21 @@ fi
 
 case "$reason" in
 	pre-init)
+		run_hooks pre-init
 		do_pre_init
 		;;
 	connect)
+		run_hooks connect
 		do_connect
+		run_hooks post-connect
 		;;
 	disconnect)
+		run_hooks disconnect
 		do_disconnect
+		run_hooks post-disconnect
+		;;
+	reconnect)
+		run_hooks reconnect
 		;;
 	*)
 		echo "unknown reason '$reason'. Maybe vpnc-script is out of date" 1>&2
