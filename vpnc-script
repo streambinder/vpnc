@@ -21,7 +21,7 @@
 ################
 #
 # List of parameters passed through environment
-#* reason                       -- why this script was called, one of: pre-init connect disconnect
+#* reason                       -- why this script was called, one of: pre-init connect disconnect reconnect
 #* VPNGATEWAY                   -- vpn gateway address (always present)
 #* TUNDEV                       -- tunnel device (always present)
 #* INTERNAL_IP4_ADDRESS         -- address (always present)
