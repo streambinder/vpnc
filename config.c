@@ -215,63 +215,62 @@ static const struct config_names_s {
 	const char *desc;
 	const char *(*get_def) (void);
 } config_names[] = {
-	/* Note: broken config file parser does NOT support option
-	 * names where one is a prefix of another option. Needs just a bit work to
-	 * fix the parser to care about ' ' or '\t' after the wanted
-	 * option... */
+	/* Note: broken config file parser does only support option
+	 * names where one is a prefix of another option IF the longer
+	 * option name comes first in this list. */
 	{
 		CONFIG_IPSEC_GATEWAY, 1, 0,
 		"--gateway",
-		"IPSec gateway ",
+		"IPSec gateway",
 		"<ip/hostname>",
 		"IP/name of your IPSec gateway",
 		NULL
 	}, {
 		CONFIG_IPSEC_ID, 1, 0,
 		"--id",
-		"IPSec ID ",
+		"IPSec ID",
 		"<ASCII string>",
 		"your group name",
 		NULL
 	}, {
 		CONFIG_IPSEC_SECRET, 1, 0,
 		NULL,
-		"IPSec secret ",
+		"IPSec secret",
 		"<ASCII string>",
 		"your group password (cleartext)",
 		NULL
 	}, {
 		CONFIG_IPSEC_SECRET_OBF, 1, 1,
 		NULL,
-		"IPSec obfuscated secret ",
+		"IPSec obfuscated secret",
 		"<hex string>",
 		"your group password (obfuscated)",
 		NULL
 	}, {
 		CONFIG_XAUTH_USERNAME, 1, 0,
 		"--username",
-		"Xauth username ",
+		"Xauth username",
 		"<ASCII string>",
 		"your username",
 		NULL
 	}, {
 		CONFIG_XAUTH_PASSWORD, 1, 0,
 		NULL,
-		"Xauth password ",
+		"Xauth password",
 		"<ASCII string>",
 		"your password (cleartext)",
 		NULL
 	}, {
 		CONFIG_XAUTH_PASSWORD_OBF, 1, 1,
 		NULL,
-		"Xauth obfuscated password ",
+		"Xauth obfuscated password",
 		"<hex string>",
 		"your password (obfuscated)",
 		NULL
 	}, {
 		CONFIG_DOMAIN, 1, 1,
 		"--domain",
-		"Domain ",
+		"Domain",
 		"<ASCII string>",
 		"(NT-) Domain name for authentication",
 		NULL
@@ -285,14 +284,14 @@ static const struct config_names_s {
 	}, {
 		CONFIG_VENDOR, 1, 1,
 		"--vendor",
-		"Vendor ",
+		"Vendor",
 		"<cisco/netscreen>",
 		"vendor of your IPSec gateway",
 		config_def_vendor
 	}, {
 		CONFIG_NATT_MODE, 1, 1,
 		"--natt-mode",
-		"NAT Traversal Mode ",
+		"NAT Traversal Mode",
 		"<natt/none/force-natt/cisco-udp>",
 		"Which NAT-Traversal Method to use:\n"
 		" * natt -- NAT-T as defined in RFC3947\n"
@@ -306,7 +305,7 @@ static const struct config_names_s {
 	}, {
 		CONFIG_SCRIPT, 1, 1,
 		"--script",
-		"Script ",
+		"Script",
 		"<command>",
 		"command is executed using system() to configure the interface,\n"
 		"routing and so on. Device name, IP, etc. are passed using environment\n"
@@ -317,14 +316,14 @@ static const struct config_names_s {
 	}, {
 		CONFIG_IKE_DH, 1, 1,
 		"--dh",
-		"IKE DH Group ",
+		"IKE DH Group",
 		"<dh1/dh2/dh5>",
 		"name of the IKE DH Group",
 		config_def_ike_dh
 	}, {
 		CONFIG_IPSEC_PFS, 1, 1,
 		"--pfs",
-		"Perfect Forward Secrecy ",
+		"Perfect Forward Secrecy",
 		"<nopfs/dh1/dh2/dh5/server>",
 		"Diffie-Hellman group to use for PFS",
 		config_def_pfs
@@ -345,21 +344,21 @@ static const struct config_names_s {
 	}, {
 		CONFIG_VERSION, 1, 1,
 		"--application-version",
-		"Application version ",
+		"Application version",
 		"<ASCII string>",
 		"Application Version to report. Note: Default string is generated at runtime.",
 		config_def_app_version
 	}, {
 		CONFIG_IF_NAME, 1, 1,
 		"--ifname",
-		"Interface name ",
+		"Interface name",
 		"<ASCII string>",
 		"visible name of the TUN/TAP interface",
 		NULL
 	}, {
 		CONFIG_IF_MODE, 1, 1,
 		"--ifmode",
-		"Interface mode ",
+		"Interface mode",
 		"<tun/tap>",
 		"mode of TUN/TAP interface:\n"
 		" * tun: virtual point to point interface (default)\n"
@@ -368,14 +367,14 @@ static const struct config_names_s {
 	}, {
 		CONFIG_IF_MTU, 1, 1,
 		"--ifmtu",
-		"Interface MTU ",
+		"Interface MTU",
 		"<0-65535>",
 		"Set MTU for TUN/TAP interface (default 0 == automatic detect)",
 		NULL
 	}, {
 		CONFIG_DEBUG, 1, 1,
 		"--debug",
-		"Debug ",
+		"Debug",
 		"<0/1/2/3/99>",
 		"Show verbose debug messages\n"
 		" *  0: Do not print debug information.\n"
@@ -394,28 +393,28 @@ static const struct config_names_s {
 	}, {
 		CONFIG_PID_FILE, 1, 1,
 		"--pid-file",
-		"Pidfile ",
+		"Pidfile",
 		"<filename>",
 		"store the pid of background process in <filename>",
 		config_def_pid_file
 	}, {
 		CONFIG_LOCAL_ADDR, 1, 1,
 		"--local-addr",
-		"Local Addr ",
+		"Local Addr",
 		"<ip/hostname>",
 		"local IP to use for ISAKMP / ESP / ... (0.0.0.0 == automatically assign)",
 		config_def_local_addr
 	}, {
 		CONFIG_LOCAL_PORT, 1, 1,
 		"--local-port",
-		"Local Port ",
+		"Local Port",
 		"<0-65535>",
 		"local ISAKMP port number to use (0 == use random port)",
 		config_def_local_port
 	}, {
 		CONFIG_UDP_ENCAP_PORT, 1, 1,
 		"--udp-port",
-		"Cisco UDP Encapsulation Port ",
+		"Cisco UDP Encapsulation Port",
 		"<0-65535>",
 		"Local UDP port number to use (0 == use random port).\n"
 		"This is only relevant if cisco-udp nat-traversal is used.\n"
@@ -425,7 +424,7 @@ static const struct config_names_s {
 	}, {
 		CONFIG_DPD_IDLE, 1, 1,
 		"--dpd-idle",
-		"DPD idle timeout (our side) ",
+		"DPD idle timeout (our side)",
 		"<0,10-86400>",
 		"Send DPD packet after not receiving anything for <idle> seconds.\n"
 		"Use 0 to disable DPD completely (both ways).\n",
@@ -440,7 +439,7 @@ static const struct config_names_s {
 	}, {
 		CONFIG_AUTH_MODE, 1, 1,
 		"--auth-mode",
-		"IKE Authmode ",
+		"IKE Authmode",
 		"<psk/cert/hybrid>",
 		"Authentication mode:\n"
 		" * psk:    pre-shared key (default)\n"
@@ -450,21 +449,21 @@ static const struct config_names_s {
 	}, {
 		CONFIG_CA_FILE, 1, 1,
 		"--ca-file",
-		"CA-File ",
+		"CA-File",
 		"<filename>",
 		"filename and path to the CA-PEM-File",
 		NULL
 	}, {
 		CONFIG_CA_DIR, 1, 1,
 		"--ca-dir",
-		"CA-Dir ",
+		"CA-Dir",
 		"<directory>",
 		"path of the trusted CA-Directory",
 		config_ca_dir
 	}, {
 		CONFIG_IPSEC_TARGET_NETWORK, 1, 1,
 		"--target-network",
-		"IPSEC target network ",
+		"IPSEC target network",
 		"<target network/netmask>",
 		"Target network in dotted decimal or CIDR notation\n",
 		config_def_target_network
@@ -529,9 +528,29 @@ static void read_config_file(const char *name, const char **configs, int missing
 					configs[config_names[i].nm] = config_names[i].name;
 					break;
 				}
-				if (configs[config_names[i].nm] == NULL)
-					configs[config_names[i].nm] =
-						strdup(line + strlen(config_names[i].name));
+				/* get option value*/
+				if (configs[config_names[i].nm] == NULL) {
+					ssize_t start;
+					start = strlen(config_names[i].name);
+					/* ensure whitespace after option name */
+					if (line[start] == 0)
+						error(0, 0, "option '%s' requires a value!", config_names[i].name);
+					if (!(line[start] == ' ' || line[start] == '\t'))
+						continue; /* fallthrough: "unknown configuration directive" */
+					/* skip further trailing and leading whitespace */
+					for (llen--; line[llen] == ' ' || line[llen] == '\t' ; llen--)
+						line[llen] = 0;
+					for (start++; line[start] == ' ' || line[start] == '\t'; start++)
+						;
+					/* remove optional quotes */
+					if (start != llen && line[start] == '"' && line[llen] == '"') {
+						start++;
+						line[llen--] = 0;
+					}
+					if (start > llen)
+						error(0, 0, "option '%s' requires a value!", config_names[i].name);
+					configs[config_names[i].nm] = strdup(line + start);
+				}
 				if (configs[config_names[i].nm] == NULL)
 					error(1, errno, "can't allocate memory");
 				break;
@@ -814,11 +833,22 @@ void do_config(int argc, char **argv)
 	if (print_config) {
 		fprintf(stderr, "vpnc.conf:\n\n");
 		for (i = 0; config_names[i].name != NULL; i++) {
-			if (config[config_names[i].nm] == NULL)
+			if (config[config_names[i].nm] == NULL || config[config_names[i].nm][0] == 0)
 				continue;
-			printf("%s%s\n", config_names[i].name,
-				config_names[i].needsArgument ?
-					config[config_names[i].nm] : "");
+			printf("%s", config_names[i].name);
+			if (config_names[i].needsArgument) {
+				ssize_t last;
+				last = strlen(config[config_names[i].nm]) - 1;
+				if (     config[config_names[i].nm][0] == ' '  || config[config_names[i].nm][last] == ' '
+				    ||   config[config_names[i].nm][0] == '\t' || config[config_names[i].nm][last] == '\t'
+				    || ( config[config_names[i].nm][0] == '"'  && config[config_names[i].nm][last] == '"'  )
+				) {
+					printf(" %s%s%s", "\"", config[config_names[i].nm], "\"");
+				} else {
+					printf(" %s", config[config_names[i].nm]);
+				}
+			}
+			printf("\n");
 		}
 		exit(0);
 	}
