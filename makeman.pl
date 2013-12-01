@@ -92,7 +92,8 @@ close $LONGHELP;
 # Hopefully the code speaks for itself from now on...
 
 setlocale( LC_ALL, 'C' );
-my $date = strftime( '%B %Y', localtime );
+my $write_secs = (stat("./vpnc.8.template"))[9];
+my $date = strftime( '%B %Y', localtime($write_secs) );
 
 open my $VERSION, '<', './VERSION';
 my $vpnc_version = <$VERSION>;
