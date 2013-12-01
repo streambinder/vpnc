@@ -187,12 +187,6 @@ Advanced features like manual setting of multiple target routes and
 disabling /etc/resolv.conf rewriting is documented in the README of the
 vpnc package.
 
-.SH TODO
-.PD 0
-Certificate support (Pre-Shared-Key + XAUTH is known to be insecure).
-.P
-Further points can be found in the TODO file.
-.PD
 
 .SH AUTHOR
 This man-page has been written by Eduard Bloch <blade(at)debian.org> and
