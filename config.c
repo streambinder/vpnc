@@ -51,6 +51,7 @@ static void log_to_stderr(int priority __attribute__((unused)), const char *form
 {
 	va_list ap;
 
+	fprintf(stderr, "vpnc: ");
 	va_start(ap, format);
 	vfprintf(stderr, format, ap);
 	fprintf(stderr, "\n");
