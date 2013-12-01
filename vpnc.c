@@ -1097,6 +1097,18 @@ static int do_config_to_env(struct sa_block *s, struct isakmp_attribute *a)
 			}
 			break;
 
+		case ISAKMP_MODECFG_ATTRIB_CISCO_SPLIT_DNS:
+			if (a->af != isakmp_attr_lots) {
+				reject = ISAKMP_N_ATTRIBUTES_NOT_SUPPORTED;
+				break;
+			}
+			strbuf = xallocc(a->u.lots.length + 1);
+			memcpy(strbuf, a->u.lots.data, a->u.lots.length);
+			addenv("CISCO_SPLIT_DNS", strbuf);
+			free(strbuf);
+			DEBUG(2, printf("Split DNS: %s\n", a->u.lots.data));
+			break;
+
 		case ISAKMP_MODECFG_ATTRIB_CISCO_SAVE_PW:
 			DEBUG(2, printf("got save password setting: %d\n", a->u.attr_16));
 			break;
@@ -2446,6 +2458,7 @@ static int do_phase2_config(struct sa_block *s)
 	a->u.lots.data = xallocc(a->u.lots.length);
 	memcpy(a->u.lots.data, uts.nodename, a->u.lots.length);
 
+	a = new_isakmp_attribute(ISAKMP_MODECFG_ATTRIB_CISCO_SPLIT_DNS, a);
 	a = new_isakmp_attribute(ISAKMP_MODECFG_ATTRIB_CISCO_SPLIT_INC, a);
 	a = new_isakmp_attribute(ISAKMP_MODECFG_ATTRIB_CISCO_SAVE_PW, a);
 
