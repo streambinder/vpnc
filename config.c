@@ -192,7 +192,7 @@ static const char *config_def_script(void)
 
 static const char *config_def_pid_file(void)
 {
-	return "/var/run/vpnc/pid";
+	return "/var/run/vpnc.pid";
 }
 
 static const char *config_def_vendor(void)
