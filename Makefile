@@ -114,8 +114,8 @@ vpnc-%.tar.gz :
 	rm -rf vpnc-$*
 
 test : all
-	./test-crypto test/sig_data.bin test/dec_data.bin \
-		test/cert.pem test/cert1.pem test/cert2.pem test/root.pem
+	./test-crypto test/sig_data.bin test/dec_data.bin test/ca_list.pem \
+		test/cert3.pem test/cert2.pem test/cert1.pem test/cert0.pem
 
 dist : VERSION vpnc.8 vpnc-$(RELEASE_VERSION).tar.gz
 
