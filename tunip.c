@@ -1049,7 +1049,12 @@ void vpnc_doit(struct sa_block *s)
 			setsid();
 		} else {
 			printf("VPNC started in background (pid: %d)...\n", (int)pid);
-			exit(0);
+			/*
+			 * Use _exit(), since exit() will call the handler
+			 * registered with atexit() that will remove the
+			 * route path to concentrator.
+			 */
+			_exit(0);
 		}
 		openlog("vpnc", LOG_PID | LOG_PERROR, LOG_DAEMON);
 		logmsg = syslog;
