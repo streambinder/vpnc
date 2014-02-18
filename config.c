@@ -256,6 +256,8 @@ char *vpnc_getpass(const char *prompt)
 	}
 
 	printf("%s", prompt);
+	fflush(stdout);
+
 	tcgetattr(STDIN_FILENO, &t);
 	t.c_lflag &= ~ECHO;
 	tcsetattr(STDIN_FILENO, TCSANOW, &t);
@@ -828,7 +830,7 @@ static void print_version(void)
 
 void do_config(int argc, char **argv)
 {
-	char *s;
+	char *s, *prompt;
 	int i, c, known;
 	int got_conffile = 0, print_config = 0;
 	size_t s_len;
@@ -977,14 +979,14 @@ void do_config(int argc, char **argv)
 			printf("Enter IPSec ID for %s: ", config[CONFIG_IPSEC_GATEWAY]);
 			break;
 		case CONFIG_IPSEC_SECRET:
-			printf("Enter IPSec secret for %s@%s: ",
+			asprintf(&prompt, "Enter IPSec secret for %s@%s: ",
 				config[CONFIG_IPSEC_ID], config[CONFIG_IPSEC_GATEWAY]);
 			break;
 		case CONFIG_XAUTH_USERNAME:
 			printf("Enter username for %s: ", config[CONFIG_IPSEC_GATEWAY]);
 			break;
 		case CONFIG_XAUTH_PASSWORD:
-			printf("Enter password for %s@%s: ",
+			asprintf(&prompt, "Enter password for %s@%s: ",
 				config[CONFIG_XAUTH_USERNAME],
 				config[CONFIG_IPSEC_GATEWAY]);
 			break;
@@ -995,7 +997,8 @@ void do_config(int argc, char **argv)
 		switch (i) {
 		case CONFIG_IPSEC_SECRET:
 		case CONFIG_XAUTH_PASSWORD:
-			s = vpnc_getpass("");
+			s = vpnc_getpass(prompt);
+			free(prompt);
 			if (s == NULL)
 				error(1, 0, "unable to get password");
 			break;
