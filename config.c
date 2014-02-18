@@ -28,7 +28,9 @@
 #include <unistd.h>
 #include <string.h>
 #include <errno.h>
+#include <sys/types.h>
 #include <sys/utsname.h>
+#include <sys/wait.h>
 
 #include <gcrypt.h>
 
@@ -160,11 +162,98 @@ eof_or_ceot:
 	return -1;
 }
 
+static char *vpnc_getpass_program(const char *prompt)
+{
+	int status, r, i;
+	pid_t pid;
+	int fds[2] = {-1, -1};
+	char *pass;
+	ssize_t bytes;
+
+	if (pipe(fds) == -1)
+		goto out;
+
+	pid = fork();
+	if (pid == -1)
+		goto out;
+
+	if (pid == 0) {
+		const char *program = config[CONFIG_PASSWORD_HELPER];
+
+		close(fds[0]);
+		fds[0] = -1;
+
+		if (dup2(fds[1], 1) == -1)
+			_exit(1);
+
+		close(fds[1]);
+		fds[1] = -1;
+
+		execl(program, program, prompt, NULL);
+
+		_exit(1);
+	}
+
+	close(fds[1]);
+	fds[1] = -1;
+
+	while ((r = waitpid(pid, &status, 0)) == 0 ||
+		(r == -1 && errno == EINTR))
+		;
+
+	if (r == -1)
+		goto out;
+
+	if (!WIFEXITED(status)) {
+		errno = EFAULT;
+		goto out;
+	}
+
+	if (WEXITSTATUS(status) != 0) {
+		errno = EIO;
+		goto out;
+	}
+
+	pass = (char *)malloc(GETLINE_MAX_BUFLEN);
+	if (pass == NULL)
+		goto out;
+
+	bytes = read(fds[0], pass, GETLINE_MAX_BUFLEN - 1);
+	if (bytes == -1) {
+		free(pass);
+		pass = NULL;
+		goto out;
+	}
+
+	pass[bytes] = '\0';
+	for (i = 0 ; i < bytes ; i++)
+		if (pass[i] == '\n' || pass[i] == '\r') {
+			pass[i] = 0;
+			break;
+		}
+
+out:
+	if (fds[0] != -1)
+		close(fds[0]);
+
+	if (fds[1] != -1)
+		close(fds[1]);
+
+	return pass;
+}
+
 char *vpnc_getpass(const char *prompt)
 {
 	struct termios t;
 	char *buf = NULL;
 	size_t len = 0;
+
+	if (config[CONFIG_PASSWORD_HELPER]) {
+		buf = vpnc_getpass_program(prompt);
+		if (buf == NULL)
+			error(1, errno, "can't run password helper program");
+		return buf;
+	}
 
 	printf("%s", prompt);
 	tcgetattr(STDIN_FILENO, &t);
@@ -551,6 +640,13 @@ static const struct config_names_s {
 		"<target network/netmask>",
 		"Target network in dotted decimal or CIDR notation\n",
 		config_def_target_network
+	}, {
+		CONFIG_PASSWORD_HELPER, 1, 1,
+		"--password-helper",
+		"Password helper",
+		"<executable>",
+		"path to password program or helper name\n",
+		NULL
 	}, {
 		0, 0, 0, NULL, NULL, NULL, NULL, NULL
 	}
