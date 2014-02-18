@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <termios.h>
 #include <unistd.h>
 #include <string.h>
 #include <errno.h>
@@ -95,6 +96,68 @@ void hex_dump(const char *str, const void *data, ssize_t len, const struct debug
 		printf("%02x", p[i]);
 	}
 	printf("\n");
+}
+
+#define GETLINE_MAX_BUFLEN 200
+
+/*
+ * mostly match getline() semantics but:
+ * 1) accept CEOT (Ctrl-D, 0x04) at begining of line as an input terminator
+ * 2) allocate the buffer at max line size of GETLINE_MAX_BUFLEN bytes
+ * 3) remove trailing newline
+ *
+ * Returns:
+ *   -1 for errors or no line (EOF or CEOT)
+ *   n  the characters in line, excluding (removed) newline and training '\0'
+ */
+static ssize_t vpnc_getline(char **lineptr, size_t *n, FILE *stream)
+{
+	char *buf;
+	size_t buflen, llen = 0;
+	int c, buf_allocated = 0;
+
+	if (lineptr == NULL || n == NULL) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	buf = *lineptr;
+	buflen = *n;
+	if (buf == NULL || buflen == 0) {
+		buflen = GETLINE_MAX_BUFLEN;
+		buf = (char *)malloc(buflen);
+		if (buf == NULL)
+			return -1;
+		buf_allocated = 1;
+	}
+
+	/* Read a line from the input */
+	while (llen < buflen - 1) {
+		c = fgetc(stream);
+		if (c == EOF || feof(stream)) {
+			if (llen == 0)
+				goto eof_or_ceot;
+			else
+				break;
+		}
+		if (llen == 0 && c == CEOT)
+			goto eof_or_ceot;
+		if (c == '\n' || c == '\r')
+			break;
+		buf[llen++] = (char) c;
+	}
+
+	buf[llen] = 0;
+	if (buf_allocated) {
+		*lineptr = buf;
+		*n = buflen;
+	}
+	return llen;
+
+eof_or_ceot:
+	if (buf_allocated)
+		free(buf);
+	return -1;
 }
 
 static void config_deobfuscate(int obfuscated, int clear)
@@ -511,15 +574,12 @@ static void read_config_file(const char *name, const char **configs, int missing
 		ssize_t llen;
 		int i;
 
-		llen = getline(&line, &line_length, f);
-		if (llen == -1 && feof(f))
-			break;
-		if (llen == -1)
+		errno = 0;
+		llen = vpnc_getline(&line, &line_length, f);
+		if (llen == -1 && errno)
 			error(1, errno, "reading `%s'", realname);
-		if (llen > 0 && line[llen - 1] == '\n')
-			line[--llen] = 0;
-		if (llen > 0 && line[llen - 1] == '\r')
-			line[--llen] = 0;
+		if (llen == -1)
+			break;
 		linenum++;
 		for (i = 0; config_names[i].name != NULL; i++) {
 			if (strncasecmp(config_names[i].name, line,
@@ -824,10 +884,8 @@ void do_config(int argc, char **argv)
 		case CONFIG_IPSEC_GATEWAY:
 		case CONFIG_IPSEC_ID:
 		case CONFIG_XAUTH_USERNAME:
-			getline(&s, &s_len, stdin);
+			vpnc_getline(&s, &s_len, stdin);
 		}
-		if (s != NULL && strlen(s) > 0 && s[strlen(s) - 1] == '\n')
-			s[strlen(s) - 1] = 0;
 		config[i] = s;
 	}
 

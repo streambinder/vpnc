@@ -43,7 +43,6 @@ int tun_get_hwaddr(int fd, char *dev, uint8_t *hwaddr);
 #define HAVE_VASPRINTF 1
 #define HAVE_ASPRINTF  1
 #define HAVE_ERROR     1
-#define HAVE_GETLINE   1
 #define HAVE_UNSETENV  1
 #define HAVE_SETENV    1
 #endif
@@ -54,7 +53,6 @@ int tun_get_hwaddr(int fd, char *dev, uint8_t *hwaddr);
 
 #define HAVE_VASPRINTF 1
 #define HAVE_ASPRINTF  1
-#define HAVE_FGETLN    1
 #define HAVE_UNSETENV  1
 #define HAVE_SETENV    1
 #endif
@@ -67,7 +65,6 @@ int tun_get_hwaddr(int fd, char *dev, uint8_t *hwaddr);
 
 #define HAVE_VASPRINTF 1
 #define HAVE_ASPRINTF  1
-#define HAVE_FGETLN    1
 #define HAVE_UNSETENV  1
 #define HAVE_SETENV    1
 #endif
@@ -83,7 +80,6 @@ int tun_get_hwaddr(int fd, char *dev, uint8_t *hwaddr);
 
 #define HAVE_VASPRINTF 1
 #define HAVE_ASPRINTF  1
-#define HAVE_FGETLN    1
 #define HAVE_UNSETENV  1
 #define HAVE_SETENV    1
 #endif
@@ -94,7 +90,6 @@ int tun_get_hwaddr(int fd, char *dev, uint8_t *hwaddr);
 
 #define HAVE_VASPRINTF 1
 #define HAVE_ASPRINTF  1
-#define HAVE_FGETLN    1
 #define HAVE_UNSETENV  1
 #define HAVE_SETENV    1
 #endif
@@ -106,11 +101,9 @@ int tun_get_hwaddr(int fd, char *dev, uint8_t *hwaddr);
 
 #define HAVE_VASPRINTF 1
 #define HAVE_ASPRINTF  1
-#define HAVE_FGETLN    1
 #define HAVE_UNSETENV  1
 #define HAVE_SETENV    1
 #if (__ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__-0) >= 1070
-#define HAVE_GETLINE 1
 #endif
 #endif
 
@@ -144,8 +137,6 @@ const char *inet_ntop(int af, const void *src, char *dst, size_t cnt);
 #if defined (__CYGWIN__)
 #define HAVE_VASPRINTF 1
 #define HAVE_ASPRINTF  1
-#define HAVE_GETLINE   1
-#define HAVE_FGETLN    1
 #define HAVE_UNSETENV  1
 #define HAVE_SETENV    1
 
@@ -231,9 +222,6 @@ struct ether_arp {
 
 #ifndef HAVE_ERROR
 extern void error(int fd, int errorno, const char *fmt, ...);
-#endif
-#ifndef HAVE_GETLINE
-extern int getline(char **line, size_t * length, FILE * stream);
 #endif
 #ifndef HAVE_VASPRINTF
 #include <stdarg.h>

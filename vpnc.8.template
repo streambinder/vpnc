@@ -79,6 +79,16 @@ and
 .B /etc/vpnc.conf
 will be loaded.
 
+.PP
+
+Additionally, if the configuration
+file "-" is specified on the command-line
+vpnc will read configuration from
+stdin.  The configuration is parsed and
+the connection proceeds when stdin is
+closed or the special character CEOT
+(CTRL-D) is read.
+
 .SH OPTIONS
 The program options can be either given as arguments (but not all of them
 for security reasons) or be stored in a configuration file.

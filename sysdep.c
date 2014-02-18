@@ -750,38 +750,6 @@ void error(int status, int errornum, const char *fmt, ...)
 }
 #endif
 
-#ifndef HAVE_GETLINE
-int getline(char **line, size_t * length, FILE * stream)
-{
-	size_t len;
-#ifdef HAVE_FGETLN
-	char *tmpline;
-
-	tmpline = fgetln(stream, &len);
-#else
-	char tmpline[512];
-
-	fgets(tmpline, sizeof(tmpline), stream);
-	len = strlen(tmpline);
-#endif
-	if (feof(stream))
-		return -1;
-	if (*line == NULL) {
-		*line = malloc(len + 1);
-		*length = len + 1;
-	}
-	if (*length < len + 1) {
-		*line = realloc(*line, len + 1);
-		*length = len + 1;
-	}
-	if (*line == NULL)
-		return -1;
-	memcpy(*line, tmpline, len);
-	(*line)[len] = '\0';
-	return len;
-}
-#endif
-
 #ifndef HAVE_UNSETENV
 int unsetenv(const char *name)
 {
