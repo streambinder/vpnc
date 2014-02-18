@@ -115,8 +115,6 @@ int tun_get_hwaddr(int fd, char *dev, uint8_t *hwaddr);
 #define IPPROTO_ESP 50
 #endif
 
-#define getpass(prompt) getpassphrase(prompt)
-
 /* where is this defined? */
 #include <sys/socket.h>
 const char *inet_ntop(int af, const void *src, char *dst, size_t cnt);

@@ -160,6 +160,26 @@ eof_or_ceot:
 	return -1;
 }
 
+char *vpnc_getpass(const char *prompt)
+{
+	struct termios t;
+	char *buf = NULL;
+	size_t len = 0;
+
+	printf("%s", prompt);
+	tcgetattr(STDIN_FILENO, &t);
+	t.c_lflag &= ~ECHO;
+	tcsetattr(STDIN_FILENO, TCSANOW, &t);
+
+	vpnc_getline(&buf, &len, stdin);
+
+	t.c_lflag |= ECHO;
+	tcsetattr(STDIN_FILENO, TCSANOW, &t);
+	printf("\n");
+
+	return buf;
+}
+
 static void config_deobfuscate(int obfuscated, int clear)
 {
 	int ret, len = 0;
@@ -879,7 +899,9 @@ void do_config(int argc, char **argv)
 		switch (i) {
 		case CONFIG_IPSEC_SECRET:
 		case CONFIG_XAUTH_PASSWORD:
-			s = strdup(getpass(""));
+			s = vpnc_getpass("");
+			if (s == NULL)
+				error(1, 0, "unable to get password");
 			break;
 		case CONFIG_IPSEC_GATEWAY:
 		case CONFIG_IPSEC_ID:
