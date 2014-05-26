@@ -730,6 +730,8 @@ static void process_socket(struct sa_block *s)
 	} else if (eh->spi != s->ipsec.rx.spi) {
 		logmsg(LOG_NOTICE, "unknown spi %#08x from peer", ntohl(eh->spi));
 		return;
+	} else if (ntohl(eh->spi) < 256) {
+		syslog(LOG_NOTICE, "illegal spi %d from peer - continuing", ntohl(eh->spi));
 	}
 
 	/* Check auth digest and/or decrypt */
