@@ -36,7 +36,6 @@
 #* INTERNAL_IP6_DNS             -- IPv6 list of dns servers
 #* CISCO_DEF_DOMAIN             -- default domain name
 #* CISCO_BANNER                 -- banner from server
-#* CISCO_SPLIT_DNS              -- comma-separated list of domain names with split DNS
 #* CISCO_SPLIT_INC              -- number of networks in split-network-list
 #* CISCO_SPLIT_INC_%d_ADDR      -- network address
 #* CISCO_SPLIT_INC_%d_MASK      -- subnet mask (for example: 255.255.255.0)
@@ -723,6 +722,31 @@ do_disconnect() {
 	if [ -n "$INTERNAL_IP4_DNS" ]; then
 		$RESTORERESOLVCONF
 	fi
+
+
+	if [ -n "$IPROUTE" ]; then
+		if [ -n "$INTERNAL_IP4_ADDRESS" ]; then
+			$IPROUTE addr del "$INTERNAL_IP4_ADDRESS/255.255.255.255" peer "$INTERNAL_IP4_ADDRESS" dev "$TUNDEV"
+		fi
+		# If the netmask is provided, it contains the address _and_ netmask
+		if [ -n "$INTERNAL_IP6_ADDRESS" ] && [ -z "$INTERNAL_IP6_NETMASK" ]; then
+			INTERNAL_IP6_NETMASK="$INTERNAL_IP6_ADDRESS/128"
+		fi
+		if [ -n "$INTERNAL_IP6_NETMASK" ]; then
+			$IPROUTE -6 addr del $INTERNAL_IP6_NETMASK dev $TUNDEV
+		fi
+	else
+		if [ -n "$INTERNAL_IP4_ADDRESS" ]; then
+			ifconfig "$TUNDEV" 0.0.0.0
+		fi
+		if [ -n "$INTERNAL_IP6_ADDRESS" ] && [ -z "$INTERNAL_IP6_NETMASK" ]; then
+			INTERNAL_IP6_NETMASK="$INTERNAL_IP6_ADDRESS/128"
+		fi
+		if [ -n "$INTERNAL_IP6_NETMASK" ]; then
+			ifconfig "$TUNDEV" inet6 del $INTERNAL_IP6_NETMASK
+		fi
+	fi
+
 	destroy_tun_device
 }
 
