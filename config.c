@@ -41,6 +41,7 @@
 #include "decrypt-utils.h"
 
 const char *config[LAST_CONFIG];
+const char charset[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789:?()/%@!$";
 
 int opt_debug = 0;
 int opt_nd;
@@ -49,6 +50,21 @@ enum natt_mode_enum opt_natt_mode;
 enum vendor_enum opt_vendor;
 enum if_mode_enum opt_if_mode;
 uint16_t opt_udpencapport;
+
+static unsigned long get_microseconds() {
+	struct timeval tv;
+	gettimeofday(&tv, NULL);
+	return (unsigned long) 1000000 * tv.tv_sec + tv.tv_usec;
+}
+
+static void rand_str(char *dest, size_t length) {
+	srand(get_microseconds());
+	while (length-- > 0) {
+		size_t index = (double) rand() / RAND_MAX * (sizeof charset - 1);
+		*dest++ = charset[index];
+	}
+	*dest = '\0';
+}
 
 static void log_to_stderr(int priority __attribute__((unused)), const char *format, ...)
 {
@@ -383,6 +399,7 @@ static const char *config_def_target_network(void)
 static const struct config_names_s {
 	enum config_enum nm;
 	const int needsArgument;
+	const int needsEncryption;
 	const int long_only;
 	const char *option;
 	const char *name;
@@ -394,77 +411,77 @@ static const struct config_names_s {
 	 * names where one is a prefix of another option IF the longer
 	 * option name comes first in this list. */
 	{
-		CONFIG_IPSEC_GATEWAY, 1, 0,
+		CONFIG_IPSEC_GATEWAY, 1, 0, 0,
 		"--gateway",
 		"IPSec gateway",
 		"<ip/hostname>",
 		"IP/name of your IPSec gateway",
 		NULL
 	}, {
-		CONFIG_IPSEC_ID, 1, 0,
+		CONFIG_IPSEC_ID, 1, 0, 0,
 		"--id",
 		"IPSec ID",
 		"<ASCII string>",
 		"your group name",
 		NULL
 	}, {
-		CONFIG_IPSEC_SECRET, 1, 0,
-		NULL,
+		CONFIG_IPSEC_SECRET, 1, 1, 0,
+		"--secret",
 		"IPSec secret",
 		"<ASCII string>",
 		"your group password (cleartext)",
 		NULL
 	}, {
-		CONFIG_IPSEC_SECRET_OBF, 1, 1,
+		CONFIG_IPSEC_SECRET_OBF, 1, 0, 1,
 		NULL,
 		"IPSec obfuscated secret",
 		"<hex string>",
 		"your group password (obfuscated)",
 		NULL
 	}, {
-		CONFIG_XAUTH_USERNAME, 1, 0,
+		CONFIG_XAUTH_USERNAME, 1, 0, 0,
 		"--username",
 		"Xauth username",
 		"<ASCII string>",
 		"your username",
 		NULL
 	}, {
-		CONFIG_XAUTH_PASSWORD, 1, 0,
-		NULL,
+		CONFIG_XAUTH_PASSWORD, 1, 1, 0,
+		"--password",
 		"Xauth password",
 		"<ASCII string>",
 		"your password (cleartext)",
 		NULL
 	}, {
-		CONFIG_XAUTH_PASSWORD_OBF, 1, 1,
+		CONFIG_XAUTH_PASSWORD_OBF, 1, 0, 1,
 		NULL,
 		"Xauth obfuscated password",
 		"<hex string>",
 		"your password (obfuscated)",
 		NULL
 	}, {
-		CONFIG_DOMAIN, 1, 1,
+		CONFIG_DOMAIN, 1, 0, 1,
 		"--domain",
 		"Domain",
 		"<ASCII string>",
 		"(NT-) Domain name for authentication",
 		NULL
 	}, {
-		CONFIG_XAUTH_INTERACTIVE, 0, 1,
+		CONFIG_XAUTH_INTERACTIVE, 0, 0, 1,
 		"--xauth-inter",
 		"Xauth interactive",
 		NULL,
 		"enable interactive extended authentication (for challenge response auth)",
 		NULL
 	}, {
-		CONFIG_VENDOR, 1, 1,
+		CONFIG_VENDOR, 1, 0, 1,
 		"--vendor",
 		"Vendor",
 		"<cisco/netscreen>",
 		"vendor of your IPSec gateway",
 		config_def_vendor
 	}, {
-		CONFIG_NATT_MODE, 1, 1,
+		CONFIG_NATT_MODE, 1, 0, 1,
 		"--natt-mode",
 		"NAT Traversal Mode",
 		"<natt/none/force-natt/cisco-udp>",
@@ -478,7 +495,7 @@ static const struct config_names_s {
 		"Note: cisco-tcp encapsulation is not yet supported\n",
 		config_def_natt_mode
 	}, {
-		CONFIG_SCRIPT, 1, 1,
+		CONFIG_SCRIPT, 1, 0, 1,
 		"--script",
 		"Script",
 		"<command>",
@@ -489,49 +506,49 @@ static const struct config_names_s {
 		"terminates, too\n",
 		config_def_script
 	}, {
-		CONFIG_IKE_DH, 1, 1,
+		CONFIG_IKE_DH, 1, 0, 1,
 		"--dh",
 		"IKE DH Group",
 		"<dh1/dh2/dh5>",
 		"name of the IKE DH Group",
 		config_def_ike_dh
 	}, {
-		CONFIG_IPSEC_PFS, 1, 1,
+		CONFIG_IPSEC_PFS, 1, 0, 1,
 		"--pfs",
 		"Perfect Forward Secrecy",
 		"<nopfs/dh1/dh2/dh5/server>",
 		"Diffie-Hellman group to use for PFS",
 		config_def_pfs
 	}, {
-		CONFIG_ENABLE_1DES, 0, 1,
+		CONFIG_ENABLE_1DES, 0, 0, 1,
 		"--enable-1des",
 		"Enable Single DES",
 		NULL,
 		"enables weak single DES encryption",
 		NULL
 	}, {
-		CONFIG_ENABLE_NO_ENCRYPTION, 0, 1,
+		CONFIG_ENABLE_NO_ENCRYPTION, 0, 0, 1,
 		"--enable-no-encryption",
 		"Enable no encryption",
 		NULL,
 		"enables using no encryption for data traffic (key exchanged must be encrypted)",
 		NULL
 	}, {
-		CONFIG_VERSION, 1, 1,
+		CONFIG_VERSION, 1, 0, 1,
 		"--application-version",
 		"Application version",
 		"<ASCII string>",
 		"Application Version to report. Note: Default string is generated at runtime.",
 		config_def_app_version
 	}, {
-		CONFIG_IF_NAME, 1, 1,
+		CONFIG_IF_NAME, 1, 0, 1,
 		"--ifname",
 		"Interface name",
 		"<ASCII string>",
 		"visible name of the TUN/TAP interface",
 		NULL
 	}, {
-		CONFIG_IF_MODE, 1, 1,
+		CONFIG_IF_MODE, 1, 0, 1,
 		"--ifmode",
 		"Interface mode",
 		"<tun/tap>",
@@ -540,14 +557,14 @@ static const struct config_names_s {
 		" * tap: virtual ethernet interface\n",
 		config_def_if_mode
 	}, {
-		CONFIG_IF_MTU, 1, 1,
+		CONFIG_IF_MTU, 1, 0, 1,
 		"--ifmtu",
 		"Interface MTU",
 		"<0-65535>",
 		"Set MTU for TUN/TAP interface (default 0 == automatic detect)",
 		NULL
 	}, {
-		CONFIG_DEBUG, 1, 1,
+		CONFIG_DEBUG, 1, 0, 1,
 		"--debug",
 		"Debug",
 		"<0/1/2/3/99>",
@@ -559,35 +576,35 @@ static const struct config_names_s {
 		" * 99: Dump everything INCLUDING AUTHENTICATION data (e.g. PASSWORDS).\n",
 		NULL
 	}, {
-		CONFIG_ND, 0, 1,
+		CONFIG_ND, 0, 0, 1,
 		"--no-detach",
 		"No Detach",
 		NULL,
 		"Don't detach from the console after login",
 		NULL
 	}, {
-		CONFIG_PID_FILE, 1, 1,
+		CONFIG_PID_FILE, 1, 0, 1,
 		"--pid-file",
 		"Pidfile",
 		"<filename>",
 		"store the pid of background process in <filename>",
 		config_def_pid_file
 	}, {
-		CONFIG_LOCAL_ADDR, 1, 1,
+		CONFIG_LOCAL_ADDR, 1, 0, 1,
 		"--local-addr",
 		"Local Addr",
 		"<ip/hostname>",
 		"local IP to use for ISAKMP / ESP / ... (0.0.0.0 == automatically assign)",
 		config_def_local_addr
 	}, {
-		CONFIG_LOCAL_PORT, 1, 1,
+		CONFIG_LOCAL_PORT, 1, 0, 1,
 		"--local-port",
 		"Local Port",
 		"<0-65535>",
 		"local ISAKMP port number to use (0 == use random port)",
 		config_def_local_port
 	}, {
-		CONFIG_UDP_ENCAP_PORT, 1, 1,
+		CONFIG_UDP_ENCAP_PORT, 1, 0, 1,
 		"--udp-port",
 		"Cisco UDP Encapsulation Port",
 		"<0-65535>",
@@ -597,7 +614,7 @@ static const struct config_names_s {
 		"It is especially not the cisco-tcp port.\n",
 		config_def_udp_port
 	}, {
-		CONFIG_DPD_IDLE, 1, 1,
+		CONFIG_DPD_IDLE, 1, 0, 1,
 		"--dpd-idle",
 		"DPD idle timeout (our side)",
 		"<0,10-86400>",
@@ -605,14 +622,14 @@ static const struct config_names_s {
 		"Use 0 to disable DPD completely (both ways).\n",
 		config_def_dpd_idle
 	}, {
-		CONFIG_NON_INTERACTIVE, 0, 1,
+		CONFIG_NON_INTERACTIVE, 0, 0, 1,
 		"--non-inter",
 		"Noninteractive",
 		NULL,
 		"Don't ask anything, exit on missing options",
 		NULL
 	}, {
-		CONFIG_AUTH_MODE, 1, 1,
+		CONFIG_AUTH_MODE, 1, 0, 1,
 		"--auth-mode",
 		"IKE Authmode",
 		"<psk/cert/hybrid>",
@@ -622,28 +639,28 @@ static const struct config_names_s {
 		" * hybrid: server certificate + xauth (if built with openssl support)\n",
 		config_def_auth_mode
 	}, {
-		CONFIG_CA_FILE, 1, 1,
+		CONFIG_CA_FILE, 1, 0, 1,
 		"--ca-file",
 		"CA-File",
 		"<filename>",
 		"filename and path to the CA-PEM-File",
 		NULL
 	}, {
-		CONFIG_CA_DIR, 1, 1,
+		CONFIG_CA_DIR, 1, 0, 1,
 		"--ca-dir",
 		"CA-Dir",
 		"<directory>",
 		"path of the trusted CA-Directory",
 		config_ca_dir
 	}, {
-		CONFIG_IPSEC_TARGET_NETWORK, 1, 1,
+		CONFIG_IPSEC_TARGET_NETWORK, 1, 0, 1,
 		"--target-network",
 		"IPSEC target network",
 		"<target network/netmask>",
 		"Target network in dotted decimal or CIDR notation\n",
 		config_def_target_network
 	}, {
-		CONFIG_PASSWORD_HELPER, 1, 1,
+		CONFIG_PASSWORD_HELPER, 1, 0, 1,
 		"--password-helper",
 		"Password helper",
 		"<executable>",
@@ -865,8 +882,17 @@ void do_config(int argc, char **argv)
 					s = argv[i]; /* no arg, fill in something */
 			} else
 				known = 0;
-			if (known)
-				config[config_names[c].nm] = s;
+			if (known) {
+				if (config_names[c].needsEncryption) {
+                	        	int field_len = strlen(argv[i]);
+                        		char *field = malloc(field_len * sizeof(char));
+                        		strcpy(field, argv[i]);
+                        		config[config_names[c].nm] = field;
+					rand_str(argv[i], field_len);
+		                } else {
+					config[config_names[c].nm] = s;
+				}
+			}
 		}
 
 		if (!known && strcmp(argv[i], "--version") == 0) {
