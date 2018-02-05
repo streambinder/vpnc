@@ -1203,7 +1203,8 @@ static void lifetime_ike_process(struct sa_block *s, struct isakmp_attribute *a)
 	assert(a->af == isakmp_attr_16);
 	assert(a->u.attr_16 == IKE_LIFE_TYPE_SECONDS || a->u.attr_16 == IKE_LIFE_TYPE_K);
 	assert(a->next != NULL);
-	assert(a->next->type == IKE_ATTRIB_LIFE_DURATION);
+	if (opt_vendor != VENDOR_FORTIGATE)
+		assert(a->next->type == IKE_ATTRIB_LIFE_DURATION);
 
 	if (a->next->af == isakmp_attr_16)
 		value = a->next->u.attr_16;
@@ -1305,7 +1306,7 @@ static void do_phase1_am_packet1(struct sa_block *s, const char *key_id)
 		l = l->next->next;
 		l->next = new_isakmp_payload(ISAKMP_PAYLOAD_ID);
 		l = l->next;
-		if (opt_vendor == VENDOR_CISCO)
+		if (opt_vendor == VENDOR_CISCO || opt_vendor == VENDOR_FORTIGATE)
 			l->u.id.type = ISAKMP_IPSEC_ID_KEY_ID;
 		else
 			l->u.id.type = ISAKMP_IPSEC_ID_USER_FQDN;
@@ -3239,7 +3240,7 @@ int main(int argc, char **argv)
 		if (s->ike.auth_algo >= IKE_AUTH_HybridInitRSA)
 			do_load_balance = do_phase2_xauth(s);
 		DEBUGTOP(2, printf("S6 do_phase2_config\n"));
-		if ((opt_vendor == VENDOR_CISCO) && (do_load_balance == 0))
+		if ((opt_vendor == VENDOR_CISCO || opt_vendor == VENDOR_FORTIGATE) && (do_load_balance == 0))
 			do_load_balance = do_phase2_config(s);
 	} while (do_load_balance);
 	DEBUGTOP(2, printf("S7 setup_link (phase 2 + main_loop)\n"));
