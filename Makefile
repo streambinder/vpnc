@@ -43,21 +43,21 @@ DOCDIR=$(PREFIX)/share/doc/vpnc
 
 CRYPTO_LDADD = $(shell pkg-config --libs gnutls)
 CRYPTO_CFLAGS = $(shell pkg-config --cflags gnutls) -DCRYPTO_GNUTLS
-CRYPTO_SRCS = crypto-gnutls.c
+CRYPTO_SRCS = src/crypto-gnutls.c
 
 ifeq ($(OPENSSL_GPL_VIOLATION), yes)
 CRYPTO_LDADD = -lcrypto
 CRYPTO_CFLAGS = -DOPENSSL_GPL_VIOLATION -DCRYPTO_OPENSSL
-CRYPTO_SRCS = crypto-openssl.c
+CRYPTO_SRCS = src/crypto-openssl.c
 endif
 
-SRCS = sysdep.c vpnc-debug.c isakmp-pkt.c tunip.c config.c dh.c math_group.c supp.c decrypt-utils.c crypto.c $(CRYPTO_SRCS)
+SRCS = src/sysdep.c src/vpnc-debug.c src/isakmp-pkt.c src/tunip.c src/config.c src/dh.c src/math_group.c src/supp.c src/decrypt-utils.c src/crypto.c $(CRYPTO_SRCS)
 BINS = vpnc cisco-decrypt test-crypto
 OBJS = $(addsuffix .o,$(basename $(SRCS)))
 CRYPTO_OBJS = $(addsuffix .o,$(basename $(CRYPTO_SRCS)))
 BINOBJS = $(addsuffix .o,$(BINS))
 BINSRCS = $(addsuffix .c,$(BINS))
-VERSION := $(shell sh mk-version)
+VERSION := $(shell sh src/mk-version)
 RELEASE_VERSION := $(shell cat VERSION)
 
 CC ?= gcc
@@ -78,25 +78,25 @@ endif
 
 all : $(BINS) vpnc.8
 
-vpnc : $(OBJS) vpnc.o
+vpnc : $(OBJS) src/vpnc.o
 	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
 
-vpnc.8 : vpnc.8.template makeman.pl vpnc
-	./makeman.pl
+vpnc.8 : src/vpnc.8.template src/makeman.pl vpnc
+	./src/makeman.pl
 
-cisco-decrypt : cisco-decrypt.o decrypt-utils.o
+cisco-decrypt : src/cisco-decrypt.o src/decrypt-utils.o
 	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
 
-test-crypto : sysdep.o test-crypto.o crypto.o $(CRYPTO_OBJS)
+test-crypto : src/sysdep.o src/test-crypto.o src/crypto.o $(CRYPTO_OBJS)
 	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
 
 .depend: $(SRCS) $(BINSRCS)
 	$(CC) -MM $(SRCS) $(BINSRCS) $(CFLAGS) $(CPPFLAGS) > $@
 
-vpnc-debug.c vpnc-debug.h : isakmp.h enum2debug.pl
-	LC_ALL=C perl -w ./enum2debug.pl isakmp.h >vpnc-debug.c 2>vpnc-debug.h
+src/vpnc-debug.c src/vpnc-debug.h : src/isakmp.h src/enum2debug.pl
+	cd src && LC_ALL=C perl -w ./enum2debug.pl isakmp.h >vpnc-debug.c 2>vpnc-debug.h
 
-vpnc.ps : vpnc.c
+vpnc.ps : src/vpnc.c
 	enscript -E -G -T 4 --word-wrap -o- $^ | psnup -2 /dev/stdin $@
 
 ../vpnc-%.tar.gz : vpnc-$*.tar.gz
@@ -114,16 +114,16 @@ vpnc-%.tar.gz :
 	rm -rf vpnc-$*
 
 test : all
-	./test-crypto test/sig_data.bin test/dec_data.bin test/ca_list.pem \
+	./src/test-crypto test/sig_data.bin test/dec_data.bin test/ca_list.pem \
 		test/cert3.pem test/cert2.pem test/cert1.pem test/cert0.pem
 
 dist : VERSION vpnc.8 vpnc-$(RELEASE_VERSION).tar.gz
 
 clean :
-	-rm -f $(OBJS) $(BINOBJS) $(BINS) tags
+	-rm -f $(OBJS) $(BINOBJS) $(BINS) tags src/cisco-decrypt.o  src/test-crypto.o  src/vpnc.o
 
 distclean : clean
-	-rm -f vpnc-debug.c vpnc-debug.h vpnc.ps vpnc.8 .depend
+	-rm -f src/vpnc-debug.c src/vpnc-debug.h src/vpnc.ps src/vpnc.8 src/.depend
 
 install-common: all
 	install -d $(DESTDIR)$(ETCDIR) $(DESTDIR)$(BINDIR) $(DESTDIR)$(SBINDIR) $(DESTDIR)$(MANDIR)/man1 $(DESTDIR)$(MANDIR)/man8 $(DESTDIR)$(DOCDIR)

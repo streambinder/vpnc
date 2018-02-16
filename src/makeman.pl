@@ -20,8 +20,11 @@ use warnings;
 use Fatal    qw(open close);
 use filetest qw(access);	# to always get errno-values on filetests
 use POSIX    qw(strftime setlocale LC_ALL);
+use File::Basename;
 
-my $vpnc = './vpnc';
+chdir(dirname(__FILE__)) or die "$!";
+
+my $vpnc = '../vpnc';
 -e $vpnc or die "$0: Can't find $vpnc. Did you compile it?\n";
 -x $vpnc or die "$0: Can't execute $vpnc. Please check permissions.\n";
 
@@ -95,7 +98,7 @@ setlocale( LC_ALL, 'C' );
 my $write_secs = (stat("./vpnc.8.template"))[9];
 my $date = strftime( '%B %Y', localtime($write_secs) );
 
-open my $VERSION, '<', './VERSION';
+open my $VERSION, '<', '../VERSION';
 my $vpnc_version = <$VERSION>;
 close $VERSION;
 chomp $vpnc_version;
