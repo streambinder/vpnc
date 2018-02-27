@@ -112,7 +112,7 @@ struct encap_method {
 
 	int (*recv)      (struct sa_block *s, unsigned char *buf, unsigned int bufsize);
 	void (*send_peer) (struct sa_block *s, unsigned char *buf, unsigned int bufsize);
-	int (*recv_peer) (struct sa_block *s);
+	int (*recv_peer) (struct sa_block *s, uint32_t seq_id);
 };
 
 /* Yuck! Global variables... */
@@ -483,7 +483,86 @@ static void encap_udp_send_peer(struct sa_block *s, unsigned char *buf, unsigned
 			   (long long)sent, s->ipsec.tx.buflen);
 }
 
-static int encap_esp_recv_peer(struct sa_block *s)
+static int encap_esp_validate_seqid(struct sa_block *s, uint32_t seq_id)
+{
+	/*
+	 * For incoming, s->ipsec.rx.seq_id is the next *expected* packet,
+	 * being the sequence number *after* the latest we have received.
+	 *
+	 * Since it must always be true that packet s->ipsec.rx.seq_id-1
+	 * has been received, there's no need to explicitly record that.
+	 *
+	 * So the backlog bitmap covers the 32 packets prior to that, with
+	 * the LSB representing packet (s->ipsec.rx.seq_id - 2), and the
+	 * MSB representing (s->ipsec.rx.seq_id - 33). A received packet
+	 * is represented by a zero bit, and a missing packet is
+	 * represented by a one.
+	 *
+	 * Thus we can allow out-of-order reception of packets that are
+	 * within a reasonable interval of the latest packet received.
+	 */
+
+	if (seq_id == s->ipsec.rx.seq_id) {
+		/* The common case. This is the packet we expected next. */
+		s->ipsec.rx.seq_backlog <<= 1;
+		s->ipsec.rx.seq_id++;
+		logmsg(LOG_DEBUG, "Accepting expected ESP packet with seq %u\n",
+			   seq_id);
+		return 0;
+	} else if (seq_id + 33 < s->ipsec.rx.seq_id) {
+		/* Too old. We can't know if it's a replay. */
+		logmsg(LOG_NOTICE,
+			   "Discarding ancient ESP packet with seq %u (expected %u)\n",
+			   seq_id, s->ipsec.rx.seq_id);
+		return -EINVAL;
+	} else if (seq_id < s->ipsec.rx.seq_id) {
+		/* Within the backlog window, so we remember whether we've seen it or not. */
+		uint32_t mask = 1 << (s->ipsec.rx.seq_id - seq_id - 2);
+
+		if (s->ipsec.rx.seq_backlog & mask) {
+			logmsg(LOG_DEBUG,
+				   "Accepting out-of-order ESP packet with seq %u (expected %u)\n",
+				   seq_id, s->ipsec.rx.seq_id);
+			s->ipsec.rx.seq_backlog &= ~mask;
+			return 0;
+		}
+		logmsg(LOG_NOTICE,
+			   "Discarding replayed ESP packet with seq %u\n", seq_id);
+		return -EINVAL;
+	} else {
+		/* The packet we were expecting has gone missing; this one is newer. */
+		int delta = seq_id - s->ipsec.rx.seq_id;
+
+		if (delta >= 32) {
+			/* We jumped a long way into the future. We have not seen
+			 * any of the previous 32 packets so set the backlog bitmap
+			 * to all ones. */
+			s->ipsec.rx.seq_backlog = 0xffffffff;
+		} else if (delta == 31) {
+			/* Avoid undefined behaviour that shifting by 32 would incur.
+			 * The (clear) top bit represents the packet which is currently
+			 * s->ipsec.rx.seq_id - 1, which we know was already received. */
+			s->ipsec.rx.seq_backlog = 0x7fffffff;
+		} else {
+			/* We have missed (delta) packets. Shift the backlog by that
+			 * amount *plus* the one we would have shifted it anyway if
+			 * we'd received the packet we were expecting. The zero bit
+			 * representing the packet which is currently s->ipsec.rx.seq_id - 1,
+			 * which we know has been received, ends up at bit position
+			 * (1<<delta). Then we set all the bits lower than that, which
+			 * represent the missing packets. */
+			s->ipsec.rx.seq_backlog <<= delta + 1;
+			s->ipsec.rx.seq_backlog |= (1<<delta) - 1;
+		}
+		logmsg(LOG_DEBUG,
+			   "Accepting later-than-expected ESP packet with seq %u (expected %u)\n",
+			   seq_id, s->ipsec.rx.seq_id);
+		s->ipsec.rx.seq_id = seq_id + 1;
+		return 0;
+	}
+}
+
+static int encap_esp_recv_peer(struct sa_block *s, uint32_t seq_id)
 {
 	int len, i;
 	size_t blksz;
@@ -517,6 +596,9 @@ static int encap_esp_recv_peer(struct sa_block *s)
 			return -1;
 		}
 	}
+
+	if (encap_esp_validate_seqid(s, seq_id))
+		return -1;
 
 	blksz = s->ipsec.blk_len;
 	if (s->ipsec.cry_algo && ((len % blksz) != 0)) {
@@ -735,7 +817,7 @@ static void process_socket(struct sa_block *s)
 	}
 
 	/* Check auth digest and/or decrypt */
-	if (s->ipsec.em->recv_peer(s) != 0)
+	if (s->ipsec.em->recv_peer(s, ntohl(eh->seq_id)) != 0)
 		return;
 
 	if (encap_any_decap(s) == 0) {

@@ -36,7 +36,8 @@ struct lifetime {
 
 struct ike_sa {
 	uint32_t spi;
-	uint32_t seq_id; /* for replay protection (not implemented) */
+	uint32_t seq_id;  /* for replay protection */
+	uint32_t seq_backlog;
 
 	uint8_t *key;
 	uint8_t *key_cry;
