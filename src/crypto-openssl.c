@@ -13,7 +13,7 @@
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-*/
+ */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -31,7 +31,7 @@ crypto_ctx *crypto_ctx_new(crypto_error **error)
 	ctx = malloc(sizeof(crypto_ctx));
 	if (!ctx) {
 		crypto_error_set(error, 1, ENOMEM,
-		                 "not enough memory for crypto context");
+						 "not enough memory for crypto context");
 		return NULL;
 	}
 
@@ -45,7 +45,7 @@ crypto_ctx *crypto_ctx_new(crypto_error **error)
 	if (!ctx->stack) {
 		crypto_ctx_free(ctx);
 		crypto_error_set(error, 1, ENOMEM,
-		                 "not enough memory for crypto certificate stack");
+						 "not enough memory for crypto certificate stack");
 		ctx = NULL;
 	}
 
@@ -70,8 +70,8 @@ static int password_cb(char *buf, int size, int rwflag, void *userdata)
 }
 
 unsigned char *crypto_read_cert(const char *path,
-                                size_t *out_len,
-                                crypto_error **error)
+								size_t *out_len,
+								crypto_error **error)
 {
 	FILE *fp;
 	X509 *cert = NULL;
@@ -135,9 +135,9 @@ out:
 }
 
 int crypto_push_cert(crypto_ctx *ctx,
-                     const unsigned char *data,
-                     size_t len,
-                     crypto_error **error)
+					 const unsigned char *data,
+					 size_t len,
+					 crypto_error **error)
 {
 	X509 *cert = NULL;
 
@@ -158,15 +158,15 @@ int crypto_push_cert(crypto_ctx *ctx,
 }
 
 int crypto_verify_chain(crypto_ctx *ctx,
-                        const char *ca_file,
-                        const char *ca_dir,
-                        crypto_error **error)
+						const char *ca_file,
+						const char *ca_dir,
+						crypto_error **error)
 {
-	X509		*x509;
-	X509_STORE	*store = NULL;
-	X509_LOOKUP	*lookup = NULL;
-	X509_STORE_CTX	*verify_ctx = NULL;
-	int             ret = 1;
+	X509        *x509;
+	X509_STORE  *store = NULL;
+	X509_LOOKUP *lookup = NULL;
+	X509_STORE_CTX  *verify_ctx = NULL;
+	int ret = 1;
 
 	if (!ctx) {
 		crypto_error_set(error, 1, 0, "invalid crypto context");
@@ -189,12 +189,12 @@ int crypto_verify_chain(crypto_ctx *ctx,
 	/* load the CA certificates */
 	if (X509_STORE_load_locations (store, ca_file, ca_dir) != 1) {
 		crypto_error_set(error, 1, 0, "error loading the CA file (%s) "
-		                 "or directory (%s)", ca_file, ca_dir);
+						 "or directory (%s)", ca_file, ca_dir);
 		goto out;
 	}
 	if (X509_STORE_set_default_paths (store) != 1) {
 		crypto_error_set(error, 1, 0, "error loading the system-wide CA"
-		                 " certificates");
+						 " certificates");
 		goto out;
 	}
 
@@ -230,7 +230,7 @@ int crypto_verify_chain(crypto_ctx *ctx,
 	if (X509_verify_cert(verify_ctx) != 1) {
 		ERR_print_errors_fp(stderr);
 		crypto_error_set(error, 2, 0, "error verifying the certificate "
-		                 "chain");
+						 "chain");
 		goto out;
 	}
 
@@ -247,17 +247,17 @@ out:
 }
 
 unsigned char *crypto_decrypt_signature(crypto_ctx *ctx,
-                                        const unsigned char *sig_data,
-                                        size_t sig_len,
-                                        size_t *out_len,
-                                        unsigned int padding,
-                                        crypto_error **error)
+										const unsigned char *sig_data,
+										size_t sig_len,
+										size_t *out_len,
+										unsigned int padding,
+										crypto_error **error)
 {
-	X509		*x509;
-	EVP_PKEY	*pkey = NULL;
-	RSA		*rsa;
-	unsigned char	*hash = NULL;
-	int             tmp_len = -1, ossl_pad;
+	X509        *x509;
+	EVP_PKEY    *pkey = NULL;
+	RSA     *rsa;
+	unsigned char   *hash = NULL;
+	int tmp_len = -1, ossl_pad;
 
 	*out_len = 0;
 

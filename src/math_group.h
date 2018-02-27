@@ -41,9 +41,9 @@ enum groups {
 	MODP  /* F_p, Z modulo a prime */
 };
 
-#define OAKLEY_GRP_1	1
-#define OAKLEY_GRP_2	2
-#define OAKLEY_GRP_5	3
+#define OAKLEY_GRP_1    1
+#define OAKLEY_GRP_2    2
+#define OAKLEY_GRP_5    3
 
 /*
  * The group on which diffie hellmann calculations are done.

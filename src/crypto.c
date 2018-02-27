@@ -13,7 +13,7 @@
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-*/
+ */
 
 #include <stdio.h>
 #include <stdarg.h>
@@ -31,9 +31,9 @@
 
 #define MSG_SIZE 200
 void crypto_error_set(crypto_error **error,
-                      int code,
-                      int in_errno,
-                      const char *fmt, ...)
+					  int code,
+					  int in_errno,
+					  const char *fmt, ...)
 {
 	va_list args;
 
