@@ -17,7 +17,7 @@
    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
    $Id$
-*/
+ */
 
 #include "supp.h"
 #include "math_group.h"
@@ -65,7 +65,7 @@ const supported_algo_t supp_auth[] = {
 };
 
 const supported_algo_t *get_algo(enum algo_group what, enum supp_algo_key key, int id,
-	const char *name, int keylen)
+								 const char *name, int keylen)
 {
 	const supported_algo_t *sa = NULL;
 	int i = 0, val = 0;

@@ -174,8 +174,8 @@ struct ether_header
 struct arphdr {
 	unsigned short ar_hrd; /* format of hardware address   */
 	unsigned short ar_pro; /* format of protocol address   */
-	unsigned char  ar_hln; /* length of hardware address   */
-	unsigned char  ar_pln; /* length of protocol address   */
+	unsigned char ar_hln;  /* length of hardware address   */
+	unsigned char ar_pln;  /* length of protocol address   */
 	unsigned short ar_op;  /* ARP opcode (command)         */
 };
 

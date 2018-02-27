@@ -16,7 +16,7 @@
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-*/
+ */
 
 #include "decrypt-utils.h"
 
@@ -34,9 +34,9 @@ int main(int argc, char *argv[])
 
 	if (argc == 1 || *argv[1] == '-') {
 		fprintf(stderr,
-			"\nUsage: %s DEADBEEF...012345678 424242...7261\n"
-			"    Print decoded result to stdout\n\n",
-			argv[0]);
+				"\nUsage: %s DEADBEEF...012345678 424242...7261\n"
+				"    Print decoded result to stdout\n\n",
+				argv[0]);
 		exit(1);
 	}
 	/* Hack for use in pcf2vpnc */

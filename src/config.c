@@ -16,7 +16,7 @@
    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
    $Id$
-*/
+ */
 
 #define _GNU_SOURCE
 
@@ -214,7 +214,7 @@ static char *vpnc_getpass_program(const char *prompt)
 	fds[1] = -1;
 
 	while ((r = waitpid(pid, &status, 0)) == 0 ||
-		(r == -1 && errno == EINTR))
+		   (r == -1 && errno == EINTR))
 		;
 
 	if (r == -1)
@@ -242,7 +242,7 @@ static char *vpnc_getpass_program(const char *prompt)
 	}
 
 	pass[bytes] = '\0';
-	for (i = 0 ; i < bytes ; i++)
+	for (i = 0; i < bytes; i++)
 		if (pass[i] == '\n' || pass[i] == '\r') {
 			pass[i] = 0;
 			break;
@@ -705,7 +705,7 @@ static void read_config_file(const char *name, const char **configs, int missing
 		if (f == NULL)
 			error(1, errno, "couldn't open `%s'", realname);
 	}
-	for (;;) {
+	for (;; ) {
 		ssize_t llen;
 		int i;
 
@@ -718,7 +718,7 @@ static void read_config_file(const char *name, const char **configs, int missing
 		linenum++;
 		for (i = 0; config_names[i].name != NULL; i++) {
 			if (strncasecmp(config_names[i].name, line,
-					strlen(config_names[i].name)) == 0) {
+							strlen(config_names[i].name)) == 0) {
 				/* boolean implementation, using harmless pointer targets as true */
 				if (!config_names[i].needsArgument) {
 					configs[config_names[i].nm] = config_names[i].name;
@@ -734,7 +734,7 @@ static void read_config_file(const char *name, const char **configs, int missing
 					if (!(line[start] == ' ' || line[start] == '\t'))
 						continue; /* fallthrough: "unknown configuration directive" */
 					/* skip further trailing and leading whitespace */
-					for (llen--; line[llen] == ' ' || line[llen] == '\t' ; llen--)
+					for (llen--; line[llen] == ' ' || line[llen] == '\t'; llen--)
 						line[llen] = 0;
 					for (start++; line[start] == ' ' || line[start] == '\t'; start++)
 						;
@@ -754,7 +754,7 @@ static void read_config_file(const char *name, const char **configs, int missing
 		}
 		if (config_names[i].name == NULL && line[0] != '#' && line[0] != 0)
 			error(0, 0, "warning: unknown configuration directive in %s at line %d",
-				realname, linenum);
+				  realname, linenum);
 	}
 	free(line);
 	free(realname);
@@ -778,15 +778,15 @@ static void print_usage(char *argv0, int print_level)
 	int c;
 
 	printf("Usage: %s [--version] [--print-config] [--help] [--long-help] [options] [config files]\n\n",
-		argv0);
+		   argv0);
 	printf("Options:\n");
 	for (c = 0; config_names[c].name != NULL; c++) {
 		if (config_names[c].long_only > print_level)
 			continue;
 
 		printf("  %s %s\n", (config_names[c].option == NULL ?
-				"(configfile only option)" : config_names[c].option),
-			((config_names[c].type == NULL || config_names[c].option == NULL) ?
+							 "(configfile only option)" : config_names[c].option),
+			   ((config_names[c].type == NULL || config_names[c].option == NULL) ?
 				"" : config_names[c].type));
 
 		print_desc("      ", config_names[c].desc);
@@ -795,7 +795,7 @@ static void print_usage(char *argv0, int print_level)
 			printf("    Default: %s\n", config_names[c].get_def());
 
 		printf("  conf-variable: %s%s\n", config_names[c].name,
-			(config_names[c].type == NULL ? "" : config_names[c].type));
+			   (config_names[c].type == NULL ? "" : config_names[c].type));
 
 		printf("\n");
 	}
@@ -813,12 +813,12 @@ static void print_version(void)
 	printf("vpnc version " VERSION "\n");
 	printf("Copyright (C) 2002-2006 Geoffrey Keating, Maurice Massar, others\n");
 	printf("vpnc comes with NO WARRANTY, to the extent permitted by law.\n"
-		"You may redistribute copies of vpnc under the terms of the GNU General\n"
-		"Public License.  For more information about these matters, see the files\n"
-		"named COPYING.\n");
+		   "You may redistribute copies of vpnc under the terms of the GNU General\n"
+		   "Public License.  For more information about these matters, see the files\n"
+		   "named COPYING.\n");
 #ifdef OPENSSL_GPL_VIOLATION
 	printf("Built with openssl certificate support. Be aware of the\n"
-		"license implications.\n");
+		   "license implications.\n");
 #else /* OPENSSL_GPL_VIOLATION */
 	printf("Built with certificate support.\n");
 #endif /* OPENSSL_GPL_VIOLATION */
@@ -864,7 +864,7 @@ void do_config(int argc, char **argv)
 		for (c = 0; config_names[c].name != NULL && !known; c++) {
 			if (config_names[c].option == NULL
 				|| strncmp(argv[i], config_names[c].option,
-					strlen(config_names[c].option)) != 0)
+						   strlen(config_names[c].option)) != 0)
 				continue;
 
 			s = NULL;
@@ -884,12 +884,12 @@ void do_config(int argc, char **argv)
 				known = 0;
 			if (known) {
 				if (config_names[c].needsEncryption) {
-                	        	int field_len = strlen(argv[i]);
-                        		char *field = malloc(field_len * sizeof(char));
-                        		strcpy(field, argv[i]);
-                        		config[config_names[c].nm] = field;
+					int field_len = strlen(argv[i]);
+					char *field = malloc(field_len * sizeof(char));
+					strcpy(field, argv[i]);
+					config[config_names[c].nm] = field;
 					rand_str(argv[i], field_len);
-		                } else {
+				} else {
 					config[config_names[c].nm] = s;
 				}
 			}
@@ -984,7 +984,7 @@ void do_config(int argc, char **argv)
 	if (opt_debug >= 99) {
 		printf("WARNING! active debug level is >= 99, output includes username and password (hex encoded)\n");
 		fprintf(stderr,
-			"WARNING! active debug level is >= 99, output includes username and password (hex encoded)\n");
+				"WARNING! active debug level is >= 99, output includes username and password (hex encoded)\n");
 	}
 
 	config_deobfuscate(CONFIG_IPSEC_SECRET_OBF, CONFIG_IPSEC_SECRET);
@@ -1008,15 +1008,15 @@ void do_config(int argc, char **argv)
 			break;
 		case CONFIG_IPSEC_SECRET:
 			asprintf(&prompt, "Enter IPSec secret for %s@%s: ",
-				config[CONFIG_IPSEC_ID], config[CONFIG_IPSEC_GATEWAY]);
+					 config[CONFIG_IPSEC_ID], config[CONFIG_IPSEC_GATEWAY]);
 			break;
 		case CONFIG_XAUTH_USERNAME:
 			printf("Enter username for %s: ", config[CONFIG_IPSEC_GATEWAY]);
 			break;
 		case CONFIG_XAUTH_PASSWORD:
 			asprintf(&prompt, "Enter password for %s@%s: ",
-				config[CONFIG_XAUTH_USERNAME],
-				config[CONFIG_IPSEC_GATEWAY]);
+					 config[CONFIG_XAUTH_USERNAME],
+					 config[CONFIG_IPSEC_GATEWAY]);
 			break;
 		default:
 			continue;
@@ -1048,9 +1048,9 @@ void do_config(int argc, char **argv)
 				ssize_t last;
 				last = strlen(config[config_names[i].nm]) - 1;
 				if (     config[config_names[i].nm][0] == ' '  || config[config_names[i].nm][last] == ' '
-				    ||   config[config_names[i].nm][0] == '\t' || config[config_names[i].nm][last] == '\t'
-				    || ( config[config_names[i].nm][0] == '"'  && config[config_names[i].nm][last] == '"'  )
-				) {
+						 ||   config[config_names[i].nm][0] == '\t' || config[config_names[i].nm][last] == '\t'
+						 || ( config[config_names[i].nm][0] == '"'  && config[config_names[i].nm][last] == '"'  )
+						 ) {
 					printf(" %s%s%s", "\"", config[config_names[i].nm], "\"");
 				} else {
 					printf(" %s", config[config_names[i].nm]);
@@ -1075,7 +1075,7 @@ void do_config(int argc, char **argv)
 		error(1, 0, "IKE DH Group \"%s\" unsupported\n", config[CONFIG_IKE_DH]);
 	if (get_dh_group_ipsec(-1) == NULL)
 		error(1, 0, "Perfect Forward Secrecy \"%s\" unsupported\n",
-			config[CONFIG_IPSEC_PFS]);
+			  config[CONFIG_IPSEC_PFS]);
 	if (get_dh_group_ike()->ike_sa_id == 0)
 		error(1, 0, "IKE DH Group must not be nopfs\n");
 

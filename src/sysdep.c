@@ -181,10 +181,10 @@ static char *search_if(char *value, char *key, search_if_en type)
 	}
 
 	status = RegOpenKeyEx(HKEY_LOCAL_MACHINE,
-		NETWORK_CONNECTIONS_KEY,
-		0,
-		KEY_READ,
-		&net_conn_key);
+						  NETWORK_CONNECTIONS_KEY,
+						  0,
+						  KEY_READ,
+						  &net_conn_key);
 
 	if (status != ERROR_SUCCESS) {
 		printf("Error opening registry key: %s\n", NETWORK_CONNECTIONS_KEY);
@@ -194,26 +194,26 @@ static char *search_if(char *value, char *key, search_if_en type)
 	while (!found) {
 		len = sizeof(guid);
 		status = RegEnumKeyEx(net_conn_key, i++, guid, &len,
-			NULL, NULL, NULL, NULL);
+							  NULL, NULL, NULL, NULL);
 		if (status == ERROR_NO_MORE_ITEMS) {
 			break;
 		} else if (status != ERROR_SUCCESS) {
 			continue;
 		}
 		snprintf(conn_string, sizeof(conn_string),
-			"%s\\%s\\Connection",
-			NETWORK_CONNECTIONS_KEY, guid);
+				 "%s\\%s\\Connection",
+				 NETWORK_CONNECTIONS_KEY, guid);
 		status = RegOpenKeyEx(HKEY_LOCAL_MACHINE,
-			conn_string,
-			0,
-			KEY_READ,
-			&conn_key);
+							  conn_string,
+							  0,
+							  KEY_READ,
+							  &conn_key);
 		if (status != ERROR_SUCCESS) {
 			continue;
 		}
 		len = sizeof(ifname);
 		status = RegQueryValueEx(conn_key, "Name", NULL,
-			&value_type, ifname, &len);
+								 &value_type, ifname, &len);
 		if (status != ERROR_SUCCESS || value_type != REG_SZ) {
 			RegCloseKey(conn_key);
 			continue;
@@ -266,16 +266,16 @@ static int open_tun_device (char *guid, char *dev, enum if_mode_enum mode)
 	 * Let's try to open Windows TAP-Win32 adapter
 	 */
 	snprintf(device_path, sizeof(device_path), "%s%s%s",
-		USERMODEDEVICEDIR, guid, TAPSUFFIX);
+			 USERMODEDEVICEDIR, guid, TAPSUFFIX);
 
 	handle = CreateFile(device_path,
-		GENERIC_READ | GENERIC_WRITE,
-		0, /* Don't let other processes share or open
-		the resource until the handle's been closed */
-		0,
-		OPEN_EXISTING,
-		FILE_ATTRIBUTE_SYSTEM | FILE_FLAG_OVERLAPPED,
-		0);
+						GENERIC_READ | GENERIC_WRITE,
+						0, /* Don't let other processes share or open
+	                          the resource until the handle's been closed */
+						0,
+						OPEN_EXISTING,
+						FILE_ATTRIBUTE_SYSTEM | FILE_FLAG_OVERLAPPED,
+						0);
 
 	if (handle == INVALID_HANDLE_VALUE) {
 		return -1;
@@ -286,12 +286,12 @@ static int open_tun_device (char *guid, char *dev, enum if_mode_enum mode)
 	 */
 	memset(info, 0, sizeof(info));
 	if (DeviceIoControl(handle, TAP_IOCTL_GET_VERSION,
-		&info, sizeof(info),
-		&info, sizeof(info), &len, NULL)) {
+						&info, sizeof(info),
+						&info, sizeof(info), &len, NULL)) {
 		printf("TAP-Win32 Driver Version %d.%d %s\n",
-		(int) info[0],
-		(int) info[1],
-		(info[2] ? "(DEBUG)" : ""));
+			   (int) info[0],
+			   (int) info[1],
+			   (info[2] ? "(DEBUG)" : ""));
 	}
 
 	/*
@@ -299,10 +299,10 @@ static int open_tun_device (char *guid, char *dev, enum if_mode_enum mode)
 	 */
 	status = TRUE;
 	if (!DeviceIoControl(handle, TAP_IOCTL_SET_MEDIA_STATUS,
-		&status, sizeof(status),
-		&status, sizeof(status), &len, NULL)) {
+						 &status, sizeof(status),
+						 &status, sizeof(status), &len, NULL)) {
 		printf("WARNING: The TAP-Win32 driver rejected a "
-		"TAP_IOCTL_SET_MEDIA_STATUS DeviceIoControl call.\n");
+			   "TAP_IOCTL_SET_MEDIA_STATUS DeviceIoControl call.\n");
 	}
 
 	/*
@@ -357,10 +357,10 @@ int tun_open (char *dev, enum if_mode_enum mode)
 	 */
 	int i = 0;
 	status = RegOpenKeyEx(HKEY_LOCAL_MACHINE,
-		ADAPTER_KEY,
-		0,
-		KEY_READ,
-		&adapter_key);
+						  ADAPTER_KEY,
+						  0,
+						  KEY_READ,
+						  &adapter_key);
 	if (status != ERROR_SUCCESS) {
 		printf("Error opening registry key: %s", ADAPTER_KEY);
 		return -1;
@@ -369,35 +369,35 @@ int tun_open (char *dev, enum if_mode_enum mode)
 	while (!found) {
 		len = sizeof(enum_name);
 		status = RegEnumKeyEx(adapter_key, i++,
-			enum_name, &len,
-			NULL, NULL, NULL, NULL);
+							  enum_name, &len,
+							  NULL, NULL, NULL, NULL);
 		if (status == ERROR_NO_MORE_ITEMS) {
 			break;
 		} else if (status != ERROR_SUCCESS) {
 			continue;
 		}
 		snprintf(unit_string, sizeof(unit_string), "%s\\%s",
-			ADAPTER_KEY, enum_name);
+				 ADAPTER_KEY, enum_name);
 		status = RegOpenKeyEx(HKEY_LOCAL_MACHINE,
-			unit_string,
-			0,
-			KEY_READ,
-			&unit_key);
+							  unit_string,
+							  0,
+							  KEY_READ,
+							  &unit_key);
 		if (status != ERROR_SUCCESS) {
 			continue;
 		}
 		len = sizeof(comp_id);
 		status = RegQueryValueEx(unit_key,
-			"ComponentId", NULL,
-			&value_type, comp_id, &len);
+								 "ComponentId", NULL,
+								 &value_type, comp_id, &len);
 		if (status != ERROR_SUCCESS || value_type != REG_SZ) {
 			RegCloseKey(unit_key);
 			continue;
 		}
 		len = sizeof(guid);
 		status = RegQueryValueEx(unit_key,
-			"NetCfgInstanceId", NULL,
-			&value_type, guid, &len);
+								 "NetCfgInstanceId", NULL,
+								 &value_type, guid, &len);
 		if (status != ERROR_SUCCESS || value_type != REG_SZ) {
 			RegCloseKey(unit_key);
 			continue;
@@ -438,7 +438,7 @@ int tun_open(char *dev, enum if_mode_enum mode)
 
 	if ((fd = open("/dev/net/tun", O_RDWR)) < 0) {
 		error(0, errno,
-			"can't open /dev/net/tun, check that it is either device char 10 200 or (with DevFS) a symlink to ../misc/net/tun (not misc/net/tun)");
+			  "can't open /dev/net/tun, check that it is either device char 10 200 or (with DevFS) a symlink to ../misc/net/tun (not misc/net/tun)");
 		return -1;
 	}
 
@@ -463,18 +463,18 @@ int tun_open(char *dev, enum if_mode_enum mode)
 	if (*dev) {
 		if (strncmp(dev, ((mode == IF_MODE_TUN) ? "tun" : "tap"), 3))
 			error(1, 0,
-				"error: arbitrary naming tunnel interface is not supported in this version\n");
+				  "error: arbitrary naming tunnel interface is not supported in this version\n");
 		snprintf(tunname, sizeof(tunname), "/dev/%s", dev);
 		return open(tunname, O_RDWR);
 	}
 
 	for (i = 0; i < 255; i++) {
 		snprintf(tunname, sizeof(tunname), "/dev/%s%d",
-			((mode == IF_MODE_TUN) ? "tun" : "tap"), i);
+				 ((mode == IF_MODE_TUN) ? "tun" : "tap"), i);
 		/* Open device */
 		if ((fd = open(tunname, O_RDWR)) > 0) {
 			snprintf(dev, IFNAMSIZ, "%s%d",
-				((mode == IF_MODE_TUN) ? "tun" : "tap"), i);
+					 ((mode == IF_MODE_TUN) ? "tun" : "tap"), i);
 			return fd;
 		}
 	}
@@ -568,17 +568,17 @@ int tun_write(int fd, unsigned char *buf, int len)
 
 	ResetEvent(overlap_write.hEvent);
 	if (WriteFile((HANDLE) get_osfhandle(fd),
-		buf,
-		len,
-		&write_size,
-		&overlap_write)) {
+				  buf,
+				  len,
+				  &write_size,
+				  &overlap_write)) {
 		return write_size;
 	}
 	switch (GetLastError()) {
 	case ERROR_IO_PENDING:
 		WaitForSingleObject(overlap_write.hEvent, INFINITE);
 		GetOverlappedResult((HANDLE) get_osfhandle(fd), &overlap_write,
-			&write_size, FALSE);
+							&write_size, FALSE);
 		return write_size;
 		break;
 	default:
@@ -660,7 +660,7 @@ int tun_get_hwaddr(int fd, char *dev, uint8_t *hwaddr)
 
 	dev = NULL; /* unused */
 	if (!DeviceIoControl((HANDLE) get_osfhandle(fd), TAP_IOCTL_GET_MAC,
-		hwaddr, ETH_ALEN, hwaddr, ETH_ALEN, &len, NULL)) {
+						 hwaddr, ETH_ALEN, hwaddr, ETH_ALEN, &len, NULL)) {
 		printf("Cannot get HW address\n");
 		return -1;
 	}

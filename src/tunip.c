@@ -22,7 +22,7 @@
    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
    $Id$
-*/
+ */
 
 /* borrowed from pipsecd (-; */
 
@@ -91,11 +91,11 @@
 #include "tunip.h"
 
 #ifndef MAX
-#define MAX(a,b)	((a)>(b)?(a):(b))
+#define MAX(a,b)    ((a)>(b) ? (a) : (b))
 #endif
 
 #ifndef FD_COPY
-#define FD_COPY(f, t)	((void)memcpy((t), (f), sizeof(*(f))))
+#define FD_COPY(f, t)   ((void)memcpy((t), (f), sizeof(*(f))))
 #endif
 
 /* A real ESP header (RFC 2406) */
@@ -110,9 +110,9 @@ typedef struct esp_encap_header {
 struct encap_method {
 	int fixed_header_size;
 
-	int  (*recv)      (struct sa_block *s, unsigned char *buf, unsigned int bufsize);
+	int (*recv)      (struct sa_block *s, unsigned char *buf, unsigned int bufsize);
 	void (*send_peer) (struct sa_block *s, unsigned char *buf, unsigned int bufsize);
-	int  (*recv_peer) (struct sa_block *s);
+	int (*recv_peer) (struct sa_block *s);
 };
 
 /* Yuck! Global variables... */
@@ -217,7 +217,7 @@ static int encap_udp_recv(struct sa_block *s, unsigned char *buf, unsigned int b
 	}
 	if (r < s->ipsec.em->fixed_header_size) {
 		logmsg(LOG_ALERT, "packet too short from %s. got %zd, expected %d",
-			inet_ntoa(s->dst), r, s->ipsec.em->fixed_header_size);
+			   inet_ntoa(s->dst), r, s->ipsec.em->fixed_header_size);
 		return -1;
 	}
 
@@ -282,9 +282,9 @@ static int tun_send_ip(struct sa_block *s)
  * Compute HMAC for an arbitrary stream of bytes
  */
 static int hmac_compute(int md_algo,
-	const unsigned char *data, unsigned int data_size,
-	unsigned char *digest, unsigned char do_store,
-	const unsigned char *secret, unsigned short secret_size)
+						const unsigned char *data, unsigned int data_size,
+						unsigned char *digest, unsigned char do_store,
+						const unsigned char *secret, unsigned short secret_size)
 {
 	gcry_md_hd_t md_ctx;
 	int ret;
@@ -369,11 +369,11 @@ static void encap_esp_encapsulate(struct sa_block *s)
 	/* Handle optional authentication field */
 	if (s->ipsec.md_algo) {
 		hmac_compute(s->ipsec.md_algo,
-			s->ipsec.tx.buf + s->ipsec.tx.bufpayload,
-			s->ipsec.tx.var_header_size + cleartextlen,
-			s->ipsec.tx.buf + s->ipsec.tx.bufpayload
-			+ s->ipsec.tx.var_header_size + cleartextlen,
-			1, s->ipsec.tx.key_md, s->ipsec.md_len);
+					 s->ipsec.tx.buf + s->ipsec.tx.bufpayload,
+					 s->ipsec.tx.var_header_size + cleartextlen,
+					 s->ipsec.tx.buf + s->ipsec.tx.bufpayload
+					 + s->ipsec.tx.var_header_size + cleartextlen,
+					 1, s->ipsec.tx.key_md, s->ipsec.md_len);
 		s->ipsec.tx.buflen += 12; /*gcry_md_get_algo_dlen(md_algo); see RFC .. only use 96 bit */
 		hex_dump("sending ESP packet (after ah)", s->ipsec.tx.buf, s->ipsec.tx.buflen, NULL);
 	}
@@ -480,7 +480,7 @@ static void encap_udp_send_peer(struct sa_block *s, unsigned char *buf, unsigned
 	}
 	if (sent != s->ipsec.tx.buflen)
 		logmsg(LOG_ALERT, "udp truncated out (%lld out of %d)",
-			(long long)sent, s->ipsec.tx.buflen);
+			   (long long)sent, s->ipsec.tx.buflen);
 }
 
 static int encap_esp_recv_peer(struct sa_block *s)
@@ -506,13 +506,13 @@ static int encap_esp_recv_peer(struct sa_block *s)
 		len -= 12; /*gcry_md_get_algo_dlen(peer->local_sa->md_algo); */
 		s->ipsec.rx.buflen -= 12;
 		if (hmac_compute(s->ipsec.md_algo,
-				s->ipsec.rx.buf + s->ipsec.rx.bufpayload,
-				s->ipsec.em->fixed_header_size + s->ipsec.rx.var_header_size + len,
-				s->ipsec.rx.buf + s->ipsec.rx.bufpayload
-				+ s->ipsec.em->fixed_header_size + s->ipsec.rx.var_header_size + len,
-				0,
-				s->ipsec.rx.key_md,
-				s->ipsec.md_len) != 0) {
+						 s->ipsec.rx.buf + s->ipsec.rx.bufpayload,
+						 s->ipsec.em->fixed_header_size + s->ipsec.rx.var_header_size + len,
+						 s->ipsec.rx.buf + s->ipsec.rx.bufpayload
+						 + s->ipsec.em->fixed_header_size + s->ipsec.rx.var_header_size + len,
+						 0,
+						 s->ipsec.rx.key_md,
+						 s->ipsec.md_len) != 0) {
 			logmsg(LOG_ALERT, "HMAC mismatch in ESP mode");
 			return -1;
 		}
@@ -521,32 +521,32 @@ static int encap_esp_recv_peer(struct sa_block *s)
 	blksz = s->ipsec.blk_len;
 	if (s->ipsec.cry_algo && ((len % blksz) != 0)) {
 		logmsg(LOG_ALERT,
-			"payload len %d not a multiple of algorithm block size %lu", len,
-			(unsigned long)blksz);
+			   "payload len %d not a multiple of algorithm block size %lu", len,
+			   (unsigned long)blksz);
 		return -1;
 	}
 
 	hex_dump("receiving ESP packet (before decrypt)",
-		&s->ipsec.rx.buf[s->ipsec.rx.bufpayload + s->ipsec.em->fixed_header_size +
-			 s->ipsec.rx.var_header_size], len, NULL);
+			 &s->ipsec.rx.buf[s->ipsec.rx.bufpayload + s->ipsec.em->fixed_header_size +
+							  s->ipsec.rx.var_header_size], len, NULL);
 
 	if (s->ipsec.cry_algo) {
 		unsigned char *data;
 
 		data = (s->ipsec.rx.buf + s->ipsec.rx.bufpayload
-			+ s->ipsec.em->fixed_header_size + s->ipsec.rx.var_header_size);
+				+ s->ipsec.em->fixed_header_size + s->ipsec.rx.var_header_size);
 		gcry_cipher_setiv(s->ipsec.rx.cry_ctx, iv, s->ipsec.iv_len);
 		gcry_cipher_decrypt(s->ipsec.rx.cry_ctx, data, len, NULL, 0);
 	}
 
 	hex_dump("receiving ESP packet (after decrypt)",
-		&s->ipsec.rx.buf[s->ipsec.rx.bufpayload + s->ipsec.em->fixed_header_size +
-			s->ipsec.rx.var_header_size], len, NULL);
+			 &s->ipsec.rx.buf[s->ipsec.rx.bufpayload + s->ipsec.em->fixed_header_size +
+							  s->ipsec.rx.var_header_size], len, NULL);
 
 	padlen = s->ipsec.rx.buf[s->ipsec.rx.bufpayload
-		+ s->ipsec.em->fixed_header_size + s->ipsec.rx.var_header_size + len - 2];
+							 + s->ipsec.em->fixed_header_size + s->ipsec.rx.var_header_size + len - 2];
 	next_header = s->ipsec.rx.buf[s->ipsec.rx.bufpayload
-		+ s->ipsec.em->fixed_header_size + s->ipsec.rx.var_header_size + len - 1];
+								  + s->ipsec.em->fixed_header_size + s->ipsec.rx.var_header_size + len - 1];
 
 	if (padlen + 2 > len) {
 		logmsg(LOG_ALERT, "Inconsistent padlen");
@@ -563,7 +563,7 @@ static int encap_esp_recv_peer(struct sa_block *s)
 
 	/* Check padding */
 	pad = s->ipsec.rx.buf + s->ipsec.rx.bufpayload
-		+ s->ipsec.em->fixed_header_size + s->ipsec.rx.var_header_size + len;
+		  + s->ipsec.em->fixed_header_size + s->ipsec.rx.var_header_size + len;
 	for (i = 1; i <= padlen; i++) {
 		if (*pad != i) {
 			logmsg(LOG_ALERT, "Bad padding");
@@ -698,7 +698,7 @@ static void process_tun(struct sa_block *s)
 	 *  4: Length of IP address */
 	if (!memcmp(global_buffer_rx + MAX_HEADER + 12, &s->dst.s_addr, 4)) {
 		logmsg(LOG_ALERT, "routing loop to %s",
-			inet_ntoa(s->dst));
+			   inet_ntoa(s->dst));
 		return;
 	}
 
@@ -725,7 +725,7 @@ static void process_socket(struct sa_block *s)
 	eh = (esp_encap_header_t *) (s->ipsec.rx.buf + s->ipsec.rx.bufpayload);
 	if (eh->spi == 0) {
 		process_late_ike(s, s->ipsec.rx.buf + s->ipsec.rx.bufpayload + 4 /* SPI-size */,
-			s->ipsec.rx.buflen - s->ipsec.rx.bufpayload - 4);
+						 s->ipsec.rx.buflen - s->ipsec.rx.bufpayload - 4);
 		return;
 	} else if (eh->spi != s->ipsec.rx.spi) {
 		logmsg(LOG_NOTICE, "unknown spi %#08x from peer", ntohl(eh->spi));
@@ -811,7 +811,7 @@ static void vpnc_main_loop(struct sa_block *s)
 
 #if defined(__CYGWIN__)
 	if (pthread_create(&tid, NULL, tun_thread, s)) {
-	        logmsg(LOG_ERR, "Cannot create tun thread!\n");
+		logmsg(LOG_ERR, "Cannot create tun thread!\n");
 		return;
 	}
 #endif
@@ -879,11 +879,11 @@ static void vpnc_main_loop(struct sa_block *s)
 				}
 			}
 			DEBUG(2,printf("lifetime status: %ld of %u seconds used, %u|%u of %u kbytes used\n",
-				time(NULL) - s->ipsec.life.start,
-				s->ipsec.life.seconds,
-				s->ipsec.life.rx/1024,
-				s->ipsec.life.tx/1024,
-				s->ipsec.life.kbytes));
+						   time(NULL) - s->ipsec.life.start,
+						   s->ipsec.life.seconds,
+						   s->ipsec.life.rx/1024,
+						   s->ipsec.life.tx/1024,
+						   s->ipsec.life.kbytes));
 		} while ((presult == 0 || (presult == -1 && errno == EINTR)) && !do_kill);
 		if (presult == -1) {
 			logmsg(LOG_ERR, "select: %m");
@@ -945,15 +945,15 @@ static void vpnc_main_loop(struct sa_block *s)
 	}
 
 	switch (do_kill) {
-		case -2:
-			logmsg(LOG_NOTICE, "connection terminated by dead peer detection");
-			break;
-		case -1:
-			logmsg(LOG_NOTICE, "connection terminated by peer");
-			break;
-		default:
-			logmsg(LOG_NOTICE, "terminated by signal: %d", do_kill);
-			break;
+	case -2:
+		logmsg(LOG_NOTICE, "connection terminated by dead peer detection");
+		break;
+	case -1:
+		logmsg(LOG_NOTICE, "connection terminated by peer");
+		break;
+	default:
+		logmsg(LOG_NOTICE, "terminated by signal: %d", do_kill);
+		break;
 	}
 }
 
@@ -987,16 +987,16 @@ void vpnc_doit(struct sa_block *s)
 	const char *pidfile = config[CONFIG_PID_FILE];
 
 	switch (s->ipsec.encap_mode) {
-		case IPSEC_ENCAP_TUNNEL:
-			encap_esp_new(&meth);
-			gcry_create_nonce(&s->ipsec.ip_id, sizeof(uint16_t));
-			break;
-		case IPSEC_ENCAP_UDP_TUNNEL:
-		case IPSEC_ENCAP_UDP_TUNNEL_OLD:
-			encap_udp_new(&meth);
-			break;
-		default:
-			abort();
+	case IPSEC_ENCAP_TUNNEL:
+		encap_esp_new(&meth);
+		gcry_create_nonce(&s->ipsec.ip_id, sizeof(uint16_t));
+		break;
+	case IPSEC_ENCAP_UDP_TUNNEL:
+	case IPSEC_ENCAP_UDP_TUNNEL_OLD:
+		encap_udp_new(&meth);
+		break;
+	default:
+		abort();
 	}
 	s->ipsec.em = &meth;
 

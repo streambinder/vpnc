@@ -16,7 +16,7 @@
    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
    $Id$
-*/
+ */
 
 #ifndef __CONFIG_H__
 #define __CONFIG_H__
@@ -105,37 +105,37 @@ extern enum natt_mode_enum opt_natt_mode;
 extern enum if_mode_enum opt_if_mode;
 extern uint16_t opt_udpencapport;
 
-#define TIMESTAMP() ({				\
-	char st[20];				\
-	time_t t;				\
-	struct tm *tm;				\
-	t = time(NULL);				\
-	tm = localtime(&t);			\
-	strftime(st, sizeof(st), "%F %T", tm);	\
-	st;					\
+#define TIMESTAMP() ({              \
+		char st[20];                \
+		time_t t;               \
+		struct tm *tm;              \
+		t = time(NULL);             \
+		tm = localtime(&t);         \
+		strftime(st, sizeof(st), "%F %T", tm);  \
+		st;                 \
 	})
 
-#define DEBUGTOP(LVL, COMMAND) do {			\
-		if (opt_debug >= (LVL)) {		\
-			printf("\n");			\
-			COMMAND;			\
-			printf(" [%s]\n", TIMESTAMP());	\
-		}					\
-	} while (0)
+#define DEBUGTOP(LVL, COMMAND) do {         \
+		if (opt_debug >= (LVL)) {       \
+			printf("\n");           \
+			COMMAND;            \
+			printf(" [%s]\n", TIMESTAMP()); \
+		}                   \
+} while (0)
 
-#define DEBUG(LVL, COMMAND) do {		\
-		if (opt_debug >= (LVL)) {	\
-			if (opt_debug > 1)	\
-				printf("   ");	\
-			COMMAND;		\
-		}				\
-	} while (0)
+#define DEBUG(LVL, COMMAND) do {        \
+		if (opt_debug >= (LVL)) {   \
+			if (opt_debug > 1)  \
+				printf("   ");  \
+			COMMAND;        \
+		}               \
+} while (0)
 
 extern void hex_dump(const char *str, const void *data, ssize_t len, const struct debug_strings *decode);
 extern void do_config(int argc, char **argv);
 extern char *vpnc_getpass(const char *prompt);
 
 extern void (*logmsg)(int priority, const char *format, ...)
-	__attribute__ ((__format__ (__printf__, 2, 3)));
+__attribute__ ((__format__ (__printf__, 2, 3)));
 
 #endif

@@ -13,7 +13,7 @@
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-*/
+ */
 
 #include <stdio.h>
 #include <sys/types.h>
@@ -136,7 +136,7 @@ int main(int argc, char *argv[])
 
 	if (size != dec_len) {
 		fprintf(stderr, "Error decrypting signature: unexpected "
-		        "decrypted size %zd (expected %zu)\n", size, dec_len);
+				"decrypted size %zd (expected %zu)\n", size, dec_len);
 		free(dec_data);
 		free(sig_data);
 		free(data);
@@ -145,7 +145,7 @@ int main(int argc, char *argv[])
 
 	if (memcmp(data, dec_data, dec_len)) {
 		fprintf(stderr, "Error decrypting signature: decrypted data did"
-		        " not match expected decrypted data\n");
+				" not match expected decrypted data\n");
 		free(dec_data);
 		free(sig_data);
 		free(data);

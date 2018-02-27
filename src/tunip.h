@@ -16,7 +16,7 @@
    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
    $Id$
-*/
+ */
 
 #ifndef __TUNIP_H__
 #define __TUNIP_H__
@@ -27,7 +27,7 @@
 #include <net/if.h>
 
 struct lifetime {
-	time_t   start;
+	time_t start;
 	uint32_t seconds;
 	uint32_t kbytes;
 	uint32_t rx;
@@ -51,7 +51,7 @@ struct ike_sa {
 
 struct encap_method; /* private to tunip.c */
 
-enum natt_active_mode_enum{
+enum natt_active_mode_enum {
 	NATT_ACTIVE_NONE,
 	NATT_ACTIVE_CISCO_UDP, /* isakmp and esp on different ports => never encap */
 	NATT_ACTIVE_DRAFT_OLD, /* as in natt-draft 0 and 1 */

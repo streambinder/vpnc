@@ -17,7 +17,7 @@
    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
    $Id$
-*/
+ */
 
 #include <assert.h>
 #include <stdlib.h>
@@ -266,7 +266,7 @@ void flatten_isakmp_packet(struct isakmp_packet *p, uint8_t ** result, size_t * 
 		if (padding == blksz)
 			padding = 0;
 		DEBUG(3, printf("size = %ld, blksz = %ld, padding = %ld\n",
-				(long)sz, (long)blksz, (long)padding));
+						(long)sz, (long)blksz, (long)padding));
 		flow_reserve(&f, padding);
 	}
 	f.base[lpos] = (f.end - f.base) >> 24;
@@ -275,7 +275,7 @@ void flatten_isakmp_packet(struct isakmp_packet *p, uint8_t ** result, size_t * 
 	f.base[lpos + 3] = (f.end - f.base);
 	*result = f.base;
 	*size = f.end - f.base;
-	 /*DUMP*/ if (opt_debug >= 3) {
+	/*DUMP*/ if (opt_debug >= 3) {
 		printf("\n sending: ========================>\n");
 		free_isakmp_packet(parse_isakmp_packet(f.base, f.end - f.base, NULL));
 	}
@@ -290,7 +290,7 @@ struct isakmp_attribute *new_isakmp_attribute(uint16_t type, struct isakmp_attri
 }
 
 struct isakmp_attribute *new_isakmp_attribute_16(uint16_t type, uint16_t data,
-	struct isakmp_attribute *next)
+												 struct isakmp_attribute *next)
 {
 	struct isakmp_attribute *r = xallocc(sizeof(struct isakmp_attribute));
 	r->next = next;
@@ -468,19 +468,19 @@ static const struct debug_strings *attr_val_to_debug_strings(enum isakmp_ipsec_p
 	}
 }
 
-#define fetch4()					\
-  (data += 4, data_len -= 4,				\
-   (uint32_t)(data[-4]) << 24 | (uint32_t)(data[-3]) << 16	\
-   | (uint32_t)(data[-2]) << 8 | data[-1])
-#define fetch2()				\
-  (data += 2, data_len -= 2,			\
-   (uint16_t)(data[-2]) << 8 | data[-1])
+#define fetch4()                    \
+	(data += 4, data_len -= 4,                \
+	 (uint32_t)(data[-4]) << 24 | (uint32_t)(data[-3]) << 16  \
+		| (uint32_t)(data[-2]) << 8 | data[-1])
+#define fetch2()                \
+	(data += 2, data_len -= 2,            \
+	 (uint16_t)(data[-2]) << 8 | data[-1])
 #define fetch1() (data_len--, *data++)
 #define fetchn(d,n)  \
-  (memcpy ((d), data, (n)), data += (n), data_len -= (n))
+	(memcpy ((d), data, (n)), data += (n), data_len -= (n))
 
 static struct isakmp_attribute *parse_isakmp_attributes(const uint8_t ** data_p,
-	size_t data_len, int * reject, enum isakmp_ipsec_proto_enum decode_proto)
+														size_t data_len, int * reject, enum isakmp_ipsec_proto_enum decode_proto)
 {
 	const uint8_t *data = *data_p;
 	struct isakmp_attribute *r;
@@ -506,7 +506,7 @@ static struct isakmp_attribute *parse_isakmp_attributes(const uint8_t ** data_p,
 			DEBUG(3, printf("(not dumping xauth data)\n"));
 		else
 			hex_dump("t.attributes.u.attr_16", &r->u.attr_16, DUMP_UINT16,
-				attr_val_to_debug_strings(decode_proto, r->type));
+					 attr_val_to_debug_strings(decode_proto, r->type));
 	} else {
 		r->type = type;
 		hex_dump("t.attributes.type", &r->type, DUMP_UINT16, attr_type_to_debug_strings(decode_proto));
@@ -564,7 +564,7 @@ static struct isakmp_attribute *parse_isakmp_attributes(const uint8_t ** data_p,
 }
 
 static struct isakmp_payload *parse_isakmp_payload(uint8_t type,
-	const uint8_t ** data_p, size_t * data_len_p, int * reject, enum isakmp_ipsec_proto_enum decode_proto)
+												   const uint8_t ** data_p, size_t * data_len_p, int * reject, enum isakmp_ipsec_proto_enum decode_proto)
 {
 	const uint8_t *data = *data_p, *tmpdata;
 	size_t data_len = *data_len_p;
@@ -656,7 +656,7 @@ static struct isakmp_payload *parse_isakmp_payload(uint8_t type,
 			hex_dump("p.spi", r->u.p.spi, r->u.p.spi_size, NULL);
 			length -= 8 + r->u.p.spi_size;
 			r->u.p.transforms = parse_isakmp_payload(ISAKMP_PAYLOAD_T,
-				&data, &length, reject, r->u.p.prot_id);
+													 &data, &length, reject, r->u.p.prot_id);
 			for (xform = r->u.p.transforms; xform; xform = xform->next)
 				if (num_xform-- == 0)
 					break;
@@ -746,7 +746,7 @@ static struct isakmp_payload *parse_isakmp_payload(uint8_t type,
 		if ((r->u.n.doi == ISAKMP_DOI_IPSEC)&&(r->u.n.type == ISAKMP_N_IPSEC_RESPONDER_LIFETIME)) {
 			tmpdata = r->u.n.data;
 			r->u.n.attributes = parse_isakmp_attributes(&tmpdata, r->u.n.data_length, reject,
-				r->u.n.protocol);
+														r->u.n.protocol);
 		}
 		break;
 	case ISAKMP_PAYLOAD_D:
@@ -783,7 +783,7 @@ static struct isakmp_payload *parse_isakmp_payload(uint8_t type,
 		hex_dump("modecfg.id", &r->u.modecfg.id, DUMP_UINT16, NULL);
 		length -= 8;
 		r->u.modecfg.attributes = parse_isakmp_attributes(&data, length, reject,
-			ISAKMP_IPSEC_PROTO_MODECFG); /* this "proto" is a hack for simplicity */
+														  ISAKMP_IPSEC_PROTO_MODECFG); /* this "proto" is a hack for simplicity */
 		data_len -= olength - 8;
 		break;
 
@@ -845,7 +845,7 @@ struct isakmp_packet *parse_isakmp_packet(const uint8_t * data, size_t data_len,
 	hex_dump("len", &isakmp_data_len, DUMP_UINT32, NULL);
 	if (o_data_len != isakmp_data_len) {
 		DEBUG(2, printf("isakmp length does not match packet length: isakmp = %lld != datalen = %lld\n",
-			(long long)isakmp_data_len, (long long)o_data_len));
+						(long long)isakmp_data_len, (long long)o_data_len));
 		reason = ISAKMP_N_UNEQUAL_PAYLOAD_LENGTHS;
 		goto error;
 	}
@@ -857,7 +857,7 @@ struct isakmp_packet *parse_isakmp_packet(const uint8_t * data, size_t data_len,
 	DEBUG(3, printf("PARSE_OK\n"));
 	return r;
 
-      error:
+error:
 	free_isakmp_packet(r);
 	if (reject)
 		*reject = reason;

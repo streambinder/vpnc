@@ -13,7 +13,7 @@
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-*/
+ */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -51,7 +51,7 @@ crypto_ctx *crypto_ctx_new(crypto_error **error)
 	if (!ctx->stack) {
 		crypto_ctx_free(ctx);
 		crypto_error_set(error, 1, ENOMEM,
-		                 "not enough memory for crypto certificate stack");
+						 "not enough memory for crypto certificate stack");
 		ctx = NULL;
 	}
 
@@ -72,8 +72,8 @@ void crypto_ctx_free(crypto_ctx *ctx)
 }
 
 unsigned char *crypto_read_cert(const char *path,
-                                size_t *out_len,
-                                crypto_error **error)
+								size_t *out_len,
+								crypto_error **error)
 {
 	gnutls_x509_crt_t cert;
 	unsigned char *data = NULL;
@@ -116,9 +116,9 @@ out:
 }
 
 int crypto_push_cert(crypto_ctx *ctx,
-                     const unsigned char *data,
-                     size_t len,
-                     crypto_error **error)
+					 const unsigned char *data,
+					 size_t len,
+					 crypto_error **error)
 {
 	gnutls_x509_crt_t cert;
 	gnutls_datum dt;
@@ -151,8 +151,8 @@ int crypto_push_cert(crypto_ctx *ctx,
 }
 
 static int verify_issuer(gnutls_x509_crt_t crt,
-                         gnutls_x509_crt_t issuer,
-                         crypto_error **error)
+						 gnutls_x509_crt_t issuer,
+						 crypto_error **error)
 {
 	unsigned int output;
 	time_t now = time (0);
@@ -187,16 +187,16 @@ static int verify_issuer(gnutls_x509_crt_t crt,
 }
 
 static int verify_last(gnutls_x509_crt_t crt,
-                       gnutls_x509_crt_t *ca_list,
-                       size_t ca_list_size,
-                       crypto_error **error)
+					   gnutls_x509_crt_t *ca_list,
+					   size_t ca_list_size,
+					   crypto_error **error)
 {
 	unsigned int output;
 	time_t now = time (0);
 
 	if (gnutls_x509_crt_verify (crt, ca_list, ca_list_size,
-	                            GNUTLS_VERIFY_ALLOW_X509_V1_CA_CRT,
-	                            &output) < 0) {
+								GNUTLS_VERIFY_ALLOW_X509_V1_CA_CRT,
+								&output) < 0) {
 		crypto_error_set(error, 1, 0, "failed to verify against CA list");
 		return 1;
 	}
@@ -262,8 +262,8 @@ out:
 }
 
 static gnutls_x509_crt_t *load_ca_list_file(const char *path,
-                                            size_t *out_list_size,
-                                            crypto_error **error)
+											size_t *out_list_size,
+											crypto_error **error)
 {
 	gnutls_x509_crt_t *list;
 	gnutls_datum dt = { NULL, 0 };
@@ -306,9 +306,9 @@ out:
 }
 
 int crypto_verify_chain(crypto_ctx *ctx,
-                        const char *ca_file,
-                        const char *ca_dir,
-                        crypto_error **error)
+						const char *ca_file,
+						const char *ca_dir,
+						crypto_error **error)
 {
 	int err, i, ret = 1, start = 0;
 	gnutls_x509_crt_t *ca_list = NULL;
@@ -357,9 +357,9 @@ out:
 }
 
 static unsigned char *check_pkcs1_padding(unsigned char* from,
-                                          size_t from_len,
-                                          size_t *out_len,
-                                          crypto_error **error)
+										  size_t from_len,
+										  size_t *out_len,
+										  crypto_error **error)
 {
 	int i = 0;
 	unsigned char *rec_hash = NULL;
@@ -401,11 +401,11 @@ out:
 
 
 unsigned char *crypto_decrypt_signature(crypto_ctx *ctx,
-                                        const unsigned char *sig_data,
-                                        size_t sig_len,
-                                        size_t *out_len,
-                                        unsigned int padding,
-                                        crypto_error **error)
+										const unsigned char *sig_data,
+										size_t sig_len,
+										size_t *out_len,
+										unsigned int padding,
+										crypto_error **error)
 {
 	unsigned char *buf = NULL, *rec_hash = NULL;
 	gnutls_datum_t n = { NULL, 0 }, e = { NULL, 0 };
