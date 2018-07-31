@@ -1067,6 +1067,7 @@ void vpnc_doit(struct sa_block *s)
 	struct encap_method meth;
 
 	const char *pidfile = config[CONFIG_PID_FILE];
+	const char *cwd;
 
 	switch (s->ipsec.encap_mode) {
 	case IPSEC_ENCAP_TUNNEL:
@@ -1120,6 +1121,8 @@ void vpnc_doit(struct sa_block *s)
 	signal(SIGINT, killit);
 	signal(SIGTERM, killit);
 
+	/* save cwd */
+	cwd = get_current_dir_name();
 	chdir("/");
 
 	if (!opt_nd) {
@@ -1148,6 +1151,10 @@ void vpnc_doit(struct sa_block *s)
 	write_pidfile(pidfile);
 
 	vpnc_main_loop(s);
+
+	/* restore cwd */
+	chdir(cwd);
+	free(cwd);
 
 	if (pidfile)
 		unlink(pidfile); /* ignore errors */
