@@ -451,8 +451,14 @@ static void encap_esp_send_peer(struct sa_block *s, unsigned char *buf, unsigned
 static void encap_udp_send_peer(struct sa_block *s, unsigned char *buf, unsigned int bufsize)
 {
 	ssize_t sent;
+	struct ip *tip;
+	uint8_t tos;
 
 	buf += MAX_HEADER;
+
+	/* get the TOS value of the original frame */
+	tip = (struct ip *)buf;
+	tos = (bufsize < sizeof(struct ip)) ? 0 : tip->ip_tos;
 
 	s->ipsec.tx.buf = buf;
 	s->ipsec.tx.buflen = bufsize;
@@ -471,6 +477,15 @@ static void encap_udp_send_peer(struct sa_block *s, unsigned char *buf, unsigned
 		s->ipsec.tx.buf -= 8;
 		s->ipsec.tx.buflen += 8;
 		memset(s->ipsec.tx.buf, 0, 8);
+	}
+
+	/* set outer TOS header to the one of the original frame */
+	/* but only if it differs from the already set TOS */
+	if (tos != s->ipsec.current_udp_tos) {
+		if (setsockopt(s->esp_fd, IPPROTO_IP, IP_TOS,  &tos, sizeof(tos))) {
+			logmsg(LOG_ERR, "udp setsockopt: %m");
+		}
+		s->ipsec.current_udp_tos = tos;
 	}
 
 	sent = send(s->esp_fd, s->ipsec.tx.buf, s->ipsec.tx.buflen, 0);
@@ -862,10 +877,32 @@ static void vpnc_main_loop(struct sa_block *s)
 	uint8_t *keepalive;
 	size_t keepalive_size;
 
+	/* the below code had keepalive_v2 for NATT_ACTIVE_RFC  [FIXME]
+	 * however, ASA 9.4(1) produced 
+	 * [IKEv1]: IKE Receiver: Runt ISAKMP packet discarded on Port 4500 from ip:port
+	 * according to RFC 3948, the keepalive should be 0xFF
+	 *
+	 *	2.3.  NAT-Keepalive Packet Format
+	 *
+	 *	    0                   1                   2                   3
+	 *	    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+	 *	   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	 *	   |        Source Port            |      Destination Port         |
+	 *	   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	 *	   |           Length              |           Checksum            |
+	 *	   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	 *	   |    0xFF       |
+	 *	   +-+-+-+-+-+-+-+-+
+	 *
+	 */
+
 	if (s->ipsec.natt_active_mode == NATT_ACTIVE_DRAFT_OLD) {
 		keepalive = keepalive_v1;
 		keepalive_size = sizeof(keepalive_v1);
-	} else { /* active_mode is either RFC or CISCO_UDP */
+	} else if (s->ipsec.natt_active_mode == NATT_ACTIVE_RFC) {
+		keepalive = keepalive_v1;
+		keepalive_size = sizeof(keepalive_v1);
+	} else { /* active_mode is CISCO_UDP */
 		keepalive = keepalive_v2;
 		keepalive_size = sizeof(keepalive_v2);
 	}
@@ -941,6 +978,7 @@ static void vpnc_main_loop(struct sa_block *s)
 						keepalive_ike(s);
 					}
 					/* send nat keepalive packet */
+					DEBUG(3,printf("keepalive %d\n", (int)keepalive_size));
 					if (send(s->esp_fd, keepalive, keepalive_size, 0) == -1) {
 						logmsg(LOG_ERR, "keepalive sendto: %m");
 					}
@@ -960,12 +998,26 @@ static void vpnc_main_loop(struct sa_block *s)
 					}
 				}
 			}
-			DEBUG(2,printf("lifetime status: %ld of %u seconds used, %u|%u of %u kbytes used\n",
+			DEBUG(2,printf("lifetime status: %ld of %u seconds used, %u|%u of %u kbytes used, ike: %ld of %u seconds used\n",
 						   time(NULL) - s->ipsec.life.start,
 						   s->ipsec.life.seconds,
 						   s->ipsec.life.rx/1024,
 						   s->ipsec.life.tx/1024,
-						   s->ipsec.life.kbytes));
+				s->ipsec.life.kbytes,
+				time(NULL) - s->ike.life.start,
+				s->ike.life.seconds));
+
+			if (timed_mode) {
+				time_t now = time(NULL);
+
+				/* start rekey at 80% of lifetime */
+				if ((now - s->ike.life.start) + ((s->ike.life.seconds*20)/100) > s->ike.life.seconds) {
+					DEBUG(3,printf("starting phase1 rekey at %d s\n", s->ike.life.seconds));
+					rekey_phase1(s);
+				}
+			}
+
+
 		} while ((presult == 0 || (presult == -1 && errno == EINTR)) && !do_kill);
 		if (presult == -1) {
 			logmsg(LOG_ERR, "select: %m");

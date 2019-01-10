@@ -121,6 +121,7 @@ struct sa_block {
 		struct ike_sa rx, tx;
 		struct encap_method *em;
 		uint16_t ip_id;
+		uint8_t current_udp_tos;
 	} ipsec;
 };
 
