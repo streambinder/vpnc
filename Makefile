@@ -124,7 +124,7 @@ test : all
 dist : VERSION vpnc.8 vpnc-$(RELEASE_VERSION).tar.gz
 
 clean :
-	-rm -f $(OBJS) $(BINOBJS) $(BINS) tags src/cisco-decrypt.o  src/test-crypto.o  src/vpnc.o
+	-rm -rf $(OBJS) $(BINOBJS) $(BINFLDR) tags src/cisco-decrypt.o  src/test-crypto.o  src/vpnc.o
 
 distclean : clean
 	-rm -f src/vpnc-debug.c src/vpnc-debug.h src/vpnc.ps src/vpnc.8 src/.depend
