@@ -57,6 +57,7 @@ OBJS = $(addsuffix .o,$(basename $(SRCS)))
 CRYPTO_OBJS = $(addsuffix .o,$(basename $(CRYPTO_SRCS)))
 BINOBJS = $(addsuffix .o,$(BINS))
 BINSRCS = $(addsuffix .c,$(BINS))
+BINFLDR = bin
 VERSION := $(shell sh src/mk-version)
 RELEASE_VERSION := $(shell cat VERSION)
 
@@ -76,19 +77,22 @@ ifneq (,$(findstring Apple,$(shell $(CC) --version)))
 CFLAGS += -fstrict-aliasing -freorder-blocks -fsched-interblock
 endif
 
-all : $(BINS) vpnc.8
+all : $(BINFLDR) $(BINS) vpnc.8
+
+bin :
+	mkdir $@
 
 vpnc : $(OBJS) src/vpnc.o
-	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
+	$(CC) $(LDFLAGS) -o bin/$@ $^ $(LIBS)
 
 vpnc.8 : src/vpnc.8.template src/makeman.pl vpnc
 	./src/makeman.pl
 
 cisco-decrypt : src/cisco-decrypt.o src/decrypt-utils.o
-	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
+	$(CC) $(LDFLAGS) -o bin/$@ $^ $(LIBS)
 
 test-crypto : src/sysdep.o src/test-crypto.o src/crypto.o $(CRYPTO_OBJS)
-	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
+	$(CC) $(LDFLAGS) -o bin/$@ $^ $(LIBS)
 
 .depend: $(SRCS) $(BINSRCS)
 	$(CC) -MM $(SRCS) $(BINSRCS) $(CFLAGS) $(CPPFLAGS) > $@
@@ -114,7 +118,7 @@ vpnc-%.tar.gz :
 	rm -rf vpnc-$*
 
 test : all
-	./src/test-crypto test/sig_data.bin test/dec_data.bin test/ca_list.pem \
+	./bin/test-crypto test/sig_data.bin test/dec_data.bin test/ca_list.pem \
 		test/cert3.pem test/cert2.pem test/cert1.pem test/cert0.pem
 
 dist : VERSION vpnc.8 vpnc-$(RELEASE_VERSION).tar.gz
