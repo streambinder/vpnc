@@ -1,3 +1,4 @@
 bin/
+src/vpnc-debug.*
 *.o
 *.8
