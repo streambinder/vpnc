@@ -4,13 +4,19 @@
 
 VPNC is a VPN client compatible with Cisco's EasyVPN equipment. It supports IPSec (ESP) with Mode Configuration and Xauth. Supports only shared-secret IPSec authentication with Xauth, AES (256, 192, 128), 3DES, 1DES, MD5, SHA1, DH1/2/5 and IP tunneling. It runs entirely in userspace. Only "Universal TUN/TAP device driver support" is needed in kernel.
 
-This repository has been forked to follow works started originally by Maurice Massar. For more informations, please, point to [VPNC original web page](http://www.unix-ag.uni-kl.de/~massar/vpnc/).
+### Development status
+
+This repository has been forked to follow works started originally by Maurice Massar. For more informations about that, please, point to [VPNC original web page](http://www.unix-ag.uni-kl.de/~massar/vpnc/).
+
+As stated in `vpnc-devel` mailing-list ([vpnc-devel@2017-November](http://lists.unix-ag.uni-kl.de/pipermail/vpnc-devel/2017-November/004233.html)), this repository hasn't been started to start working actively on this project, but to passively merge security patches, fixes and features additions (that haven't been included in Massar's original project due to its maintenance maintenance) explicitly requested by the community.
+
+**This means I won't even consider issues such as `Please, implement this`, or `Look at that, maybe you can find ideas and fixes`, but I will if requested via explicit PRs and/or issues pointing to a (or many) specific patch**.
 
 ## General configuration
 
 Few libraries are required to let VPNC work properly:
 
-- `libgcrypt` (ersion: `1.1.90+`)
+- `libgcrypt` (version: `1.1.90+`)
 - `libopenssl` (optional, needed to provide hybrid support)
 
 Configuration data gets read from:
@@ -21,7 +27,7 @@ Configuration data gets read from:
 - `/etc/vpnc.conf`, if no config file was given on the command line
 - output prompt, if a settings can't get loaded from any of those places above
 
-Essential configuration informations (both with key name for specifying option via command line or config file) it currently needs is:
+Essential configuration informations (both with key name for specifying option via command line or config file) it currently needs are:
 
 Input option | File option
 ------------ | ----------------
@@ -45,7 +51,7 @@ Note that all strings start exactly one space after the keyword string, and run 
 
 It may be easier to use the `--print-config` option to generate the config file, and then delete any lines (like a password) that you want to be prompted for.
 
-If you don't know the Group ID and Secret string, ask your administrator. If (s)he declines and refers to the configuration files provided for the vpnclient program, tell him/her that the contents of that files is (though scrambled) not really protected. If you have a working configuration file (`.pcf` file) for the Cisco client then you can use the `pcf2vpnc` utility instead, which will extract most/all of the required information and convert it into a vpnc configuration file.
+If you don't know the Group ID and Secret string, ask your administrator. If (s)he declines and refers to the configuration files provided for the vpnclient program, tell him/her that the contents of that files are (though scrambled) not really protected. If you have a working configuration file (`.pcf` file) for the Cisco client then you can use the `pcf2vpnc` utility instead, which will extract most/all of the required information and convert it into a vpnc configuration file.
 
 ## Using a modified script
 
