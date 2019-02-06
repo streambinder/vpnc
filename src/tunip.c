@@ -530,20 +530,24 @@ static int encap_esp_validate_seqid(struct sa_block *s, uint32_t seq_id)
 			   "Discarding ancient ESP packet with seq %u (expected %u)\n",
 			   seq_id, s->ipsec.rx.seq_id);
 		return -EINVAL;
+	} else if (seq_id == s->ipsec.rx.seq_id - 1) {
+		/* This is a repeat of the latest packet we already received. */
+replayed:
+		logmsg(LOG_NOTICE,
+				"Discarding replayed ESP packet with seq %u\n", seq_id);
+		return -EINVAL;
 	} else if (seq_id < s->ipsec.rx.seq_id) {
 		/* Within the backlog window, so we remember whether we've seen it or not. */
 		uint32_t mask = 1 << (s->ipsec.rx.seq_id - seq_id - 2);
 
-		if (s->ipsec.rx.seq_backlog & mask) {
-			logmsg(LOG_DEBUG,
-				   "Accepting out-of-order ESP packet with seq %u (expected %u)\n",
-				   seq_id, s->ipsec.rx.seq_id);
-			s->ipsec.rx.seq_backlog &= ~mask;
-			return 0;
+		if (!(s->ipsec.rx.seq_backlog & mask)) {
+			goto replayed;
 		}
-		logmsg(LOG_NOTICE,
-			   "Discarding replayed ESP packet with seq %u\n", seq_id);
-		return -EINVAL;
+		logmsg(LOG_DEBUG,
+			   "Accepting out-of-order ESP packet with seq %u (expected %u)\n",
+			   seq_id, s->ipsec.rx.seq_id);
+		s->ipsec.rx.seq_backlog &= ~mask;
+		return 0;
 	} else {
 		/* The packet we were expecting has gone missing; this one is newer. */
 		int delta = seq_id - s->ipsec.rx.seq_id;
