@@ -132,26 +132,26 @@ distclean : clean
 install-common: all
 	install -d $(DESTDIR)$(ETCDIR) $(DESTDIR)$(BINDIR) $(DESTDIR)$(SBINDIR) $(DESTDIR)$(MANDIR)/man1 $(DESTDIR)$(MANDIR)/man8 $(DESTDIR)$(DOCDIR)
 	if [ "`uname -s | cut -c-6`" = "CYGWIN" ]; then \
-		install vpnc-script-win $(DESTDIR)$(ETCDIR)/vpnc-script; \
-		install vpnc-script-win.js $(DESTDIR)$(ETCDIR); \
+		install src/vpnc-script-win $(DESTDIR)$(ETCDIR)/vpnc-script; \
+		install src/vpnc-script-win.js $(DESTDIR)$(ETCDIR); \
 	else \
-		install vpnc-script $(DESTDIR)$(ETCDIR); \
+		install src/vpnc-script $(DESTDIR)$(ETCDIR); \
 	fi
-	install -m600 vpnc.conf $(DESTDIR)$(ETCDIR)/default.conf
-	install -m755 vpnc-disconnect $(DESTDIR)$(SBINDIR)
-	install -m755 pcf2vpnc $(DESTDIR)$(BINDIR)
-	install -m644 vpnc.8 $(DESTDIR)$(MANDIR)/man8
-	install -m644 pcf2vpnc.1 $(DESTDIR)$(MANDIR)/man1
-	install -m644 cisco-decrypt.1 $(DESTDIR)$(MANDIR)/man1
-	install -m644 COPYING $(DESTDIR)$(DOCDIR)
+	install -m600 src/vpnc.conf $(DESTDIR)$(ETCDIR)/default.conf
+	install -m755 src/vpnc-disconnect $(DESTDIR)$(SBINDIR)
+	install -m755 src/pcf2vpnc $(DESTDIR)$(BINDIR)
+	install -m644 src/vpnc.8 $(DESTDIR)$(MANDIR)/man8
+	install -m644 src/pcf2vpnc.1 $(DESTDIR)$(MANDIR)/man1
+	install -m644 src/cisco-decrypt.1 $(DESTDIR)$(MANDIR)/man1
+	install -m644 LICENSE $(DESTDIR)$(DOCDIR)
 
 install : install-common
-	install -m755 vpnc $(DESTDIR)$(SBINDIR)
-	install -m755 cisco-decrypt $(DESTDIR)$(BINDIR)
+	install -m755 bin/vpnc $(DESTDIR)$(SBINDIR)
+	install -m755 bin/cisco-decrypt $(DESTDIR)$(BINDIR)
 
 install-strip : install-common
-	install -s -m755 vpnc $(DESTDIR)$(SBINDIR)
-	install -s -m755 cisco-decrypt $(DESTDIR)$(BINDIR)
+	install -s -m755 bin/vpnc $(DESTDIR)$(SBINDIR)
+	install -s -m755 bin/cisco-decrypt $(DESTDIR)$(BINDIR)
 
 uninstall :
 	rm -f $(DESTDIR)$(SBINDIR)/vpnc \
