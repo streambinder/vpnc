@@ -521,20 +521,18 @@ static int encap_esp_validate_seqid(struct sa_block *s, uint32_t seq_id)
 		/* The common case. This is the packet we expected next. */
 		s->ipsec.rx.seq_backlog <<= 1;
 		s->ipsec.rx.seq_id++;
-		logmsg(LOG_DEBUG, "Accepting expected ESP packet with seq %u\n",
-			   seq_id);
+		DEBUG(3, printf("Accepting expected ESP packet with seq %u\n",
+			   seq_id));
 		return 0;
 	} else if (seq_id + 33 < s->ipsec.rx.seq_id) {
 		/* Too old. We can't know if it's a replay. */
-		logmsg(LOG_NOTICE,
-			   "Discarding ancient ESP packet with seq %u (expected %u)\n",
-			   seq_id, s->ipsec.rx.seq_id);
+		DEBUG(2, printf("Discarding ancient ESP packet with seq %u (expected %u)\n",
+			   seq_id, s->ipsec.rx.seq_id));
 		return -EINVAL;
 	} else if (seq_id == s->ipsec.rx.seq_id - 1) {
 		/* This is a repeat of the latest packet we already received. */
 replayed:
-		logmsg(LOG_NOTICE,
-				"Discarding replayed ESP packet with seq %u\n", seq_id);
+		DEBUG(2, printf("Discarding replayed ESP packet with seq %u\n", seq_id));
 		return -EINVAL;
 	} else if (seq_id < s->ipsec.rx.seq_id) {
 		/* Within the backlog window, so we remember whether we've seen it or not. */
@@ -543,9 +541,8 @@ replayed:
 		if (!(s->ipsec.rx.seq_backlog & mask)) {
 			goto replayed;
 		}
-		logmsg(LOG_DEBUG,
-			   "Accepting out-of-order ESP packet with seq %u (expected %u)\n",
-			   seq_id, s->ipsec.rx.seq_id);
+		DEBUG(3, printf("Accepting out-of-order ESP packet with seq %u (expected %u)\n",
+			   seq_id, s->ipsec.rx.seq_id));
 		s->ipsec.rx.seq_backlog &= ~mask;
 		return 0;
 	} else {
@@ -573,9 +570,8 @@ replayed:
 			s->ipsec.rx.seq_backlog <<= delta + 1;
 			s->ipsec.rx.seq_backlog |= (1<<delta) - 1;
 		}
-		logmsg(LOG_DEBUG,
-			   "Accepting later-than-expected ESP packet with seq %u (expected %u)\n",
-			   seq_id, s->ipsec.rx.seq_id);
+		DEBUG(3, printf("Accepting later-than-expected ESP packet with seq %u (expected %u)\n",
+			   seq_id, s->ipsec.rx.seq_id));
 		s->ipsec.rx.seq_id = seq_id + 1;
 		return 0;
 	}
