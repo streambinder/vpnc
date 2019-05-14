@@ -1126,7 +1126,7 @@ void vpnc_doit(struct sa_block *s)
 	struct encap_method meth;
 
 	const char *pidfile = config[CONFIG_PID_FILE];
-	const char *cwd;
+	char *cwd;
 
 	switch (s->ipsec.encap_mode) {
 	case IPSEC_ENCAP_TUNNEL:
