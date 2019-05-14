@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <syslog.h>
 #include <termios.h>
 #include <unistd.h>
 #include <string.h>
@@ -66,18 +67,23 @@ static void rand_str(char *dest, size_t length) {
 	*dest = '\0';
 }
 
-static void log_to_stderr(int priority __attribute__((unused)), const char *format, ...)
+extern void logmsg(int priority, const char *format, ...)
 {
-	va_list ap;
+	if (opt_debug == 0 && priority == LOG_DEBUG) {
+		return;
+	}
 
-	fprintf(stderr, "vpnc: ");
+	va_list ap;
 	va_start(ap, format);
-	vfprintf(stderr, format, ap);
-	fprintf(stderr, "\n");
+	if (!opt_nd) {
+		syslog(priority, format, ap);
+	} else {
+		fprintf(stderr, "vpnc: ");
+		vfprintf(stderr, format, ap);
+		fprintf(stderr, "\n");
+	}
 	va_end(ap);
 }
-
-void (*logmsg)(int priority, const char *format, ...) = log_to_stderr;
 
 
 void hex_dump(const char *str, const void *data, ssize_t len, const struct debug_strings *decode)
