@@ -1200,7 +1200,6 @@ void vpnc_doit(struct sa_block *s)
 			_exit(0);
 		}
 		openlog("vpnc", LOG_PID | LOG_PERROR, LOG_DAEMON);
-		logmsg = syslog;
 	} else {
 		printf("VPNC started in foreground...\n");
 	}

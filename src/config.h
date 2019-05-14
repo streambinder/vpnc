@@ -135,7 +135,7 @@ extern void hex_dump(const char *str, const void *data, ssize_t len, const struc
 extern void do_config(int argc, char **argv);
 extern char *vpnc_getpass(const char *prompt);
 
-extern void (*logmsg)(int priority, const char *format, ...)
+extern void logmsg(int priority, const char *format, ...)
 __attribute__ ((__format__ (__printf__, 2, 3)));
 
 #endif
