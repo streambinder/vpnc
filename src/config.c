@@ -76,7 +76,7 @@ extern void logmsg(int priority, const char *format, ...)
 	va_list ap;
 	va_start(ap, format);
 	if (!opt_nd) {
-		syslog(priority, format, ap);
+		vsyslog(priority, format, ap);
 	} else {
 		fprintf(stderr, "vpnc: ");
 		vfprintf(stderr, format, ap);
