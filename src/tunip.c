@@ -53,6 +53,9 @@
  *
  */
 
+/* get_current_dir_name() is a GNU extension */
+#define _GNU_SOURCE
+
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <errno.h>
@@ -1123,7 +1126,7 @@ void vpnc_doit(struct sa_block *s)
 	struct encap_method meth;
 
 	const char *pidfile = config[CONFIG_PID_FILE];
-	const char *cwd;
+	char *cwd;
 
 	switch (s->ipsec.encap_mode) {
 	case IPSEC_ENCAP_TUNNEL:
