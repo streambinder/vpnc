@@ -53,6 +53,9 @@
  *
  */
 
+/* get_current_dir_name() is a GNU extension */
+#define _GNU_SOURCE
+
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <errno.h>
