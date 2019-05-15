@@ -80,7 +80,7 @@ endif
 all : $(BINFLDR) $(BINS) vpnc.8
 
 bin :
-	mkdir $@
+	@mkdir $@
 
 vpnc : $(OBJS) src/vpnc.o
 	$(CC) $(LDFLAGS) -o bin/$@ $^ $(LIBS)
@@ -111,7 +111,7 @@ ctags :
 	ctags *.[ch]
 
 vpnc-%.tar.gz :
-	mkdir vpnc-$*
+	@mkdir vpnc-$*
 	LC_ALL=C svn info -R | awk -v RS='' -v FS='\n' '/Node Kind: file/ {print substr($$1,7)}' | \
 		tar -cf - -T - | tar -xf - -C vpnc-$*/
 	tar -czf ../$@ vpnc-$*
