@@ -444,8 +444,10 @@ int tun_open(char *dev, enum if_mode_enum mode)
 
 	memset(&ifr, 0, sizeof(ifr));
 	ifr.ifr_flags = ((mode == IF_MODE_TUN) ? IFF_TUN : IFF_TAP) | IFF_NO_PI;
-	if (*dev)
-		strncpy(ifr.ifr_name, dev, IFNAMSIZ);
+	if (*dev) {
+		unsigned int memlen = strnlen(dev, IFNAMSIZ - 1);
+		memcpy(ifr.ifr_name, dev, memlen + 1);
+	}
 
 	if ((err = ioctl(fd, TUNSETIFF, (void *)&ifr)) < 0) {
 		close(fd);
@@ -508,15 +510,15 @@ int tun_close(int fd, char *dev)
 	return 0;
 }
 #elif defined(__CYGWIN__)
-int tun_close(int fd, char *dev)
+int tun_close(int fd, char *dev __attribute__((unused)))
 {
 	dev = NULL; /* unused */
 	return CloseHandle((HANDLE) get_osfhandle(fd));
 }
 #else
-int tun_close(int fd, char *dev)
+int tun_close(int fd, char *dev __attribute__((unused)))
 {
-	dev = NULL; /*unused */
+	dev = NULL; /* unused */
 	return close(fd);
 }
 #endif
@@ -674,8 +676,9 @@ int tun_get_hwaddr(int fd, char *dev, uint8_t *hwaddr)
 		return -1;
 	}
 
+	unsigned int memlen = strnlen(dev, IFNAMSIZ - 1);
 	memset(&ifr, 0, sizeof(struct ifreq));
-	strncpy(ifr.ifr_name, dev, IFNAMSIZ);
+	memcpy(ifr.ifr_name, dev, memlen + 1);
 
 	if (ioctl(fd, SIOCGIFHWADDR, &ifr) < 0) {
 		return -1;

@@ -77,7 +77,7 @@ unsigned char *crypto_read_cert(const char *path,
 {
 	gnutls_x509_crt_t cert;
 	unsigned char *data = NULL;
-	gnutls_datum dt;
+	gnutls_datum_t dt;
 	size_t fsize = 0;
 	int err;
 
@@ -121,7 +121,7 @@ int crypto_push_cert(crypto_ctx *ctx,
 					 crypto_error **error)
 {
 	gnutls_x509_crt_t cert;
-	gnutls_datum dt;
+	gnutls_datum_t dt;
 	int err;
 
 	if (!ctx || !data || (len <= 0)) {
@@ -225,7 +225,7 @@ static gnutls_x509_crt_t *load_one_ca_file(const char *path, crypto_error **erro
 {
 	gnutls_x509_crt_t *list = NULL;
 	gnutls_x509_crt_t cert;
-	gnutls_datum dt;
+	gnutls_datum_t dt;
 	size_t fsize = 0;
 	int err;
 
@@ -266,7 +266,7 @@ static gnutls_x509_crt_t *load_ca_list_file(const char *path,
 											crypto_error **error)
 {
 	gnutls_x509_crt_t *list;
-	gnutls_datum dt = { NULL, 0 };
+	gnutls_datum_t dt = { NULL, 0 };
 	size_t fsize = 0;
 	int err;
 	unsigned int num = 200;

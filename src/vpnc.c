@@ -845,7 +845,7 @@ static void send_delete_ipsec(struct sa_block *s)
 	}
 }
 
-static void send_delete_isakmp_cookie(struct sa_block *s, uint8_t *i_cookie, uint8_t *r_cookie)
+static void send_delete_isakmp_cookie(struct sa_block *s, uint8_t *i_cookie __attribute__((unused)), uint8_t *r_cookie __attribute__((unused)))
 {
 	DEBUGTOP(2, printf("S7.11 send isakmp termination message\n"));
 	{
@@ -1861,9 +1861,11 @@ static void do_phase1_am_packet2(struct sa_block *s, const char *shared_key)
 			static const unsigned char c012[3] = { 0, 1, 2 };
 			unsigned char *skeyid_e;
 			unsigned char *dh_shared_secret;
+			unsigned int dh_len;
 
 			/* Determine the shared secret.  */
-			dh_shared_secret = xallocc(dh_getlen(s->ike.dh_grp));
+			dh_len = dh_getlen(s->ike.dh_grp);
+			dh_shared_secret = xallocc(dh_len);
 			dh_create_shared(s->ike.dh_grp, dh_shared_secret, ke->u.ke.data);
 			hex_dump("dh_shared_secret", dh_shared_secret, dh_getlen(s->ike.dh_grp), NULL);
 
@@ -1907,7 +1909,7 @@ static void do_phase1_am_packet2(struct sa_block *s, const char *shared_key)
 			gcry_md_close(hm);
 			hex_dump("skeyid_e", skeyid_e, s->ike.md_len, NULL);
 
-			memset(dh_shared_secret, 0, sizeof(dh_shared_secret));
+			memset(dh_shared_secret, 0, dh_len);
 			free(dh_shared_secret);
 
 			/* Determine the IKE encryption key.  */

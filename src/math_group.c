@@ -240,23 +240,14 @@ static void modp_getraw(struct group *grp, gcry_mpi_t v, unsigned char *d)
 {
 	size_t l, l2;
 	unsigned char *tmp;
-	int ret;
 
 	l = grp->getlen(grp);
-	ret = gcry_mpi_aprint(GCRYMPI_FMT_STD, &tmp, &l2, v);
+	gcry_mpi_aprint(GCRYMPI_FMT_STD, &tmp, &l2, v);
 	memcpy(d, tmp + (l2 - l), l);
 	gcry_free(tmp);
-#if 0
-	{
-		char *p;
-		gcry_mpi_aprint(GCRYMPI_FMT_HEX, (void **)&p, NULL, v);
-		printf("export %d - %d(%d):\n%s\n", l, l2, ret, p);
-		gcry_free(p);
-	}
-#endif
 }
 
-static int modp_setraw(struct group *grp, gcry_mpi_t d, unsigned char *s, int l)
+static int modp_setraw(struct group *grp __attribute__((unused)), gcry_mpi_t d, unsigned char *s, int l)
 {
 	int i;
 
@@ -267,14 +258,7 @@ static int modp_setraw(struct group *grp, gcry_mpi_t d, unsigned char *s, int l)
 		gcry_mpi_mul_2exp(d, d, 8);
 		gcry_mpi_add_ui(d, d, s[i]);
 	}
-#if 0
-	{
-		char *p;
-		gcry_mpi_aprint(GCRYMPI_FMT_HEX, (void **)&p, NULL, d);
-		printf("import %d:\n%s\n", l, p);
-		gcry_free(p);
-	}
-#endif
+	
 	return 0;
 }
 

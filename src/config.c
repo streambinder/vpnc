@@ -189,7 +189,7 @@ static char *vpnc_getpass_program(const char *prompt)
 	int status, r, i;
 	pid_t pid;
 	int fds[2] = {-1, -1};
-	char *pass;
+	char *pass = NULL;
 	ssize_t bytes;
 
 	if (pipe(fds) == -1)
@@ -673,7 +673,7 @@ static const struct config_names_s {
 		"path to password program or helper name\n",
 		NULL
 	}, {
-		0, 0, 0, NULL, NULL, NULL, NULL, NULL
+		0, 0, 0, 0, NULL, NULL, NULL, NULL, NULL
 	}
 };
 
