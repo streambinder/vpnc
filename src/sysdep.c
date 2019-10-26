@@ -59,6 +59,10 @@
 #if defined(__DragonFly__)
 #include <net/tun/if_tun.h>
 #elif defined(__linux__)
+# if !defined(__GLIBC__) && !defined(__UCLIBC__)
+#  define _LINUX_IF_ETHER_H
+#  include <net/ethernet.h>
+# endif
 #include <linux/if_tun.h>
 #elif defined(__APPLE__)
 /* no header for tun */

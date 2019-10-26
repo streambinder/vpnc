@@ -37,12 +37,14 @@ int tun_read(int fd, unsigned char *buf, int len);
 int tun_get_hwaddr(int fd, char *dev, uint8_t *hwaddr);
 
 /***************************************************************************/
-#if defined(__linux__) || defined(__GLIBC__)
+#if defined(__GLIBC__) || defined(__UCLIBC__)
 #include <error.h>
+#define HAVE_ERROR     1
+#endif
 
+#if defined(__linux__) || defined(__GLIBC__)
 #define HAVE_VASPRINTF 1
 #define HAVE_ASPRINTF  1
-#define HAVE_ERROR     1
 #define HAVE_UNSETENV  1
 #define HAVE_SETENV    1
 #endif

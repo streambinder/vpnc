@@ -29,6 +29,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <errno.h>
+#include <sys/ttydefaults.h>
 #include <sys/types.h>
 #include <sys/utsname.h>
 #include <sys/wait.h>
