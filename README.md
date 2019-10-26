@@ -8,7 +8,7 @@ VPNC is a VPN client compatible with Cisco's EasyVPN equipment. It supports IPSe
 
 This repository has been forked to follow works started originally by Maurice Massar. For more informations about that, please, point to [VPNC original web page](http://www.unix-ag.uni-kl.de/~massar/vpnc/).
 
-As stated in `vpnc-devel` mailing-list ([vpnc-devel@2017-November](http://lists.unix-ag.uni-kl.de/pipermail/vpnc-devel/2017-November/004233.html)), this repository hasn't been started to start working actively on this project, but to passively merge security patches, fixes and features additions (that haven't been included in Massar's original project due to its maintenance maintenance) explicitly requested by the community.
+As stated in `vpnc-devel` mailing-list ([vpnc-devel@2017-November](http://lists.unix-ag.uni-kl.de/pipermail/vpnc-devel/2017-November/004233.html)), this repository hasn't been started to start working actively on this project, but to passively merge security patches, fixes and features additions explicitly requested by the community.
 
 **This means I won't even consider issues such as `Please, implement this`, or `Look at that, maybe you can find ideas and fixes`, but I will if requested via explicit PRs and/or issues pointing to a (or many) specific patch**.
 
