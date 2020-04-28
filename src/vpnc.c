@@ -1211,8 +1211,17 @@ static void lifetime_ike_process(struct sa_block *s, struct isakmp_attribute *a)
 	assert(a->af == isakmp_attr_16);
 	assert(a->u.attr_16 == IKE_LIFE_TYPE_SECONDS || a->u.attr_16 == IKE_LIFE_TYPE_K);
 	assert(a->next != NULL);
-	if (opt_vendor != VENDOR_FORTIGATE)
-		assert(a->next->type == IKE_ATTRIB_LIFE_DURATION);
+
+	/*
+	 * Workaround for broken RESPONDER_LIFETIME payload from Fortigate
+	 * firewall. If the next attribute is not the LIFE_DURATION, then
+	 * just ignore this payload and move on.
+	 */
+	if (a->next->type != IKE_ATTRIB_LIFE_DURATION) {
+		DEBUG(2, printf("got bogus type %d instead of IKE_ATTRIB_LIFE_DURATION. Ignoring this payload.\n",
+					a->next->type));
+		return;
+	}
 
 	if (a->next->af == isakmp_attr_16)
 		value = a->next->u.attr_16;
