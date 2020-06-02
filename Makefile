@@ -1,7 +1,8 @@
 # Makefile for an IPSec VPN client compatible with Cisco equipment.
 # Copyright (C) 2002  Geoffrey Keating
-# Copyright (C) 2003-2004  Maurice Massar
+# Copyright (C) 2003-2004 Maurice Massar
 # Copyright (C) 2006-2007 Dan Villiom Podlaski Christiansen
+# Copyright (C) 2017-2020 Davide Pucci
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -77,66 +78,61 @@ ifneq (,$(findstring Apple,$(shell $(CC) --version)))
 CFLAGS += -fstrict-aliasing -freorder-blocks -fsched-interblock
 endif
 
-all : $(BINFLDR) $(BINS) vpnc.8
+all: $(BINFLDR) $(BINS) vpnc.8
 
-bin :
+bin:
 	@mkdir $@
 
-vpnc : $(OBJS) src/vpnc.o
+vpnc: $(OBJS) src/vpnc.o
 	$(CC) $(LDFLAGS) -o bin/$@ $^ $(LIBS)
 
-vpnc.8 : src/vpnc.8.template src/makeman.pl vpnc
+vpnc.8: src/vpnc.8.template src/makeman.pl vpnc
 	./src/makeman.pl
 
-cisco-decrypt : src/cisco-decrypt.o src/decrypt-utils.o
+cisco-decrypt: src/cisco-decrypt.o src/decrypt-utils.o
 	$(CC) $(LDFLAGS) -o bin/$@ $^ $(LIBS)
 
-test-crypto : src/sysdep.o src/test-crypto.o src/crypto.o $(CRYPTO_OBJS)
+test-crypto: src/sysdep.o src/test-crypto.o src/crypto.o $(CRYPTO_OBJS)
 	$(CC) $(LDFLAGS) -o bin/$@ $^ $(LIBS)
 
 .depend: $(SRCS) $(BINSRCS)
 	$(CC) -MM $(SRCS) $(BINSRCS) $(CFLAGS) $(CPPFLAGS) > $@
 
-src/vpnc-debug.c src/vpnc-debug.h : src/isakmp.h src/enum2debug.pl
+src/vpnc-debug.c src/vpnc-debug.h: src/isakmp.h src/enum2debug.pl
 	cd src && LC_ALL=C perl -w ./enum2debug.pl isakmp.h >vpnc-debug.c 2>vpnc-debug.h
 
-vpnc.ps : src/vpnc.c
+vpnc.ps: src/vpnc.c
 	enscript -E -G -T 4 --word-wrap -o- $^ | psnup -2 /dev/stdin $@
 
-../vpnc-%.tar.gz : vpnc-$*.tar.gz
+../vpnc-%.tar.gz: vpnc-$*.tar.gz
 
-etags :
+etags:
 	etags *.[ch]
-ctags :
+
+ctags:
 	ctags *.[ch]
 
-vpnc-%.tar.gz :
+vpnc-%.tar.gz:
 	@mkdir vpnc-$*
 	LC_ALL=C svn info -R | awk -v RS='' -v FS='\n' '/Node Kind: file/ {print substr($$1,7)}' | \
 		tar -cf - -T - | tar -xf - -C vpnc-$*/
 	tar -czf ../$@ vpnc-$*
 	rm -rf vpnc-$*
 
-test : all
+test: all
 	./bin/test-crypto test/sig_data.bin test/dec_data.bin test/ca_list.pem \
 		test/cert3.pem test/cert2.pem test/cert1.pem test/cert0.pem
 
-dist : VERSION vpnc.8 vpnc-$(RELEASE_VERSION).tar.gz
+dist: VERSION vpnc.8 vpnc-$(RELEASE_VERSION).tar.gz
 
-clean :
+clean:
 	-rm -rf $(OBJS) $(BINOBJS) $(BINFLDR) tags src/cisco-decrypt.o  src/test-crypto.o  src/vpnc.o
 
-distclean : clean
+distclean: clean
 	-rm -f src/vpnc-debug.c src/vpnc-debug.h src/vpnc.ps src/vpnc.8 src/.depend
 
 install-common: all
 	install -d $(DESTDIR)$(ETCDIR) $(DESTDIR)$(BINDIR) $(DESTDIR)$(SBINDIR) $(DESTDIR)$(MANDIR)/man1 $(DESTDIR)$(MANDIR)/man8 $(DESTDIR)$(DOCDIR)
-	if [ "`uname -s | cut -c-6`" = "CYGWIN" ]; then \
-		install src/vpnc-script-win $(DESTDIR)$(ETCDIR)/vpnc-script; \
-		install src/vpnc-script-win.js $(DESTDIR)$(ETCDIR); \
-	else \
-		install src/vpnc-script $(DESTDIR)$(ETCDIR); \
-	fi
 	install -m600 src/vpnc.conf $(DESTDIR)$(ETCDIR)/default.conf
 	install -m755 src/vpnc-disconnect $(DESTDIR)$(SBINDIR)
 	install -m755 src/pcf2vpnc $(DESTDIR)$(BINDIR)
@@ -145,15 +141,24 @@ install-common: all
 	install -m644 src/cisco-decrypt.1 $(DESTDIR)$(MANDIR)/man1
 	install -m644 LICENSE $(DESTDIR)$(DOCDIR)
 
-install : install-common
+install-scripts:
+	git submodule update --init
+	if [ "`uname -s | cut -c-6`" = "CYGWIN" ]; then \
+		install src/scripts/vpnc-script-win $(DESTDIR)$(ETCDIR)/vpnc-script; \
+		install src/scripts/vpnc-script-win.js $(DESTDIR)$(ETCDIR); \
+	else \
+		install src/scripts/vpnc-script $(DESTDIR)$(ETCDIR); \
+	fi
+
+install: install-common install-scripts
 	install -m755 bin/vpnc $(DESTDIR)$(SBINDIR)
 	install -m755 bin/cisco-decrypt $(DESTDIR)$(BINDIR)
 
-install-strip : install-common
+install-strip: install-common
 	install -s -m755 bin/vpnc $(DESTDIR)$(SBINDIR)
 	install -s -m755 bin/cisco-decrypt $(DESTDIR)$(BINDIR)
 
-uninstall :
+uninstall:
 	rm -f $(DESTDIR)$(SBINDIR)/vpnc \
 		$(DESTDIR)$(SBINDIR)/vpnc-disconnect \
 		$(DESTDIR)$(BINDIR)/pcf2vpnc \
@@ -163,7 +168,7 @@ uninstall :
 		$(DESTDIR)$(MANDIR)/man8/vpnc.8
 	@echo NOTE: remove $(DESTDIR)$(ETCDIR) manually
 
-.PHONY : clean distclean dist all install install-strip uninstall
+.PHONY: clean distclean dist all install install-strip uninstall
 
 #
 -include .depend
