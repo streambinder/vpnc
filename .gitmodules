@@ -1,3 +1,6 @@
 [submodule "src/scripts"]
 	path = src/scripts
 	url = git://git.infradead.org/users/dwmw2/vpnc-scripts.git
+[submodule "src/doc"]
+	path = src/doc
+	url = https://github.com/streambinder/vpnc.wiki.git

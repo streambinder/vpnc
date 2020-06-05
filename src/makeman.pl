@@ -24,7 +24,7 @@ use File::Basename;
 
 chdir(dirname(__FILE__)) or die "$!";
 
-my $vpnc = '../bin/vpnc';
+my $vpnc = $ARGV[0];
 -e $vpnc or die "$0: Can't find $vpnc. Did you compile it?\n";
 -x $vpnc or die "$0: Can't execute $vpnc. Please check permissions.\n";
 

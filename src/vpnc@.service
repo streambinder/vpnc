@@ -1,0 +1,18 @@
+[Unit]
+Description=VPNC connection to %i
+Documentation=man:vpnc(8) https://githu.com/streambinder/vpnc
+ConditionPathExists=/dev/net/tun
+Requires=network.target
+After=network.target
+
+[Service]
+Type=forking
+ExecStart=/usr/bin/vpnc --pid-file=/run/vpnc@%i.pid /etc/vpnc/%i.conf
+ExecStartPre=-/etc/vpnc/scripts.d/%i-preup.sh
+ExecStartPost=-/etc/vpnc/scripts.d/%i-postup.sh
+ExecStopPost=-/etc/vpnc/scripts.d/%i-postdown.sh
+PIDFile=/run/vpnc@%i.pid
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

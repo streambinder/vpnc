@@ -27,6 +27,8 @@ BINDIR=$(PREFIX)/bin
 SBINDIR=$(PREFIX)/sbin
 MANDIR=$(PREFIX)/share/man
 DOCDIR=$(PREFIX)/share/doc/vpnc
+LICENSEDIR=$(PREFIX)/share/licenses/vpnc
+SYSTEMDDIR=$(PREFIX)/lib/systemd/system
 
 # The license of vpnc (Gpl >= 2) is quite likely incompatible with the
 # openssl license. Openssl is one possible library used to provide certificate
@@ -58,9 +60,13 @@ OBJS = $(addsuffix .o,$(basename $(SRCS)))
 CRYPTO_OBJS = $(addsuffix .o,$(basename $(CRYPTO_SRCS)))
 BINOBJS = $(addsuffix .o,$(BINS))
 BINSRCS = $(addsuffix .c,$(BINS))
-BINFLDR = bin
-VERSION := $(shell sh src/mk-version)
-RELEASE_VERSION := $(shell cat VERSION)
+
+ROOT_DIR := $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
+BUILDDIR := $(ROOT_DIR)/bin
+export BUILDDIR
+
+VERSION := 0.5.3
+export VERSION
 
 CC ?= gcc
 CFLAGS ?= -O3 -g
@@ -78,22 +84,22 @@ ifneq (,$(findstring Apple,$(shell $(CC) --version)))
 CFLAGS += -fstrict-aliasing -freorder-blocks -fsched-interblock
 endif
 
-all: $(BINFLDR) $(BINS) vpnc.8
+all: $(BUILDDIR) $(BINS) vpnc.8
 
-bin:
+$(BUILDDIR):
 	@mkdir $@
 
 vpnc: $(OBJS) src/vpnc.o
-	$(CC) $(LDFLAGS) -o bin/$@ $^ $(LIBS)
+	$(CC) $(LDFLAGS) -o $(BUILDDIR)/$@ $^ $(LIBS)
 
 vpnc.8: src/vpnc.8.template src/makeman.pl vpnc
-	./src/makeman.pl
+	./src/makeman.pl $(BUILDDIR)/vpnc
 
 cisco-decrypt: src/cisco-decrypt.o src/decrypt-utils.o
-	$(CC) $(LDFLAGS) -o bin/$@ $^ $(LIBS)
+	$(CC) $(LDFLAGS) -o $(BUILDDIR)/$@ $^ $(LIBS)
 
 test-crypto: src/sysdep.o src/test-crypto.o src/crypto.o $(CRYPTO_OBJS)
-	$(CC) $(LDFLAGS) -o bin/$@ $^ $(LIBS)
+	$(CC) $(LDFLAGS) -o $(BUILDDIR)/$@ $^ $(LIBS)
 
 .depend: $(SRCS) $(BINSRCS)
 	$(CC) -MM $(SRCS) $(BINSRCS) $(CFLAGS) $(CPPFLAGS) > $@
@@ -104,45 +110,42 @@ src/vpnc-debug.c src/vpnc-debug.h: src/isakmp.h src/enum2debug.pl
 vpnc.ps: src/vpnc.c
 	enscript -E -G -T 4 --word-wrap -o- $^ | psnup -2 /dev/stdin $@
 
-../vpnc-%.tar.gz: vpnc-$*.tar.gz
-
 etags:
 	etags *.[ch]
 
 ctags:
 	ctags *.[ch]
 
-vpnc-%.tar.gz:
-	@mkdir vpnc-$*
-	LC_ALL=C svn info -R | awk -v RS='' -v FS='\n' '/Node Kind: file/ {print substr($$1,7)}' | \
-		tar -cf - -T - | tar -xf - -C vpnc-$*/
-	tar -czf ../$@ vpnc-$*
-	rm -rf vpnc-$*
-
 test: all
-	./bin/test-crypto test/sig_data.bin test/dec_data.bin test/ca_list.pem \
+	$(BUILDDIR)/test-crypto test/sig_data.bin test/dec_data.bin test/ca_list.pem \
 		test/cert3.pem test/cert2.pem test/cert1.pem test/cert0.pem
 
-dist: VERSION vpnc.8 vpnc-$(RELEASE_VERSION).tar.gz
+dist: vpnc.8
 
 clean:
-	-rm -rf $(OBJS) $(BINOBJS) $(BINFLDR) tags src/cisco-decrypt.o  src/test-crypto.o  src/vpnc.o
+	-rm -rf $(OBJS) $(BINOBJS) $(BUILDDIR) tags src/cisco-decrypt.o  src/test-crypto.o  src/vpnc.o
 
 distclean: clean
 	-rm -f src/vpnc-debug.c src/vpnc-debug.h src/vpnc.ps src/vpnc.8 src/.depend
 
 install-common: all
-	install -d $(DESTDIR)$(ETCDIR) $(DESTDIR)$(BINDIR) $(DESTDIR)$(SBINDIR) $(DESTDIR)$(MANDIR)/man1 $(DESTDIR)$(MANDIR)/man8 $(DESTDIR)$(DOCDIR)
+	install -d $(DESTDIR)$(ETCDIR) $(DESTDIR)$(BINDIR) $(DESTDIR)$(SBINDIR) $(DESTDIR)$(MANDIR)/man1 $(DESTDIR)$(MANDIR)/man8 $(DESTDIR)$(DOCDIR) $(DESTDIR)$(LICENSEDIR)
 	install -m600 src/vpnc.conf $(DESTDIR)$(ETCDIR)/default.conf
 	install -m755 src/vpnc-disconnect $(DESTDIR)$(SBINDIR)
 	install -m755 src/pcf2vpnc $(DESTDIR)$(BINDIR)
 	install -m644 src/vpnc.8 $(DESTDIR)$(MANDIR)/man8
 	install -m644 src/pcf2vpnc.1 $(DESTDIR)$(MANDIR)/man1
 	install -m644 src/cisco-decrypt.1 $(DESTDIR)$(MANDIR)/man1
-	install -m644 LICENSE $(DESTDIR)$(DOCDIR)
+	install -m644 src/vpnc@.service -t $(DESTDIR)$(SYSTEMDDIR)
+	install -m644 LICENSE $(DESTDIR)$(LICENSEDIR)
+
+install-doc:
+	git submodule update --init src/doc
+	install -m644 src/doc/*.md $(DESTDIR)$(DOCDIR)
+	rm -f $(DESTDIR)$(DOCDIR)/Home.md
 
 install-scripts:
-	git submodule update --init
+	git submodule update --init src/scripts
 	if [ "`uname -s | cut -c-6`" = "CYGWIN" ]; then \
 		install src/scripts/vpnc-script-win $(DESTDIR)$(ETCDIR)/vpnc-script; \
 		install src/scripts/vpnc-script-win.js $(DESTDIR)$(ETCDIR); \
@@ -150,13 +153,13 @@ install-scripts:
 		install src/scripts/vpnc-script $(DESTDIR)$(ETCDIR); \
 	fi
 
-install: install-common install-scripts
-	install -m755 bin/vpnc $(DESTDIR)$(SBINDIR)
-	install -m755 bin/cisco-decrypt $(DESTDIR)$(BINDIR)
+install: install-common install-scripts install-doc
+	install -m755 $(BUILDDIR)/vpnc $(DESTDIR)$(SBINDIR)
+	install -m755 $(BUILDDIR)/cisco-decrypt $(DESTDIR)$(BINDIR)
 
 install-strip: install-common
-	install -s -m755 bin/vpnc $(DESTDIR)$(SBINDIR)
-	install -s -m755 bin/cisco-decrypt $(DESTDIR)$(BINDIR)
+	install -s -m755 $(BUILDDIR)/vpnc $(DESTDIR)$(SBINDIR)
+	install -s -m755 $(BUILDDIR)/cisco-decrypt $(DESTDIR)$(BINDIR)
 
 uninstall:
 	rm -f $(DESTDIR)$(SBINDIR)/vpnc \

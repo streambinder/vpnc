@@ -390,7 +390,7 @@ static const char *config_def_script(void)
 
 static const char *config_def_pid_file(void)
 {
-	return "/var/run/vpnc.pid";
+	return "/run/vpnc.pid";
 }
 
 static const char *config_def_vendor(void)
@@ -1069,7 +1069,7 @@ void do_config(int argc, char **argv)
 	}
 
 	if (!config[CONFIG_IPSEC_GATEWAY])
-		error(1, 0, "missing IPSec gatway address");
+		error(1, 0, "missing IPSec gateway address");
 	if (!config[CONFIG_IPSEC_ID])
 		error(1, 0, "missing IPSec ID");
 	if (!config[CONFIG_IPSEC_SECRET])
