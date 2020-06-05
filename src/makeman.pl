@@ -98,10 +98,7 @@ setlocale( LC_ALL, 'C' );
 my $write_secs = (stat("./vpnc.8.template"))[9];
 my $date = strftime( '%B %Y', localtime($write_secs) );
 
-open my $VERSION, '<', '../VERSION';
-my $vpnc_version = <$VERSION>;
-close $VERSION;
-chomp $vpnc_version;
+my $vpnc_version = $ENV{'VERSION'};
 
 open my $TEMPLATE, '<', './vpnc.8.template';
 open my $MANPAGE , '>', './vpnc.8';
