@@ -117,8 +117,8 @@ ctags:
 	ctags *.[ch]
 
 test: all
-	$(BUILDDIR)/test-crypto test/sig_data.bin test/dec_data.bin test/ca_list.pem \
-		test/cert3.pem test/cert2.pem test/cert1.pem test/cert0.pem
+	$(BUILDDIR)/test-crypto src/test/sig_data.bin src/test/dec_data.bin src/test/ca_list.pem \
+		src/test/cert3.pem src/test/cert2.pem src/test/cert1.pem src/test/cert0.pem
 
 dist: vpnc.8
 
