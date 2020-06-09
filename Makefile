@@ -60,6 +60,7 @@ OBJS = $(addsuffix .o,$(basename $(SRCS)))
 CRYPTO_OBJS = $(addsuffix .o,$(basename $(CRYPTO_SRCS)))
 BINOBJS = $(addsuffix .o,$(BINS))
 BINSRCS = $(addsuffix .c,$(BINS))
+SCRIPT_PATH := /etc/vpnc/vpnc-script
 
 ROOT_DIR := $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 BUILDDIR := $(ROOT_DIR)/bin
@@ -72,7 +73,7 @@ CC ?= gcc
 CFLAGS ?= -O3 -g
 CFLAGS += -W -Wall -Wmissing-declarations -Wwrite-strings
 CFLAGS +=  $(shell libgcrypt-config --cflags) $(CRYPTO_CFLAGS)
-CPPFLAGS += -DVERSION=\"$(VERSION)\"
+CPPFLAGS += -DVERSION=\"$(VERSION)\" -DSCRIPT_PATH=\"$(SCRIPT_PATH)\"
 LDFLAGS ?= -g
 LIBS += $(shell libgcrypt-config --libs) $(CRYPTO_LDADD)
 

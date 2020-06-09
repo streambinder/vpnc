@@ -385,7 +385,7 @@ static const char *config_def_app_version(void)
 
 static const char *config_def_script(void)
 {
-	return "/etc/vpnc/vpnc-script";
+	return SCRIPT_PATH;
 }
 
 static const char *config_def_pid_file(void)
