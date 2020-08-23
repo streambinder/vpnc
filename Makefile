@@ -145,16 +145,7 @@ install-doc:
 	install -m644 src/doc/*.md $(DESTDIR)$(DOCDIR)
 	rm -f $(DESTDIR)$(DOCDIR)/Home.md
 
-install-scripts:
-	git submodule update --init src/scripts
-	if [ "`uname -s | cut -c-6`" = "CYGWIN" ]; then \
-		install src/scripts/vpnc-script-win $(DESTDIR)$(ETCDIR)/vpnc-script; \
-		install src/scripts/vpnc-script-win.js $(DESTDIR)$(ETCDIR); \
-	else \
-		install src/scripts/vpnc-script $(DESTDIR)$(ETCDIR); \
-	fi
-
-install: install-common install-scripts install-doc
+install: install-common install-doc
 	install -m755 $(BUILDDIR)/vpnc $(DESTDIR)$(SBINDIR)
 	install -m755 $(BUILDDIR)/cisco-decrypt $(DESTDIR)$(BINDIR)
 
