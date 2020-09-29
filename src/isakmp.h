@@ -121,20 +121,24 @@ enum isakmp_notify_enum {
 };
 
 /* Delete with reason values */
-/* Note: The values are random, i.e. we don't know them yet */
+/* https://www.cisco.com/c/en/us/td/docs/security/asa/asa-command-reference/A-H/cmdref1/c6.html */
 enum dwr_ike_delete {
-	IKE_DELETE_SERVER_SHUTDOWN = 0, /* Peer has been shut down */
-	IKE_DELETE_SERVER_REBOOT, /* Peer has been rebooted. */
-	IKE_DELETE_MAX_CONNECT_TIME, /* Maximum configured connection time exceeded. */
-	IKE_DELETE_BY_USER_COMMAND, /* Manually disconnected by administrator. */
-	IKE_DELETE_BY_ERROR, /* Connectivity to Client lost. */
-	IKE_DELETE_NO_ERROR, /* Unknown error. */
-	IKE_DELETE_IDLE_TIMEOUT, /* Maximum idle time for session exceeded. */
-	IKE_DELETE_P2_PROPOSAL_MISMATCH, /* Policy negotiation failed */
-	IKE_DELETE_FIREWALL_MISMATCH, /* Firewall policy mismatch. */
-	IKE_DELETE_CERT_EXPIRED, /* Certificates used with this connection entry have expired. */
-	IKE_DELETE_BY_EXPIRED_LIFETIME, /* Maximum configured lifetime exceeded. */
-	DEL_REASON_RESET_SADB /* (found in vpnclient log file) */
+	IKE_DELETE_RESERVED = 0, /* An invalid code. Do not send. */
+	IKE_DELETE_BY_ERROR, /* A transmission error for a timeout or failure when expecting a response to a keepalive or any other IKE packet ACK. The default text is "Connectivity to client lost". */
+	IKE_DELETE_BY_USER_COMMAND, /* The SA was actively deleted with manual intervention by the user or administrator. The default text is "Manually Disconnected by Administrator". */
+	IKE_DELETE_BY_EXPIRED_LIFETIME, /* The SA has expired. The default text is "Maximum Configured Lifetime Exceeded". */
+	IKE_DELETE_NO_ERROR, /* An unknown error caused the delete. */
+	IKE_DELETE_SERVER_SHUTDOWN, /* The server is being shut down. */
+	IKE_DELETE_SERVER_IN_FLAMES, /* The server has some severe problems. The default text is "Peer is having heat problems". */
+	IKE_DELETE_MAX_CONNECT_TIME, /* The maximum allowed time of an active tunnel has expired. Unlike EXPIRED_LIFETIME, this reason indicates that the entire IKE-negotiated/controlled tunnel is being disconnected, not just this one SA. The default text is "Maximum Configured Connection Time Exceeded". */
+	IKE_DELETE_IDLE_TIMEOUT, /* The tunnel has been idle for the maximum allowed time; therefore, the entire IKE-negotiated tunnel has been disconnected, not just this one SA. The default text is "Maximum Idle Time for Session Exceeded". */
+	IKE_DELETE_SERVER_REBOOT, /* The server is rebooting. */
+	IKE_DELETE_P2_PROPOSAL_MISMATCH, /* Phase2 proposal mismatch. */
+	IKE_DELETE_FIREWALL_MISMATCH, /* Firewall parameter mismatch. */
+	IKE_DELETE_CERT_EXPIRED, /* User certification required. The default message is "User or Root Certificate has Expired". */
+	IKE_DELETE_CLIENT_NOT_ALLOWED, /* Client type or version not allowed. */
+	IKE_DELETE_FW_SERVER_FAIL, /* Failed to contact Zone Integrity Server. */
+	IKE_DELETE_ACL_ERROR /* ACL downloaded from AAA cannot be inserted. The default message is "ACL parsing error". */
 };
 
 /* Certificate types.  */
