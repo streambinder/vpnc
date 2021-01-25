@@ -1,6 +1,6 @@
 [Unit]
 Description=VPNC connection to %i
-Documentation=man:vpnc(8) https://githu.com/streambinder/vpnc
+Documentation=man:vpnc(8) https://github.com/streambinder/vpnc
 ConditionPathExists=/dev/net/tun
 Requires=network.target
 After=network.target
