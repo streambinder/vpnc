@@ -130,7 +130,7 @@ distclean: clean
 	-rm -f src/vpnc-debug.c src/vpnc-debug.h src/vpnc.ps src/vpnc.8 src/.depend
 
 install-common: all
-	install -d $(DESTDIR)$(ETCDIR) $(DESTDIR)$(BINDIR) $(DESTDIR)$(SBINDIR) $(DESTDIR)$(MANDIR)/man1 $(DESTDIR)$(MANDIR)/man8 $(DESTDIR)$(DOCDIR) $(DESTDIR)$(LICENSEDIR)
+	install -d $(DESTDIR)$(ETCDIR) $(DESTDIR)$(BINDIR) $(DESTDIR)$(SBINDIR) $(DESTDIR)$(MANDIR)/man1 $(DESTDIR)$(MANDIR)/man8 $(DESTDIR)$(DOCDIR) $(DESTDIR)$(SYSTEMDDIR) $(DESTDIR)$(LICENSEDIR)
 	install -m600 src/vpnc.conf $(DESTDIR)$(ETCDIR)/default.conf
 	install -m755 src/vpnc-disconnect $(DESTDIR)$(SBINDIR)
 	install -m755 src/pcf2vpnc $(DESTDIR)$(BINDIR)
