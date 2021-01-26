@@ -1491,7 +1491,7 @@ static void do_phase1_am_packet2(struct sa_block *s, const char *shared_key)
 							break;
 						default:
 							DEBUG(1, printf
-									  ("unknown attribute %d, arborting..\n",
+									  ("unknown attribute %d, aborting..\n",
 									  a->type));
 							reject = ISAKMP_N_ATTRIBUTES_NOT_SUPPORTED;
 							break;
@@ -2998,7 +2998,7 @@ static int do_rekey(struct sa_block *s, struct isakmp_packet *r)
 	 */
 	if ((get_algo(SUPP_ALGO_HASH, SUPP_ALGO_IPSEC_SA, seen_auth, NULL, 0) == NULL) ||
 		(get_algo(SUPP_ALGO_CRYPT, SUPP_ALGO_IPSEC_SA, seen_enc, NULL, seen_keylen) == NULL)) {
-		printf("\nFIXME: vpnc doesn't support change of algorightms during rekeying\n");
+		printf("\nFIXME: vpnc doesn't support change of algorithms during rekeying\n");
 		return ISAKMP_N_BAD_PROPOSAL_SYNTAX;
 	}
 

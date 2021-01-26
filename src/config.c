@@ -579,7 +579,7 @@ static const struct config_names_s {
 		" *  0: Do not print debug information.\n"
 		" *  1: Print minimal debug information.\n"
 		" *  2: Show statemachine and packet/payload type information.\n"
-		" *  3: Dump everything exluding authentication data.\n"
+		" *  3: Dump everything excluding authentication data.\n"
 		" * 99: Dump everything INCLUDING AUTHENTICATION data (e.g. PASSWORDS).\n",
 		NULL
 	}, {

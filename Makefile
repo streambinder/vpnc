@@ -44,8 +44,9 @@ SYSTEMDDIR=$(PREFIX)/lib/systemd/system
 # GPL incompliant though.
 #OPENSSL_GPL_VIOLATION=yes
 
-CRYPTO_LDADD = $(shell pkg-config --libs gnutls)
-CRYPTO_CFLAGS = $(shell pkg-config --cflags gnutls) -DCRYPTO_GNUTLS
+PKG_CONFIG ?= pkg-config
+CRYPTO_LDADD = $(shell $(PKG_CONFIG) --libs gnutls)
+CRYPTO_CFLAGS = $(shell $(PKG_CONFIG) --cflags gnutls) -DCRYPTO_GNUTLS
 CRYPTO_SRCS = src/crypto-gnutls.c
 
 ifeq ($(OPENSSL_GPL_VIOLATION), yes)
@@ -76,6 +77,7 @@ CFLAGS +=  $(shell libgcrypt-config --cflags) $(CRYPTO_CFLAGS)
 CPPFLAGS += -DVERSION=\"$(VERSION)\" -DSCRIPT_PATH=\"$(SCRIPT_PATH)\"
 LDFLAGS ?= -g
 LIBS += $(shell libgcrypt-config --libs) $(CRYPTO_LDADD)
+VPNC ?= $(BUILDDIR)/vpnc
 
 ifeq ($(shell uname -s), SunOS)
 LIBS += -lnsl -lresolv -lsocket
@@ -94,7 +96,7 @@ vpnc: $(OBJS) src/vpnc.o
 	$(CC) $(LDFLAGS) -o $(BUILDDIR)/$@ $^ $(LIBS)
 
 vpnc.8: src/vpnc.8.template src/makeman.pl vpnc
-	./src/makeman.pl $(BUILDDIR)/vpnc
+	./src/makeman.pl $(VPNC)
 
 cisco-decrypt: src/cisco-decrypt.o src/decrypt-utils.o
 	$(CC) $(LDFLAGS) -o $(BUILDDIR)/$@ $^ $(LIBS)
@@ -130,7 +132,7 @@ distclean: clean
 	-rm -f src/vpnc-debug.c src/vpnc-debug.h src/vpnc.ps src/vpnc.8 src/.depend
 
 install-common: all
-	install -d $(DESTDIR)$(ETCDIR) $(DESTDIR)$(BINDIR) $(DESTDIR)$(SBINDIR) $(DESTDIR)$(MANDIR)/man1 $(DESTDIR)$(MANDIR)/man8 $(DESTDIR)$(DOCDIR) $(DESTDIR)$(LICENSEDIR)
+	install -d $(DESTDIR)$(ETCDIR) $(DESTDIR)$(BINDIR) $(DESTDIR)$(SBINDIR) $(DESTDIR)$(MANDIR)/man1 $(DESTDIR)$(MANDIR)/man8 $(DESTDIR)$(DOCDIR) $(DESTDIR)$(SYSTEMDDIR) $(DESTDIR)$(LICENSEDIR)
 	install -m600 src/vpnc.conf $(DESTDIR)$(ETCDIR)/default.conf
 	install -m755 src/vpnc-disconnect $(DESTDIR)$(SBINDIR)
 	install -m755 src/pcf2vpnc $(DESTDIR)$(BINDIR)
