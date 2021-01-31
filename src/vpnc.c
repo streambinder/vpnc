@@ -24,7 +24,7 @@
 #define _GNU_SOURCE
 #include <assert.h>
 #include <unistd.h>
-#include <sys/fcntl.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
