@@ -142,8 +142,10 @@ install-common: all
 	install -m644 src/vpnc@.service -t $(DESTDIR)$(SYSTEMDDIR)
 	install -m644 LICENSE $(DESTDIR)$(LICENSEDIR)
 
-install-doc:
+src/doc:
 	git submodule update --init src/doc
+
+install-doc: src/doc
 	install -m644 src/doc/*.md $(DESTDIR)$(DOCDIR)
 	rm -f $(DESTDIR)$(DOCDIR)/Home.md
 
