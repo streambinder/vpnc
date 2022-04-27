@@ -58,7 +58,7 @@ enum groups {
 
 struct modp_dscr {
 	int id;
-	int bits; /* Key Bits provided by this group */
+	int bits; /* Key Bits provided by this group, average of min and max estimates according to RFC 3526 section 8 */
 	const char *prime; /* Prime */
 	const char *gen; /* Generator */
 };
