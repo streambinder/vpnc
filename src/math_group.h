@@ -44,6 +44,11 @@ enum groups {
 #define OAKLEY_GRP_1    1
 #define OAKLEY_GRP_2    2
 #define OAKLEY_GRP_5    3
+#define OAKLEY_GRP_14   4
+#define OAKLEY_GRP_15   5
+#define OAKLEY_GRP_16   6
+#define OAKLEY_GRP_17   7
+#define OAKLEY_GRP_18   8
 
 /*
  * The group on which diffie hellmann calculations are done.
@@ -53,7 +58,7 @@ enum groups {
 
 struct modp_dscr {
 	int id;
-	int bits; /* Key Bits provided by this group */
+	int bits; /* Key Bits provided by this group, average of min and max estimates according to RFC 3526 section 8 */
 	const char *prime; /* Prime */
 	const char *gen; /* Generator */
 };
