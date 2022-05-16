@@ -73,10 +73,10 @@ export VERSION
 CC ?= gcc
 CFLAGS ?= -O3 -g
 CFLAGS += -W -Wall -Wmissing-declarations -Wwrite-strings
-CFLAGS +=  $(shell $(PKG_CONFIG) --cflags libgcrypt) $(CRYPTO_CFLAGS)
+CFLAGS +=  $(shell $(PKG_CONFIG) --cflags libgcrypt || libgcrypt-config --cflags) $(CRYPTO_CFLAGS)
 CPPFLAGS += -DVERSION=\"$(VERSION)\" -DSCRIPT_PATH=\"$(SCRIPT_PATH)\"
 LDFLAGS ?= -g
-LIBS += $(shell $(PKG_CONFIG) --libs libgcrypt) $(CRYPTO_LDADD)
+LIBS += $(shell $(PKG_CONFIG) --libs libgcrypt || libgcrypt-config --libs) $(CRYPTO_LDADD)
 VPNC ?= $(BUILDDIR)/vpnc
 
 ifeq ($(shell uname -s), SunOS)
