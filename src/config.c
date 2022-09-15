@@ -892,7 +892,7 @@ void do_config(int argc, char **argv)
 			if (known) {
 				if (config_names[c].needsEncryption) {
 					int field_len = strlen(argv[i]);
-					char *field = malloc(field_len * sizeof(char));
+					char *field = malloc((field_len + 1) * sizeof(char));
 					strcpy(field, argv[i]);
 					config[config_names[c].nm] = field;
 					rand_str(argv[i], field_len);
