@@ -45,6 +45,9 @@ SYSTEMDDIR=$(PREFIX)/lib/systemd/system
 #OPENSSL_GPL_VIOLATION=yes
 
 PKG_CONFIG ?= pkg-config
+LIBGCRYPT_CONFIG ?= libgcrypt-config
+LIBGCRYPT_LDADD = $(shell $(PKG_CONFIG) --libs libgcrypt || $(LIBGCRYPT_CONFIG) --libs)
+LIBGCRYPT_CFLAGS = $(shell $(PKG_CONFIG) --cflags libgcrypt || $(LIBGCRYPT_CONFIG) --cflags)
 
 ifneq ($(OPENSSL_GPL_VIOLATION), yes)
 CRYPTO_LDADD = $(shell $(PKG_CONFIG) --libs gnutls)
@@ -74,10 +77,10 @@ export VERSION
 CC ?= gcc
 CFLAGS ?= -O3 -g
 CFLAGS += -W -Wall -Wmissing-declarations -Wwrite-strings
-CFLAGS +=  $(shell $(PKG_CONFIG) --cflags libgcrypt || libgcrypt-config --cflags) $(CRYPTO_CFLAGS)
+CFLAGS += $(LIBGCRYPT_CFLAGS) $(CRYPTO_CFLAGS)
 CPPFLAGS += -DVERSION=\"$(VERSION)\" -DSCRIPT_PATH=\"$(SCRIPT_PATH)\"
 LDFLAGS ?= -g
-LIBS += $(shell $(PKG_CONFIG) --libs libgcrypt || libgcrypt-config --libs) $(CRYPTO_LDADD)
+LIBS += $(LIBGCRYPT_LDADD) $(CRYPTO_LDADD)
 VPNC ?= $(BUILDDIR)/vpnc
 
 ifeq ($(shell uname -s), SunOS)
