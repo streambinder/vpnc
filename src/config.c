@@ -682,7 +682,7 @@ static char *get_config_filename(const char *name, int add_dot_conf)
 {
 	char *realname;
 
-	asprintf(&realname, "%s%s%s", index(name, '/') ? "" : "/etc/vpnc/", name, add_dot_conf ? ".conf" : "");
+	asprintf(&realname, "%s%s%s", strchr(name, '/') ? "" : "/etc/vpnc/", name, add_dot_conf ? ".conf" : "");
 	return realname;
 }
 
