@@ -45,11 +45,12 @@ SYSTEMDDIR=$(PREFIX)/lib/systemd/system
 #OPENSSL_GPL_VIOLATION=yes
 
 PKG_CONFIG ?= pkg-config
+
+ifneq ($(OPENSSL_GPL_VIOLATION), yes)
 CRYPTO_LDADD = $(shell $(PKG_CONFIG) --libs gnutls)
 CRYPTO_CFLAGS = $(shell $(PKG_CONFIG) --cflags gnutls) -DCRYPTO_GNUTLS
 CRYPTO_SRCS = src/crypto-gnutls.c
-
-ifeq ($(OPENSSL_GPL_VIOLATION), yes)
+else
 CRYPTO_LDADD = -lcrypto
 CRYPTO_CFLAGS = -DOPENSSL_GPL_VIOLATION -DCRYPTO_OPENSSL
 CRYPTO_SRCS = src/crypto-openssl.c
