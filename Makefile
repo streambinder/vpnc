@@ -20,8 +20,7 @@
 #
 # $Id$
 
-DESTDIR=
-PREFIX=/usr/local
+PREFIX?=/usr/local
 ETCDIR=/etc/vpnc
 BINDIR=$(PREFIX)/bin
 SBINDIR=$(PREFIX)/sbin
