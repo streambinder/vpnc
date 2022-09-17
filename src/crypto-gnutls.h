@@ -16,7 +16,7 @@
  */
 
 #ifndef __CRYPTO_GNUTLS_H__
-#define __CRTPTO_GNUTLS_H__
+#define __CRYPTO_GNUTLS_H__
 
 #include <gnutls/gnutls.h>
 #include <gnutls/x509.h>
