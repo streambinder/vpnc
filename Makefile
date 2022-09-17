@@ -135,7 +135,7 @@ distclean: clean
 	-rm -f src/vpnc-debug.c src/vpnc-debug.h src/vpnc.ps src/vpnc.8 src/.depend
 
 install-common: all
-	install -d $(DESTDIR)$(ETCDIR) $(DESTDIR)$(BINDIR) $(DESTDIR)$(SBINDIR) $(DESTDIR)$(MANDIR)/man1 $(DESTDIR)$(MANDIR)/man8 $(DESTDIR)$(DOCDIR) $(DESTDIR)$(SYSTEMDDIR) $(DESTDIR)$(LICENSEDIR)
+	install -d $(DESTDIR)$(ETCDIR) $(DESTDIR)$(BINDIR) $(DESTDIR)$(SBINDIR) $(DESTDIR)$(MANDIR)/man1 $(DESTDIR)$(MANDIR)/man8 $(DESTDIR)$(SYSTEMDDIR) $(DESTDIR)$(LICENSEDIR)
 	install -m600 src/vpnc.conf $(DESTDIR)$(ETCDIR)/default.conf
 	install -m755 src/vpnc-disconnect $(DESTDIR)$(SBINDIR)
 	install -m755 src/pcf2vpnc $(DESTDIR)$(BINDIR)
@@ -149,6 +149,7 @@ src/doc:
 	git submodule update --init src/doc
 
 install-doc: src/doc
+	install -d $(DESTDIR)$(DOCDIR)
 	install -m644 src/doc/*.md $(DESTDIR)$(DOCDIR)
 	rm -f $(DESTDIR)$(DOCDIR)/Home.md
 
