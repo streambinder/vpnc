@@ -2215,13 +2215,12 @@ static int do_phase2_notice_check(struct sa_block *s, struct isakmp_packet **r_p
 static int do_phase2_xauth(struct sa_block *s)
 {
 	struct isakmp_packet *r = NULL;
-	int loopcount;
 	int reject;
 	int passwd_used = 0;
 
 	DEBUGTOP(2, printf("S5.1 xauth_request\n"));
 	/* This can go around for a while.  */
-	for (loopcount = 0;; loopcount++) {
+	while (1) {
 		struct isakmp_payload *rp;
 		struct isakmp_attribute *a, *ap, *reply_attr, *last_reply_attr;
 		char ntop_buf[32];
