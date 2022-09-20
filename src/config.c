@@ -48,7 +48,7 @@ const char charset[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789:?()/%@!$";
 
 int opt_debug = 0;
 int opt_nd;
-int opt_weak_encryption, opt_no_encryption, opt_auth_mode;
+int opt_weak_encryption, opt_no_encryption, opt_weak_authentication, opt_auth_mode;
 enum natt_mode_enum opt_natt_mode;
 enum vendor_enum opt_vendor;
 enum if_mode_enum opt_if_mode;
@@ -549,6 +549,13 @@ static const struct config_names_s {
 		"enables using no encryption for data traffic (key exchanged must be encrypted)",
 		NULL
 	}, {
+		CONFIG_ENABLE_WEAK_AUTHENTICATION, 0, 0, 1,
+		"--enable-weak-authentication",
+		"Enable weak authentication",
+		NULL,
+		"enables weak authentication methods (such as MD5)",
+		NULL
+	}, {
 		CONFIG_VERSION, 1, 0, 1,
 		"--application-version",
 		"Application version",
@@ -948,6 +955,7 @@ void do_config(int argc, char **argv)
 		opt_debug = (config[CONFIG_DEBUG]) ? atoi(config[CONFIG_DEBUG]) : 0;
 		opt_nd = (config[CONFIG_ND]) ? 1 : 0;
 		opt_weak_encryption = (config[CONFIG_ENABLE_WEAK_ENCRYPTION]) ? 1 : 0;
+		opt_weak_authentication = (config[CONFIG_ENABLE_WEAK_AUTHENTICATION]) ? 1 : 0;
 
 		if (!strcmp(config[CONFIG_AUTH_MODE], "psk")) {
 			opt_auth_mode = AUTH_MODE_PSK;
