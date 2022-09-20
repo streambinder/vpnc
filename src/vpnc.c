@@ -1545,6 +1545,21 @@ static void do_phase1_am_packet2(struct sa_block *s, const char *shared_key)
 						default:
 							break;
 						}
+						switch (s->ike.md_algo) {
+						case GCRY_MD_MD5:
+							if (!opt_weak_authentication) {
+								const char *name_hash = get_algo(SUPP_ALGO_HASH, SUPP_ALGO_IKE_SA,
+																 seen_hash, NULL, 0)->name;
+								error(1, 0, "Peer has selected %s as authentication method.\n"
+									  "This algorithm is considered too weak today.\n"
+									  "If your vpn concentrator admin still insists on using %s,\n"
+									  "use the \"--enable-weak-authentication\" option.\n",
+									  name_hash, name_hash);
+							}
+							break;
+						default:
+							break;
+						}
 					}
 				}
 				break;
@@ -2824,6 +2839,21 @@ static void do_phase2_qm(struct sa_block *s)
 								  "If your vpn concentrator admin still insists on using %s,\n"
 								  "use the \"--enable-weak-encryption\" option.\n",
 								  name_enc, name_enc);
+						}
+						break;
+					default:
+						break;
+					}
+					switch (s->ipsec.md_algo) {
+					case GCRY_MD_MD5:
+						if (!opt_weak_authentication) {
+							const char *name_hash = get_algo(SUPP_ALGO_HASH, SUPP_ALGO_IPSEC_SA,
+															 seen_auth, NULL, 0)->name;
+							error(1, 0, "Peer has selected %s as authentication method.\n"
+								  "This algorithm is considered too weak today.\n"
+								  "If your vpn concentrator admin still insists on using %s,\n"
+								  "use the \"--enable-weak-authentication\" option.\n",
+								  name_hash, name_hash);
 						}
 						break;
 					default:
