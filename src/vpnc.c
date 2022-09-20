@@ -1529,11 +1529,21 @@ static void do_phase1_am_packet2(struct sa_block *s, const char *shared_key)
 										get_algo(SUPP_ALGO_HASH,
 												 SUPP_ALGO_IKE_SA, seen_hash,
 												 NULL, 0)->name));
-						if (s->ike.cry_algo == GCRY_CIPHER_DES && !opt_1des) {
-							error(1, 0, "peer selected (single) DES as \"encryption\" method.\n"
-								  "This algorithm is considered too weak today\n"
-								  "If your vpn concentrator admin still insists on using DES\n"
-								  "use the \"--enable-1des\" option.\n");
+						switch (s->ike.cry_algo) {
+						case GCRY_CIPHER_DES:
+						case GCRY_CIPHER_3DES:
+							if (!opt_weak_encryption) {
+								const char *name_enc = get_algo(SUPP_ALGO_CRYPT, SUPP_ALGO_IKE_SA,
+																seen_enc, NULL, seen_keylen)->name;
+								error(1, 0, "Peer has selected %s as encrytion method.\n"
+									  "This algorithm is considered too weak today.\n"
+									  "If your vpn concentrator admin still insists on using %s,\n"
+									  "use the \"--enable-weak-encryption\" option.\n",
+									  name_enc, name_enc);
+							}
+							break;
+						default:
+							break;
 						}
 					}
 				}
@@ -2793,18 +2803,31 @@ static void do_phase2_qm(struct sa_block *s)
 											 seen_keylen)->name,
 									get_algo(SUPP_ALGO_HASH, SUPP_ALGO_IPSEC_SA,
 											 seen_auth, NULL, 0)->name));
-					if (s->ipsec.cry_algo == GCRY_CIPHER_DES && !opt_1des) {
-						error(1, 0, "peer selected (single) DES as \"encrytion\" method.\n"
-							  "This algorithm is considered too weak today\n"
-							  "If your vpn concentrator admin still insists on using DES\n"
-							  "use the \"--enable-1des\" option.\n");
-					} else if (s->ipsec.cry_algo == GCRY_CIPHER_NONE && !opt_no_encryption) {
-						error(1, 0, "peer selected NULL as \"encrytion\" method.\n"
-							  "This is _no_ encryption at all.\n"
-							  "Your traffic is still protected against modification with %s\n"
-							  "If your vpn concentrator admin still insists on not using encryption\n"
-							  "use the \"--enable-no-encryption\" option.\n",
-							  get_algo(SUPP_ALGO_HASH, SUPP_ALGO_IPSEC_SA, seen_auth, NULL, 0)->name);
+					switch (s->ipsec.cry_algo) {
+					case GCRY_CIPHER_NONE:
+						if (!opt_no_encryption) {
+							error(1, 0, "Peer has selected NULL as encrytion method.\n"
+								  "This is _no_ encryption at all.\n"
+								  "Your traffic is still protected against modification with %s.\n"
+								  "If your vpn concentrator admin still insists on not using encryption,\n"
+								  "use the \"--enable-no-encryption\" option.\n",
+								  get_algo(SUPP_ALGO_HASH, SUPP_ALGO_IPSEC_SA, seen_auth, NULL, 0)->name);
+						}
+						break;
+					case GCRY_CIPHER_DES:
+					case GCRY_CIPHER_3DES:
+						if (!opt_weak_encryption) {
+							const char *name_enc = get_algo(SUPP_ALGO_CRYPT, SUPP_ALGO_IPSEC_SA,
+															seen_enc, NULL, seen_keylen)->name;
+							error(1, 0, "Peer has selected %s as encrytion method.\n"
+								  "This algorithm is considered too weak today.\n"
+								  "If your vpn concentrator admin still insists on using %s,\n"
+								  "use the \"--enable-weak-encryption\" option.\n",
+								  name_enc, name_enc);
+						}
+						break;
+					default:
+						break;
 					}
 				}
 			}

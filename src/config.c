@@ -48,7 +48,7 @@ const char charset[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789:?()/%@!$";
 
 int opt_debug = 0;
 int opt_nd;
-int opt_1des, opt_no_encryption, opt_auth_mode;
+int opt_weak_encryption, opt_no_encryption, opt_auth_mode;
 enum natt_mode_enum opt_natt_mode;
 enum vendor_enum opt_vendor;
 enum if_mode_enum opt_if_mode;
@@ -528,11 +528,18 @@ static const struct config_names_s {
 		"Diffie-Hellman group to use for PFS",
 		config_def_pfs
 	}, {
-		CONFIG_ENABLE_1DES, 0, 0, 1,
+		CONFIG_ENABLE_WEAK_ENCRYPTION, 0, 0, 1,
 		"--enable-1des",
 		"Enable Single DES",
 		NULL,
-		"enables weak single DES encryption",
+		"Deprecated: Please use --enable-weak-encryption instead.",
+		NULL
+	}, {
+		CONFIG_ENABLE_WEAK_ENCRYPTION, 0, 0, 1,
+		"--enable-weak-encryption",
+		"Enable weak encryption",
+		NULL,
+		"enables weak encryption methods (such as DES, 3DES)",
 		NULL
 	}, {
 		CONFIG_ENABLE_NO_ENCRYPTION, 0, 0, 1,
@@ -940,7 +947,7 @@ void do_config(int argc, char **argv)
 
 		opt_debug = (config[CONFIG_DEBUG]) ? atoi(config[CONFIG_DEBUG]) : 0;
 		opt_nd = (config[CONFIG_ND]) ? 1 : 0;
-		opt_1des = (config[CONFIG_ENABLE_1DES]) ? 1 : 0;
+		opt_weak_encryption = (config[CONFIG_ENABLE_WEAK_ENCRYPTION]) ? 1 : 0;
 
 		if (!strcmp(config[CONFIG_AUTH_MODE], "psk")) {
 			opt_auth_mode = AUTH_MODE_PSK;
