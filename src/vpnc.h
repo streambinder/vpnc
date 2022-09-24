@@ -18,8 +18,8 @@
    $Id$
  */
 
-#ifndef __VPNC_H__
-#define __VPNC_H__
+#ifndef VPNC_VPNC_H
+#define VPNC_VPNC_H
 
 #include "tunip.h"
 
@@ -30,4 +30,4 @@ void print_vid(const unsigned char *vid, uint16_t len);
 void rekey_phase1(struct sa_block *s);
 
 
-#endif
+#endif /* VPNC_VPNC_H */

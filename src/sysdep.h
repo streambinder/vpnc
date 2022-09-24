@@ -1,5 +1,5 @@
-#ifndef __SYSDEP_H__
-#define __SYSDEP_H__
+#ifndef VPNC_SYSDEP_H
+#define VPNC_SYSDEP_H
 
 /*
  * Different systems define different macros.
@@ -238,4 +238,4 @@ extern int unsetenv(const char *name);
 #endif
 
 
-#endif
+#endif /* VPNC_SYSDEP_H */

@@ -19,10 +19,10 @@
    $Id$
  */
 
-#ifndef __DECRYPT_UTILS_H__
-#define __DECRYPT_UTILS_H__
+#ifndef VPNC_DECRYPT_UTILS_H
+#define VPNC_DECRYPT_UTILS_H
 
 extern int hex2bin(const char *str, char **bin, int *len);
 extern int deobfuscate(char *ct, int len, const char **resp, char *reslenp);
 
-#endif
+#endif /* VPNC_DECRYPT_UTILS_H */

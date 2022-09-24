@@ -19,8 +19,8 @@
    $Id$
  */
 
-#ifndef __ISAKMP_PKT_H__
-#define __ISAKMP_PKT_H__
+#ifndef VPNC_ISAKMP_PKT_H
+#define VPNC_ISAKMP_PKT_H
 #if defined(__linux__)
 #include <stdint.h>
 #endif
@@ -143,4 +143,4 @@ extern struct isakmp_packet *parse_isakmp_packet(const uint8_t * data,
 												 size_t data_len, int * reject);
 extern void test_pack_unpack(void);
 
-#endif
+#endif /* VPNC_ISAKMP_PKT_H */

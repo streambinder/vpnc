@@ -18,8 +18,8 @@
    $Id$
  */
 
-#ifndef __ISAKMP_H__
-#define __ISAKMP_H__
+#ifndef VPNC_ISAKMP_H
+#define VPNC_ISAKMP_H
 
 /* Flag bits for header.  */
 #define ISAKMP_FLAG_E   0x1
@@ -456,4 +456,4 @@ enum isakmp_modecfg_attrib_enum {
 	ISAKMP_XAUTH_ATTRIB_CISCOEXT_VENDOR = 0x7d88 /* strange cisco things ... need docs! */
 };
 
-#endif
+#endif /* VPNC_ISAKMP_H */

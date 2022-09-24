@@ -15,8 +15,8 @@
    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#ifndef __CRYPTO_GNUTLS_H__
-#define __CRYPTO_GNUTLS_H__
+#ifndef VPNC_CRYPTO_GNUTLS_H
+#define VPNC_CRYPTO_GNUTLS_H
 
 #include <gnutls/gnutls.h>
 #include <gnutls/x509.h>
@@ -26,5 +26,5 @@ typedef struct {
 	gnutls_x509_crt_t *stack;
 } crypto_ctx;
 
-#endif  /* __CRYPTO_GNUTLS_H__ */
+#endif  /* VPNC_CRYPTO_GNUTLS_H */
 

@@ -32,8 +32,8 @@
  * This code was written under funding by Ericsson Radio Systems.
  */
 
-#ifndef __MATH_GROUP_H__
-#define __MATH_GROUP_H__
+#ifndef VPNC_MATH_GROUP_H
+#define VPNC_MATH_GROUP_H
 
 #include <gcrypt.h>
 
@@ -90,4 +90,4 @@ void group_init(void);
 void group_free(struct group *);
 struct group *group_get(int);
 
-#endif /* _MATH_GROUP_H_ */
+#endif /* VPNC_MATH_GROUP_H */

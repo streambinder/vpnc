@@ -15,8 +15,8 @@
    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#ifndef __CRYPTO_H__
-#define __CRYPTO_H__
+#ifndef VPNC_CRYPTO_H
+#define VPNC_CRYPTO_H
 
 #include <stdarg.h>
 
@@ -135,5 +135,5 @@ unsigned char *crypto_decrypt_signature(crypto_ctx *ctx,
 										unsigned int padding,
 										crypto_error **error);
 
-#endif  /* __CRYPTO_H__ */
+#endif  /* VPNC_CRYPTO_H */
 
