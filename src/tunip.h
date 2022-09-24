@@ -18,8 +18,8 @@
    $Id$
  */
 
-#ifndef __TUNIP_H__
-#define __TUNIP_H__
+#ifndef VPNC_TUNIP_H
+#define VPNC_TUNIP_H
 
 #include "isakmp.h"
 
@@ -128,4 +128,4 @@ struct sa_block {
 extern int volatile do_kill;
 extern void vpnc_doit(struct sa_block *s);
 
-#endif
+#endif /* VPNC_TUNIP_H */

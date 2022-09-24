@@ -19,8 +19,8 @@
    $Id$
  */
 
-#ifndef __SUPP_H__
-#define __SUPP_H__
+#ifndef VPNC_SUPP_H
+#define VPNC_SUPP_H
 
 enum supp_algo_key {
 	SUPP_ALGO_NAME,
@@ -51,4 +51,4 @@ extern const supported_algo_t *get_algo(enum algo_group what, enum supp_algo_key
 extern const supported_algo_t *get_dh_group_ike(void);
 extern const supported_algo_t *get_dh_group_ipsec(int server_setting);
 
-#endif
+#endif /* VPNC_SUPP_H */

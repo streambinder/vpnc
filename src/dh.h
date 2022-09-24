@@ -31,8 +31,8 @@
  * This code was written under funding by Ericsson Radio Systems.
  */
 
-#ifndef __DH_H__
-#define __DH_H__
+#ifndef VPNC_DH_H
+#define VPNC_DH_H
 
 #include <sys/types.h>
 
@@ -42,4 +42,4 @@ int dh_getlen(struct group *);
 int dh_create_exchange(struct group *, unsigned char *);
 int dh_create_shared(struct group *, unsigned char *, unsigned char *);
 
-#endif
+#endif /* VPNC_DH_H */

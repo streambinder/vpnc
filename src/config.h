@@ -18,8 +18,8 @@
    $Id$
  */
 
-#ifndef __CONFIG_H__
-#define __CONFIG_H__
+#ifndef VPNC_CONFIG_H
+#define VPNC_CONFIG_H
 
 #include <unistd.h>
 #include <inttypes.h>
@@ -139,4 +139,4 @@ extern char *vpnc_getpass(const char *prompt);
 extern void logmsg(int priority, const char *format, ...)
 __attribute__ ((__format__ (__printf__, 2, 3)));
 
-#endif
+#endif /* VPNC_CONFIG_H */
