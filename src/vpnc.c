@@ -1535,7 +1535,7 @@ static void do_phase1_am_packet2(struct sa_block *s, const char *shared_key)
 							if (!opt_weak_encryption) {
 								const char *name_enc = get_algo(SUPP_ALGO_CRYPT, SUPP_ALGO_IKE_SA,
 																seen_enc, NULL, seen_keylen)->name;
-								error(1, 0, "Peer has selected %s as encrytion method.\n"
+								error(1, 0, "Peer has selected %s as encryption method.\n"
 									  "This algorithm is considered too weak today.\n"
 									  "If your vpn concentrator admin still insists on using %s,\n"
 									  "use the \"--enable-weak-encryption\" option.\n",
@@ -2821,7 +2821,7 @@ static void do_phase2_qm(struct sa_block *s)
 					switch (s->ipsec.cry_algo) {
 					case GCRY_CIPHER_NONE:
 						if (!opt_no_encryption) {
-							error(1, 0, "Peer has selected NULL as encrytion method.\n"
+							error(1, 0, "Peer has selected NULL as encryption method.\n"
 								  "This is _no_ encryption at all.\n"
 								  "Your traffic is still protected against modification with %s.\n"
 								  "If your vpn concentrator admin still insists on not using encryption,\n"
@@ -2834,7 +2834,7 @@ static void do_phase2_qm(struct sa_block *s)
 						if (!opt_weak_encryption) {
 							const char *name_enc = get_algo(SUPP_ALGO_CRYPT, SUPP_ALGO_IPSEC_SA,
 															seen_enc, NULL, seen_keylen)->name;
-							error(1, 0, "Peer has selected %s as encrytion method.\n"
+							error(1, 0, "Peer has selected %s as encryption method.\n"
 								  "This algorithm is considered too weak today.\n"
 								  "If your vpn concentrator admin still insists on using %s,\n"
 								  "use the \"--enable-weak-encryption\" option.\n",
