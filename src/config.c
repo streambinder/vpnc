@@ -825,7 +825,7 @@ static void print_usage(char *argv0, int print_level)
 	if (!print_level)
 		printf("Use --long-help to see all options\n\n");
 
-	printf("Report bugs to vpnc@unix-ag.uni-kl.de\n");
+	printf("Report bugs at https://github.com/streambinder/vpnc.git\n");
 }
 
 static void print_version(void)
