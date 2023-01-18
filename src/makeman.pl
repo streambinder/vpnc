@@ -1,9 +1,10 @@
 #! /usr/bin/env perl
 
-# $Id$
-
-# Written by Wolfram Sang (wolfram@the-dreams.de) in 2007,
+# SPDX-FileCopyrightText: 2007 Wolfram Sang (wolfram@the-dreams.de)
+# SPDX-FileCopyrightText: 2023 Jolla Ltd.
 # some inspiration from help2man by Brendan O'Dea and from Perl::Critic
+
+# SPDX-License-Identifier: GPL-2.0-or-later
 
 # Generate the vpnc-manpage from a template and the --long-help-output.
 # Version 0.2
@@ -12,8 +13,7 @@
 # Files needed        : ./vpnc ./vpnc.8.template ./VERSION
 # Files created       : ./vpnc.8
 # Exit status         : errno-values or 255 (Magic string not found)
-
-# Distributed under the same licence as vpnc.
+#
 
 use strict;
 use warnings;

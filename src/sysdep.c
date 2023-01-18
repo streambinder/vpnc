@@ -1,20 +1,14 @@
-/* IPSec VPN client compatible with Cisco equipment.
-    Copyright (C) 2007      Maurice Massar
-    Copyright (C) 2007      Paolo Zarpellon <paolo.zarpellon@gmail.com> (Cygwin support)
+/*
+   IPSec VPN client compatible with Cisco equipment.
+   based on VTun - Virtual Tunnel over TCP/IP network.
+   VTun has been derived from VPPP package by Maxim Krasnyansky.
 
-    based on VTun - Virtual Tunnel over TCP/IP network.
-    Copyright (C) 1998-2000  Maxim Krasnyansky <max_mk@yahoo.com>
-    VTun has been derived from VPPP package by Maxim Krasnyansky.
+   SPDX-FileCopyrightText: 1998-2000  Maxim Krasnyansky <max_mk@yahoo.com>
+   SPDX-FileCopyrightText: 2007 Maurice Massar
+   SPDX-FileCopyrightText: 2007 Paolo Zarpellon <paolo.zarpellon@gmail.com> (Cygwin support)
+   SPDX-FileCopyrightText: 2023 Jolla Ltd.
 
-    This program is free software; you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation; either version 2 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
+   SPDX-License-Identifier: GPL-2.0-or-later
  */
 
 #include <unistd.h>
