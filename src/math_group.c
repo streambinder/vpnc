@@ -38,7 +38,7 @@ static int modp_operation(struct group *, gcry_mpi_t, gcry_mpi_t, gcry_mpi_t);
 
 /*
  * This module provides access to the operations on the specified group
- * and is absolutly free of any cryptographic devices. This is math :-).
+ * and is absolutely free of any cryptographic devices. This is math :-).
  */
 
 /* Describe preconfigured MODP groups */
@@ -292,7 +292,7 @@ static struct group groups[] = {
 
 /*
  * Initialize the group structure for later use,
- * this is done by converting the values given in the describtion
+ * this is done by converting the values given in the description
  * and converting them to their native representation.
  */
 void group_init(void)

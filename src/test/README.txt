@@ -12,7 +12,7 @@ See below for more details on how to use test-crypto.
 
 openSSL is required to rebuild the test files.
 To avoid the dependence from openSSL during SW compile,
-all required files are distribuited together with the
+all required files are distributed together with the
 VPNC source code.
 
 The Makefile in this folder is able to rebuild all the

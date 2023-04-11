@@ -117,7 +117,7 @@ void hex_dump(const char *str, const void *data, ssize_t len, const struct debug
 
 /*
  * mostly match getline() semantics but:
- * 1) accept CEOT (Ctrl-D, 0x04) at begining of line as an input terminator
+ * 1) accept CEOT (Ctrl-D, 0x04) at beginning of line as an input terminator
  * 2) allocate the buffer at max line size of GETLINE_MAX_BUFLEN bytes
  * 3) remove trailing newline
  *
