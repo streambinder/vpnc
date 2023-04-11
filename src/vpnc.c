@@ -1257,7 +1257,7 @@ static void lifetime_ipsec_process(struct sa_block *s, struct isakmp_attribute *
 	else
 		s->ipsec.life.kbytes = value;
 
-	/* FIXME: for notice-payloads: write a seperate function to handle them */
+	/* FIXME: for notice-payloads: write a separate function to handle them */
 	/* bug: this may process lifetime-attributes of SAs twice but to no consequence */
 	if (a->next->next != NULL && a->next->next->type == ISAKMP_IPSEC_ATTRIB_SA_LIFE_TYPE)
 		lifetime_ipsec_process(s, a->next->next);
@@ -1361,7 +1361,7 @@ static void do_phase1_am_packet1(struct sa_block *s, const char *key_id)
 static void do_phase1_am_packet2(struct sa_block *s, const char *shared_key)
 {
 	DEBUGTOP(2, printf("S4.4 AM_packet2\n"));
-	/* Decode the recieved packet.  */
+	/* Decode the received packet.  */
 	{
 		int reject, ret;
 		struct isakmp_packet *r;
@@ -1388,7 +1388,7 @@ static void do_phase1_am_packet2(struct sa_block *s, const char *shared_key)
 		reject = 0;
 		r = parse_isakmp_packet(r_packet, r_length, &reject);
 
-		/* Verify the correctness of the recieved packet.  */
+		/* Verify the correctness of the received packet.  */
 		if (reject == 0 && memcmp(r->i_cookie, s->ike.i_cookie, ISAKMP_COOKIE_LENGTH) != 0)
 			reject = ISAKMP_N_INVALID_COOKIE;
 		if (reject == 0)

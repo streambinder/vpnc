@@ -30,7 +30,7 @@ sub readPCF($) {
 	# Filter unnecessary chars at beginning & end of line
 	s/^!*//; s/[\r ]*$//;
 	if (/^(.*?)=(.*?)$/) {
-	    # We don't need emtpy config strings
+	    # We don't need empty config strings
 	    next if ($2 eq "");
 	    if ($1 eq "Host") {
 		$config{IPSec}{gateway} = $2;

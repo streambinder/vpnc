@@ -214,7 +214,7 @@ int crypto_verify_chain(crypto_ctx *ctx,
 	}
 	/* X509_STORE_CTX_init did not return an error condition in prior versions */
 	if (X509_STORE_CTX_init (verify_ctx, store, x509, ctx->stack) != 1) {
-		crypto_error_set(error, 1, 0, "error intializing verification context");
+		crypto_error_set(error, 1, 0, "error initializing verification context");
 		goto out;
 	}
 
