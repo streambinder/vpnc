@@ -2,7 +2,8 @@
 
 ## Use the client with Nortel Contivity
 
-Matt Chapman (`matthewc@cse.unsw.edu.au`) got vpnc working with a Nortel Contivity VPN concentrator. According to him, the differences are:
+Matt Chapman (`matthewc@cse.unsw.edu.au`) got vpnc working with a Nortel Contivity VPN concentrator.
+According to him, the differences are:
 
 - The group name and password are pre-transformed:
 
