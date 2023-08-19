@@ -40,7 +40,7 @@ According to Zingo Andersen, `NORTELVPN_XAUTHTYPE_AS_REQUEST` has to be set and 
 ## Setting up VPNC on Windows Vista (64 bit)
 
 1. Install `cygwin`: follow steps at [cygwin.com](http://www.cygwin.com/)
-2. Make sure you install the development options for `cygwin` to give you access to `make`, `gcc`, and all the other develpment libraries
+2. Make sure you install the development options for `cygwin` to give you access to `make`, `gcc`, and all the other development libraries
 3. Make sure you install `libgcrypt` for `cygwin` as it is needed in the `make` procedure
 4. Modify the `bash.exe` to run as administrator or you will have privilege issues later, this is done on the properties tab of the executable in `C:/cygwin/bin`
 5. Download the latest VPNC tarball
@@ -49,7 +49,7 @@ According to Zingo Andersen, `NORTELVPN_XAUTHTYPE_AS_REQUEST` has to be set and 
 8. `make`
 9. Download [OpenVPN](http://openvpn.net/download.html). It has been tested with success on version `2.1_rc4`
 10. Just install `TAP-Win32 Adapter V9`
-11. Go to _Control Panel_, and then _Network Connections_ and rename the TAP devic to `my-tap`
+11. Go to _Control Panel_, and then _Network Connections_ and rename the TAP device to `my-tap`
 12. Use a `default.conf` built like this:
 
 ```text

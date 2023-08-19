@@ -22,7 +22,7 @@ Configuration data gets read from:
 - `/etc/vpnc.conf`, if no config file was given on the command line
 - output prompt, if a settings can't get loaded from any of those places above
 
-Essential configuration informations (both with key name for specifying option via command line or config file) it currently needs are:
+Essential configuration information (both with key name for specifying option via command line or config file) it currently needs are:
 
 Input option | File option
 ------------ | ----------------
