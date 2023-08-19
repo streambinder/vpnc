@@ -1,0 +1,55 @@
+name: push
+
+on:
+  push:
+    branches:
+    - master
+  pull_request:
+    branches:
+    - master
+
+jobs:
+  commitlint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - uses: wagoid/commitlint-github-action@v5
+  codespell:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: codespell-project/actions-codespell@v2
+        with:
+          check_filenames: true
+          skip: "*.template,*.pl"
+  test:
+    needs: [commitlint,codespell]
+    if: success() && github.event_name == 'push' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - run: |
+          sudo apt update
+          sudo apt install -y libgcrypt20-dev libgnutls28-dev
+          make test
+  notify:
+    needs: [test]
+    if: success() && github.event_name == 'push' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dorny/paths-filter@v2
+        id: filter
+        with:
+          filters: |
+            docs:
+              - 'docs/**'
+      - uses: peter-evans/repository-dispatch@v2
+        if: steps.filter.outputs.docs == 'true'
+        with:
+          token: ${{ secrets.GH_ACTIONS_VPNC }}
+          repository: streambinder/streambinder
+          event-type: doc-sync
+          client-payload: '{"repo": "${{ github.repository }}", "ref": "${{ github.ref }}", "sha": "${{ github.sha }}"}'
