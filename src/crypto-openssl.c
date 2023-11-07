@@ -55,7 +55,8 @@ void crypto_ctx_free(crypto_ctx *ctx)
 	}
 }
 
-static int password_cb(char *buf, int size, int rwflag, void *userdata)
+static int password_cb(char *buf __attribute__((unused)), int size __attribute__((unused)),
+		       int rwflag __attribute__((unused)), void *userdata __attribute__((unused)))
 {
 	/* Dummy callback to ensure openssl doesn't prompt for a password */
 	return 0;
@@ -247,9 +248,9 @@ unsigned char *crypto_decrypt_signature(crypto_ctx *ctx,
 {
 	X509        *x509;
 	EVP_PKEY    *pkey = NULL;
-	RSA     *rsa;
+	EVP_PKEY_CTX *pctx = NULL;
 	unsigned char   *hash = NULL;
-	int tmp_len = -1, ossl_pad;
+	int ossl_pad;
 
 	*out_len = 0;
 
@@ -272,14 +273,15 @@ unsigned char *crypto_decrypt_signature(crypto_ctx *ctx,
 		return NULL;
 	}
 
-	rsa = EVP_PKEY_get1_RSA(pkey);
-	if (rsa == NULL) {
+	pctx = EVP_PKEY_CTX_new(pkey, NULL);
+	if (!pctx || EVP_PKEY_verify_recover_init(pctx) <= 0) {
 		ERR_print_errors_fp (stderr);
-		crypto_error_set(error, 1, 0, "error getting public key RSA");
+		crypto_error_set(error, 1, 0, "error creating public key context");
 		goto out;
 	}
 
-	hash = calloc(1, RSA_size(rsa));
+	*out_len = EVP_PKEY_size(pkey);
+	hash = calloc(1, *out_len);
 	if (!hash) {
 		crypto_error_set(error, 1, 0, "not enough memory to decrypt signature");
 		goto out;
@@ -297,19 +299,25 @@ unsigned char *crypto_decrypt_signature(crypto_ctx *ctx,
 		goto out;
 	}
 
-	tmp_len = RSA_public_decrypt(sig_len, sig_data, hash, rsa, ossl_pad);
-	if (tmp_len > 0) {
-		*out_len = (size_t) tmp_len;
-	} else {
+	if (EVP_PKEY_CTX_set_rsa_padding(pctx, ossl_pad) <= 0) {
+		ERR_print_errors_fp (stderr);
+		crypto_error_set(error, 1, 0, "failed to set rsa padding");
+		goto out;
+	}
+
+	if (EVP_PKEY_verify_recover(pctx, hash, out_len, sig_data, sig_len) <= 0) {
 		ERR_print_errors_fp (stderr);
 		crypto_error_set(error, 1, 0, "could not decrypt signature");
 		free(hash);
 		hash = NULL;
+		*out_len = 0;
 	}
 
 out:
 	if (pkey)
 		EVP_PKEY_free(pkey);
+	if (pctx)
+		EVP_PKEY_CTX_free(pctx);
 	return hash;
 }
 
