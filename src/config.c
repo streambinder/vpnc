@@ -369,7 +369,7 @@ static const char *config_def_app_version(void)
 	char *version;
 
 	uname(&uts);
-	asprintf(&version, "Cisco Systems VPN Client %s:%s", VERSION, uts.sysname);
+	ASPRINTF(&version, "Cisco Systems VPN Client %s:%s", VERSION, uts.sysname);
 	return version;
 }
 
@@ -686,7 +686,7 @@ static char *get_config_filename(const char *name, int add_dot_conf)
 {
 	char *realname;
 
-	asprintf(&realname, "%s%s%s", strchr(name, '/') ? "" : "/etc/vpnc/", name, add_dot_conf ? ".conf" : "");
+	ASPRINTF(&realname, "%s%s%s", strchr(name, '/') ? "" : "/etc/vpnc/", name, add_dot_conf ? ".conf" : "");
 	return realname;
 }
 
@@ -1019,14 +1019,14 @@ void do_config(int argc, char **argv)
 			printf("Enter IPSec ID for %s: ", config[CONFIG_IPSEC_GATEWAY]);
 			break;
 		case CONFIG_IPSEC_SECRET:
-			asprintf(&prompt, "Enter IPSec secret for %s@%s: ",
+			ASPRINTF(&prompt, "Enter IPSec secret for %s@%s: ",
 					 config[CONFIG_IPSEC_ID], config[CONFIG_IPSEC_GATEWAY]);
 			break;
 		case CONFIG_XAUTH_USERNAME:
 			printf("Enter username for %s: ", config[CONFIG_IPSEC_GATEWAY]);
 			break;
 		case CONFIG_XAUTH_PASSWORD:
-			asprintf(&prompt, "Enter password for %s@%s: ",
+			ASPRINTF(&prompt, "Enter password for %s@%s: ",
 					 config[CONFIG_XAUTH_USERNAME],
 					 config[CONFIG_IPSEC_GATEWAY]);
 			break;
