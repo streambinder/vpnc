@@ -834,7 +834,7 @@ static void send_delete_ipsec(struct sa_block *s)
 	}
 }
 
-static void send_delete_isakmp_cookie(struct sa_block *s, uint8_t *i_cookie __attribute__((unused)), uint8_t *r_cookie __attribute__((unused)))
+static void send_delete_isakmp_cookie(struct sa_block *s, uint8_t *i_cookie, uint8_t *r_cookie)
 {
 	DEBUGTOP(2, printf("S7.11 send isakmp termination message\n"));
 	{
@@ -849,9 +849,9 @@ static void send_delete_isakmp_cookie(struct sa_block *s, uint8_t *i_cookie __at
 		d_isakmp->u.d.num_spi = 1;
 		d_isakmp->u.d.spi = xallocc(1 * sizeof(uint8_t *));
 		d_isakmp->u.d.spi[0] = xallocc(2 * ISAKMP_COOKIE_LENGTH);
-		memcpy(d_isakmp->u.d.spi[0] + ISAKMP_COOKIE_LENGTH * 0, s->ike.i_cookie,
+		memcpy(d_isakmp->u.d.spi[0] + ISAKMP_COOKIE_LENGTH * 0, i_cookie,
 			   ISAKMP_COOKIE_LENGTH);
-		memcpy(d_isakmp->u.d.spi[0] + ISAKMP_COOKIE_LENGTH * 1, s->ike.r_cookie,
+		memcpy(d_isakmp->u.d.spi[0] + ISAKMP_COOKIE_LENGTH * 1, r_cookie,
 			   ISAKMP_COOKIE_LENGTH);
 		sendrecv_phase2(s, d_isakmp, ISAKMP_EXCHANGE_INFORMATIONAL,
 						del_msgid, 1, NULL, 0, NULL, 0);
