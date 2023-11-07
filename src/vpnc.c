@@ -199,6 +199,21 @@ static void addenv_ipv4(const void *name, uint8_t * data)
 	addenv(name, inet_ntoa(*((struct in_addr *)data)));
 }
 
+static void run_script(const char *reason)
+{
+	int ret;
+
+	setenv("reason", reason, 1);
+	ret = system(config[CONFIG_SCRIPT]);
+
+	if (ret == -1)
+		error(1, errno, "failed to create child process");
+	else if (!WIFEXITED(ret) || WEXITSTATUS(ret) == 127)
+		fprintf(stderr, "failed to execute %s script\n", reason);
+	else
+		DEBUG(2, printf("%s script returned %d\n", reason, WEXITSTATUS(ret)));
+}
+
 static int make_socket(struct sa_block *s, uint16_t src_port, uint16_t dst_port)
 {
 	int sock;
@@ -324,8 +339,7 @@ static void init_netaddr(struct in_addr *net, const char *string)
 
 static void setup_tunnel(struct sa_block *s)
 {
-	setenv("reason", "pre-init", 1);
-	system(config[CONFIG_SCRIPT]);
+	run_script("pre-init");
 
 	if (config[CONFIG_IF_NAME])
 		memcpy(s->tun_name, config[CONFIG_IF_NAME], strlen(config[CONFIG_IF_NAME]));
@@ -377,16 +391,14 @@ static void atexit_close(void)
 static void config_tunnel(struct sa_block *s)
 {
 	setenv("VPNGATEWAY", inet_ntoa(s->dst), 1);
-	setenv("reason", "connect", 1);
-	system(config[CONFIG_SCRIPT]);
+	run_script("connect");
 	s_atexit_sa = s;
 	atexit(atexit_close);
 }
 
 static void close_tunnel(struct sa_block *s)
 {
-	setenv("reason", "disconnect", 1);
-	system(config[CONFIG_SCRIPT]);
+	run_script("disconnect");
 	tun_close(s->tun_fd, s->tun_name);
 }
 

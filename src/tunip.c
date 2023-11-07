@@ -1144,7 +1144,8 @@ void vpnc_doit(struct sa_block *s)
 
 	/* save cwd */
 	cwd = get_current_dir_name();
-	chdir("/");
+	if (chdir("/"))
+		fprintf(stderr, "Failed to chdir to /");
 
 	if (!opt_nd) {
 		pid_t pid;
@@ -1173,7 +1174,8 @@ void vpnc_doit(struct sa_block *s)
 	vpnc_main_loop(s);
 
 	/* restore cwd */
-	chdir(cwd);
+	if (chdir(cwd))
+		fprintf(stderr, "Failed to chdir to %s", cwd);
 	free(cwd);
 
 	if (pidfile)
