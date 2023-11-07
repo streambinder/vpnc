@@ -373,7 +373,7 @@ static void setup_tunnel(struct sa_block *s)
 		}
 		if (mtu > 0) {
 			char *strbuf;
-			asprintf(&strbuf, "%d", mtu);
+			ASPRINTF(&strbuf, "%d", mtu);
 			setenv("INTERNAL_IP4_MTU", strbuf, 1);
 			free(strbuf);
 		}
@@ -983,7 +983,7 @@ static int do_config_to_env(struct sa_block *s, struct isakmp_attribute *a)
 			else {
 				uint32_t netaddr = s->our_address.s_addr & ((struct in_addr *)(a->u.lots.data))->s_addr;
 				addenv_ipv4("INTERNAL_IP4_NETMASK", a->u.lots.data);
-				asprintf(&strbuf, "%d", mask_to_masklen(*((struct in_addr *)a->u.lots.data)));
+				ASPRINTF(&strbuf, "%d", mask_to_masklen(*((struct in_addr *)a->u.lots.data)));
 				setenv("INTERNAL_IP4_NETMASKLEN", strbuf, 1);
 				free(strbuf);
 				addenv_ipv4("INTERNAL_IP4_NETADDR",  (uint8_t *)&netaddr);
@@ -1060,7 +1060,7 @@ static int do_config_to_env(struct sa_block *s, struct isakmp_attribute *a)
 			}
 
 			DEBUG(2, printf("got %d acls for split include\n", a->u.acl.count));
-			asprintf(&strbuf, "%d", a->u.acl.count);
+			ASPRINTF(&strbuf, "%d", a->u.acl.count);
 			setenv("CISCO_SPLIT_INC", strbuf, 1);
 			free(strbuf);
 
@@ -1068,39 +1068,39 @@ static int do_config_to_env(struct sa_block *s, struct isakmp_attribute *a)
 				DEBUG(2, printf("acl %d: ", i));
 				/* NOTE: inet_ntoa returns one static buffer */
 
-				asprintf(&strbuf, "CISCO_SPLIT_INC_%d_ADDR", i);
-				asprintf(&strbuf2, "%s", inet_ntoa(a->u.acl.acl_ent[i].addr));
+				ASPRINTF(&strbuf, "CISCO_SPLIT_INC_%d_ADDR", i);
+				ASPRINTF(&strbuf2, "%s", inet_ntoa(a->u.acl.acl_ent[i].addr));
 				DEBUG(2, printf("addr: %s/", strbuf2));
 				setenv(strbuf, strbuf2, 1);
 				free(strbuf); free(strbuf2);
 
-				asprintf(&strbuf, "CISCO_SPLIT_INC_%d_MASK", i);
-				asprintf(&strbuf2, "%s", inet_ntoa(a->u.acl.acl_ent[i].mask));
+				ASPRINTF(&strbuf, "CISCO_SPLIT_INC_%d_MASK", i);
+				ASPRINTF(&strbuf2, "%s", inet_ntoa(a->u.acl.acl_ent[i].mask));
 				DEBUG(2, printf("%s ", strbuf2));
 				setenv(strbuf, strbuf2, 1);
 				free(strbuf); free(strbuf2);
 
 				/* this is just here because ip route does not accept netmasks */
-				asprintf(&strbuf, "CISCO_SPLIT_INC_%d_MASKLEN", i);
-				asprintf(&strbuf2, "%d", mask_to_masklen(a->u.acl.acl_ent[i].mask));
+				ASPRINTF(&strbuf, "CISCO_SPLIT_INC_%d_MASKLEN", i);
+				ASPRINTF(&strbuf2, "%d", mask_to_masklen(a->u.acl.acl_ent[i].mask));
 				DEBUG(2, printf("(%s), ", strbuf2));
 				setenv(strbuf, strbuf2, 1);
 				free(strbuf); free(strbuf2);
 
-				asprintf(&strbuf, "CISCO_SPLIT_INC_%d_PROTOCOL", i);
-				asprintf(&strbuf2, "%hu", a->u.acl.acl_ent[i].protocol);
+				ASPRINTF(&strbuf, "CISCO_SPLIT_INC_%d_PROTOCOL", i);
+				ASPRINTF(&strbuf2, "%hu", a->u.acl.acl_ent[i].protocol);
 				DEBUG(2, printf("protocol: %s, ", strbuf2));
 				setenv(strbuf, strbuf2, 1);
 				free(strbuf); free(strbuf2);
 
-				asprintf(&strbuf, "CISCO_SPLIT_INC_%d_SPORT", i);
-				asprintf(&strbuf2, "%hu", a->u.acl.acl_ent[i].sport);
+				ASPRINTF(&strbuf, "CISCO_SPLIT_INC_%d_SPORT", i);
+				ASPRINTF(&strbuf2, "%hu", a->u.acl.acl_ent[i].sport);
 				DEBUG(2, printf("sport: %s, ", strbuf2));
 				setenv(strbuf, strbuf2, 1);
 				free(strbuf); free(strbuf2);
 
-				asprintf(&strbuf, "CISCO_SPLIT_INC_%d_DPORT", i);
-				asprintf(&strbuf2, "%hu", a->u.acl.acl_ent[i].dport);
+				ASPRINTF(&strbuf, "CISCO_SPLIT_INC_%d_DPORT", i);
+				ASPRINTF(&strbuf2, "%hu", a->u.acl.acl_ent[i].dport);
 				DEBUG(2, printf("dport: %s\n", strbuf2));
 				setenv(strbuf, strbuf2, 1);
 				free(strbuf); free(strbuf2);
@@ -2378,7 +2378,7 @@ static int do_phase2_xauth(struct sa_block *s)
 				} else if (seen_answer || passwd_used || config[CONFIG_XAUTH_INTERACTIVE]) {
 					char *pass, *prompt = NULL;
 
-					asprintf(&prompt, "%s for VPN %s@%s: ",
+					ASPRINTF(&prompt, "%s for VPN %s@%s: ",
 							 (ap->type == ISAKMP_XAUTH_06_ATTRIB_ANSWER) ?
 							 "Answer" :
 							 (ap->type == ISAKMP_XAUTH_06_ATTRIB_USER_PASSWORD) ?
