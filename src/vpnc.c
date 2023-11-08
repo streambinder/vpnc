@@ -3152,7 +3152,7 @@ void process_late_ike(struct sa_block *s, uint8_t *r_packet, ssize_t r_length)
 		do_kill = -1;
 		return;
 	} else {
-		/* we should ignore resent pakets here.
+		/* we should ignore resent packets here.
 		 * unpack_verify_phase2 will fail to decode them probably */
 		DEBUG(2,printf("processing as phase2\n"));
 		reject = unpack_verify_phase2(s, r_packet, r_length, &r, NULL, 0);
