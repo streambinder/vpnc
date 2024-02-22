@@ -90,22 +90,22 @@ ifneq (,$(findstring Apple,$(shell $(CC) --version)))
 CFLAGS += -fstrict-aliasing -freorder-blocks -fsched-interblock
 endif
 
-all: $(BUILDDIR) $(BINS) vpnc.8
+all: $(BUILDDIR) $(addprefix $(BUILDDIR)/,$(BINS)) src/vpnc.8
 
 $(BUILDDIR):
 	@mkdir $@
 
-vpnc: $(OBJS) src/vpnc.o
-	$(CC) $(LDFLAGS) -o $(BUILDDIR)/$@ $^ $(LIBS)
+$(BUILDDIR)/vpnc: $(OBJS) src/vpnc.o
+	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
 
-vpnc.8: src/vpnc.8.template src/makeman.pl vpnc
+src/vpnc.8: src/vpnc.8.template src/makeman.pl $(VPNC)
 	./src/makeman.pl $(VPNC)
 
-cisco-decrypt: src/cisco-decrypt.o src/decrypt-utils.o
-	$(CC) $(LDFLAGS) -o $(BUILDDIR)/$@ $^ $(LIBS)
+$(BUILDDIR)/cisco-decrypt: src/cisco-decrypt.o src/decrypt-utils.o
+	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
 
-test-crypto: src/sysdep.o src/test-crypto.o src/crypto.o $(CRYPTO_OBJS)
-	$(CC) $(LDFLAGS) -o $(BUILDDIR)/$@ $^ $(LIBS)
+$(BUILDDIR)/test-crypto: src/sysdep.o src/test-crypto.o src/crypto.o $(CRYPTO_OBJS)
+	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
 
 .depend: $(SRCS) $(BINSRCS)
 	$(CC) -MM $(SRCS) $(BINSRCS) $(CFLAGS) $(CPPFLAGS) > $@
