@@ -3,7 +3,6 @@
   Thanks to HAL-9000@evilscientists.de for decoding and posting the algorithm!
 
   SPDX-FileCopyrightText: 2005 Maurice Massar
-  SPDX-FileCopyrightText: 2023 Jolla Ltd.
 
   SPDX-License-Identifier: GPL-2.0-or-later
  */

@@ -3,7 +3,6 @@
 
    SPDX-FileCopyrightText: 2002 Geoffrey Keating
    SPDX-FileCopyrightText: 2003-2005 Maurice Massar
-   SPDX-FileCopyrightText: 2023 Jolla Ltd.
 
    SPDX-License-Identifier: GPL-2.0-or-later
  */
