@@ -17,7 +17,6 @@
  *  SPDX-FileCopyrightText: James Yonan
  *  SPDX-FileCopyrightText: 2002-2005 OpenVPN Solutions LLC
  *  SPDX-FileCopyrightText: 2003 Damion K. Wilson CIPE-Win32 Project
- *  SPDX-FileCopyrightText: 2023 Jolla Ltd.
  *
  *  SPDX-License-Identifier: GPL-2.0-or-later
 */

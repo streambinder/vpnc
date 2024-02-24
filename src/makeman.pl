@@ -1,7 +1,6 @@
 #! /usr/bin/env perl
 
 # SPDX-FileCopyrightText: 2007 Wolfram Sang (wolfram@the-dreams.de)
-# SPDX-FileCopyrightText: 2023 Jolla Ltd.
 # some inspiration from help2man by Brendan O'Dea and from Perl::Critic
 
 # SPDX-License-Identifier: GPL-2.0-or-later

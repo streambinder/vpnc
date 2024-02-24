@@ -6,7 +6,6 @@
 /*
  * SPDX-FileCopyrightText: 1998 Niels Provos
  * SPDX-FileCopyrightText: 1999 Niklas Hallqvist
- * SPDX-FileCopyrightText: 2023 Jolla Ltd.
  *
  * SPDX-License-Identifier: BSD-2-Clause
  */

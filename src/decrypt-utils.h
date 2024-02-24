@@ -4,7 +4,6 @@
    SPDX-FileCopyrightText: 2004-2007 Maurice Massar
    SPDX-FileCopyrightText: 2007 Wolfram Sang
    SPDX-FileCopyrightText: 2019 Davide Pucci
-   SPDX-FileCopyrightText: 2023 Jolla Ltd.
 
    SPDX-License-Identifier: GPL-2.0-or-later
  */

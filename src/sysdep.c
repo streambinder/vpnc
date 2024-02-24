@@ -6,7 +6,6 @@
    SPDX-FileCopyrightText: 1998-2000  Maxim Krasnyansky <max_mk@yahoo.com>
    SPDX-FileCopyrightText: 2007 Maurice Massar
    SPDX-FileCopyrightText: 2007 Paolo Zarpellon <paolo.zarpellon@gmail.com> (Cygwin support)
-   SPDX-FileCopyrightText: 2023 Jolla Ltd.
 
    SPDX-License-Identifier: GPL-2.0-or-later
  */

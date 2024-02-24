@@ -3,7 +3,6 @@
 
    SPDX-FileCopyrightText: 2005 Maurice Massar
    SPDX-FileCopyrightText: 2006 Dan Villiom Podlaski Christiansen
-   SPDX-FileCopyrightText: 2023 Jolla Ltd.
 
    SPDX-License-Identifier: GPL-2.0-or-later
  */
