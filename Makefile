@@ -90,21 +90,21 @@ ifneq (,$(findstring Apple,$(shell $(CC) --version)))
 CFLAGS += -fstrict-aliasing -freorder-blocks -fsched-interblock
 endif
 
-all: $(BUILDDIR) $(addprefix $(BUILDDIR)/,$(BINS)) src/vpnc.8
-
-$(BUILDDIR):
-	@mkdir $@
+all: $(addprefix $(BUILDDIR)/,$(BINS)) src/vpnc.8
 
 $(BUILDDIR)/vpnc: $(OBJS) src/vpnc.o
+	@mkdir -p $(BUILDDIR)
 	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
 
 src/vpnc.8: src/vpnc.8.template src/makeman.pl $(VPNC)
 	./src/makeman.pl $(VPNC)
 
 $(BUILDDIR)/cisco-decrypt: src/cisco-decrypt.o src/decrypt-utils.o
+	@mkdir -p $(BUILDDIR)
 	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
 
 $(BUILDDIR)/test-crypto: src/sysdep.o src/test-crypto.o src/crypto.o $(CRYPTO_OBJS)
+	@mkdir -p $(BUILDDIR)
 	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
 
 .depend: $(SRCS) $(BINSRCS)
