@@ -28,7 +28,9 @@
 
 #include <gcrypt.h>
 
+#ifndef CRYPTO_NONE
 #include "crypto.h"
+#endif
 #include "sysdep.h"
 #include "config.h"
 #include "isakmp-pkt.h"
@@ -1391,12 +1393,14 @@ static void do_phase1_am_packet2(struct sa_block *s, const char *shared_key)
 		uint8_t *dh_shared_secret;
 		int seen_natd = 0, seen_natd_them = 0, seen_natd_us = 0;
 		int natt_draft = -1;
+#ifndef CRYPTO_NONE
 		crypto_ctx *cctx;
 		crypto_error *crerr = NULL;
 
 		cctx = crypto_ctx_new (&crerr);
 		if (crerr)
 			crypto_call_error(crerr);
+#endif
 
 		reject = 0;
 		r = parse_isakmp_packet(r_packet, r_length, &reject);
@@ -1579,6 +1583,7 @@ static void do_phase1_am_packet2(struct sa_block *s, const char *shared_key)
 				hash = rp;
 				break;
 			case ISAKMP_PAYLOAD_CERT:
+#ifndef CRYPTO_NONE
 				if (rp->u.cert.encoding == ISAKMP_CERT_X509_SIG) {
 					hex_dump("cert", rp->u.cert.data, rp->u.cert.length, NULL);
 
@@ -1589,6 +1594,9 @@ static void do_phase1_am_packet2(struct sa_block *s, const char *shared_key)
 					if (ret)
 						crypto_call_error(crerr);
 				}
+#else
+                error(1, 0, "Error: received a cert payload but vpnc is compiled without a TLS library.\n");
+#endif
 				break;
 			case ISAKMP_PAYLOAD_SIG:
 				sig = rp;
@@ -1816,7 +1824,7 @@ static void do_phase1_am_packet2(struct sa_block *s, const char *shared_key)
 			} else if (opt_auth_mode == AUTH_MODE_CERT ||
 					   opt_auth_mode == AUTH_MODE_HYBRID) {
 				hex_dump("received signature", sig->u.sig.data, sig->u.sig.length, NULL);
-
+#ifndef CRYPTO_NONE
 				ret = crypto_verify_chain(cctx,
 										  config[CONFIG_CA_FILE],
 										  config[CONFIG_CA_DIR],
@@ -1854,6 +1862,9 @@ static void do_phase1_am_packet2(struct sa_block *s, const char *shared_key)
 				/* END - Signature Verification */
 
 				free(rec_hash);
+#else
+                error(2, 0, "vpnc is compiled without a TLS library, AUTH_MODE_CERT/AUTH_MODE_HYBRID is not supported!\n");
+#endif
 			}
 
 			gcry_md_close(hm);
@@ -1993,7 +2004,9 @@ static void do_phase1_am_packet2(struct sa_block *s, const char *shared_key)
 		}
 
 		gcry_md_close(skeyid_ctx);
+#ifndef CRYPTO_NONE
 		crypto_ctx_free(cctx);
+#endif
 		free(dh_shared_secret);
 
 		/* Determine presence of NAT */
