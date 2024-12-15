@@ -48,18 +48,24 @@ LIBGCRYPT_CONFIG ?= libgcrypt-config
 LIBGCRYPT_LDADD = $(shell $(PKG_CONFIG) --libs libgcrypt || $(LIBGCRYPT_CONFIG) --libs)
 LIBGCRYPT_CFLAGS = $(shell $(PKG_CONFIG) --cflags libgcrypt || $(LIBGCRYPT_CONFIG) --cflags)
 
+ifneq ($(CRYPTO_NONE), yes)
+CRYPTO_SRC = src/crypto.c
+CRYPTO_BINS = test-crypto
 ifneq ($(OPENSSL_GPL_VIOLATION), yes)
 CRYPTO_LDADD = $(shell $(PKG_CONFIG) --libs gnutls)
 CRYPTO_CFLAGS = $(shell $(PKG_CONFIG) --cflags gnutls) -DCRYPTO_GNUTLS
-CRYPTO_SRCS = src/crypto-gnutls.c
+CRYPTO_SRCS = $(CRYPTO_SRC) src/crypto-gnutls.c
 else
 CRYPTO_LDADD = -lcrypto
 CRYPTO_CFLAGS = -DOPENSSL_GPL_VIOLATION -DCRYPTO_OPENSSL
-CRYPTO_SRCS = src/crypto-openssl.c
+CRYPTO_SRCS = $(CRYPTO_SRC) src/crypto-openssl.c
+endif
+else
+CRYPTO_CFLAGS = -DCRYPTO_NONE
 endif
 
-SRCS = src/sysdep.c src/vpnc-debug.c src/isakmp-pkt.c src/tunip.c src/config.c src/dh.c src/math_group.c src/supp.c src/decrypt-utils.c src/crypto.c $(CRYPTO_SRCS)
-BINS = vpnc cisco-decrypt test-crypto
+SRCS = src/sysdep.c src/vpnc-debug.c src/isakmp-pkt.c src/tunip.c src/config.c src/dh.c src/math_group.c src/supp.c src/decrypt-utils.c $(CRYPTO_SRCS)
+BINS = vpnc cisco-decrypt $(CRYPTO_BINS)
 OBJS = $(addsuffix .o,$(basename $(SRCS)))
 CRYPTO_OBJS = $(addsuffix .o,$(basename $(CRYPTO_SRCS)))
 BINOBJS = $(addsuffix .o,$(BINS))
@@ -103,9 +109,11 @@ $(BUILDDIR)/cisco-decrypt: src/cisco-decrypt.o src/decrypt-utils.o
 	@mkdir -p $(BUILDDIR)
 	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
 
+ifneq ($(CRYPTO_NONE), yes)
 $(BUILDDIR)/test-crypto: src/sysdep.o src/test-crypto.o src/crypto.o $(CRYPTO_OBJS)
 	@mkdir -p $(BUILDDIR)
 	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
+endif
 
 .depend: $(SRCS) $(BINSRCS)
 	$(CC) -MM $(SRCS) $(BINSRCS) $(CFLAGS) $(CPPFLAGS) > $@
