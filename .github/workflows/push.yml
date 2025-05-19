@@ -1,12 +1,24 @@
 name: push
 
-on:
-  push:
-    branches:
-    - master
-  pull_request:
-    branches:
-    - master
+on: # yamllint disable-line rule:truthy
+  push: null
+  pull_request: null
+
+permissions:
+  actions: read
+  attestations: none
+  checks: none
+  contents: read
+  deployments: none
+  id-token: none
+  issues: none
+  discussions: none
+  packages: read
+  pages: none
+  pull-requests: read
+  repository-projects: none
+  security-events: none
+  statuses: write
 
 jobs:
   commitlint:
@@ -16,6 +28,8 @@ jobs:
         with:
           fetch-depth: 0
       - uses: wagoid/commitlint-github-action@v5
+        with:
+          configFile: .github/linters/commitlint.config.mjs
   codespell:
     runs-on: ubuntu-latest
     steps:
@@ -26,7 +40,7 @@ jobs:
           skip: "*.template,*.pl"
   test:
     needs: [commitlint,codespell]
-    if: success() && github.event_name == 'push' && github.ref == 'refs/heads/master'
+    if: success()
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -49,7 +63,7 @@ jobs:
       - uses: peter-evans/repository-dispatch@v3
         if: steps.filter.outputs.docs == 'true'
         with:
-          token: ${{ secrets.GH_ACTIONS_VPNC }}
+          token: ${{ secrets.GITHUB_TOKEN }}
           repository: streambinder/streambinder
           event-type: doc-sync
           client-payload: '{"repo": "${{ github.repository }}", "ref": "${{ github.ref }}", "sha": "${{ github.sha }}"}'
