@@ -60,7 +60,7 @@ jobs:
           filters: |
             docs:
               - 'docs/**'
-      - uses: peter-evans/repository-dispatch@v3
+      - uses: peter-evans/repository-dispatch@v4
         if: steps.filter.outputs.docs == 'true'
         with:
           token: ${{ secrets.REPOSITORY_DISPATCH_STREAMBINDER }}
