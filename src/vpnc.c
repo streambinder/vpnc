@@ -1147,6 +1147,29 @@ static struct isakmp_attribute *make_transform_ike(int dh_group, int crypt, int 
 	return a;
 }
 
+/*
+ * Offering an algorithm that we refuse as soon as the peer selects it only
+ * turns a usable gateway into a failed handshake, so keep the weak ones out
+ * of our proposals unless they have been enabled explicitly.
+ */
+static int may_offer_crypt(const supported_algo_t *algo)
+{
+	switch (algo->my_id) {
+	case GCRY_CIPHER_NONE:
+		return opt_no_encryption;
+	case GCRY_CIPHER_DES:
+	case GCRY_CIPHER_3DES:
+		return opt_weak_encryption;
+	default:
+		return 1;
+	}
+}
+
+static int may_offer_hash(const supported_algo_t *algo)
+{
+	return (algo->my_id == GCRY_MD_MD5) ? opt_weak_authentication : 1;
+}
+
 static struct isakmp_payload *make_our_sa_ike(void)
 {
 	struct isakmp_payload *r = new_isakmp_payload(ISAKMP_PAYLOAD_SA);
@@ -1177,8 +1200,12 @@ static struct isakmp_payload *make_our_sa_ike(void)
 				continue;
 		}
 		for (crypt = 0; supp_crypt[crypt].name != NULL; crypt++) {
+			if (!may_offer_crypt(&supp_crypt[crypt]))
+				continue;
 			keylen = supp_crypt[crypt].keylen;
 			for (hash = 0; supp_hash[hash].name != NULL; hash++) {
+				if (!may_offer_hash(&supp_hash[hash]))
+					continue;
 				tn = t;
 				t = new_isakmp_payload(ISAKMP_PAYLOAD_T);
 				t->u.t.id = ISAKMP_IPSEC_KEY_IKE;
@@ -2604,8 +2631,12 @@ static struct isakmp_payload *make_our_sa_ipsec(struct sa_block *s)
 	r->u.sa.doi = ISAKMP_DOI_IPSEC;
 	r->u.sa.situation = ISAKMP_IPSEC_SIT_IDENTITY_ONLY;
 	for (crypt = 0; supp_crypt[crypt].name != NULL; crypt++) {
+		if (!may_offer_crypt(&supp_crypt[crypt]))
+			continue;
 		keylen = supp_crypt[crypt].keylen;
 		for (hash = 0; supp_hash[hash].name != NULL; hash++) {
+			if (!may_offer_hash(&supp_hash[hash]))
+				continue;
 			pn = p;
 			p = new_isakmp_payload(ISAKMP_PAYLOAD_P);
 			p->u.p.spi_size = 4;
