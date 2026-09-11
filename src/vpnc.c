@@ -2305,8 +2305,13 @@ static int do_phase2_xauth(struct sa_block *s)
 		for (ap = a; ap && reject == 0; ap = ap->next)
 			switch (ap->type) {
 			case ISAKMP_XAUTH_06_ATTRIB_TYPE:
-				if (ap->af != isakmp_attr_16 || ap->u.attr_16 != 0)
+				if (ap->af != isakmp_attr_16)
 					reject = ISAKMP_N_ATTRIBUTES_NOT_SUPPORTED;
+				else if (ap->u.attr_16 != 0)
+					/* Fortigate uses a non-generic xauth type for
+					 * token based authentication; the exchange is
+					 * driven by the attributes anyway, so accept it */
+					DEBUG(2, printf("got xauth type %d, treating it as generic\n", ap->u.attr_16));
 				break;
 			case ISAKMP_XAUTH_06_ATTRIB_USER_NAME:
 			case ISAKMP_XAUTH_06_ATTRIB_USER_PASSWORD:
@@ -2330,6 +2335,7 @@ static int do_phase2_xauth(struct sa_block *s)
 				}
 				break;
 			default:
+				printf("got unsupported xauth attribute type %d / 0x%X\n", ap->type, ap->type);
 				reject = ISAKMP_N_ATTRIBUTES_NOT_SUPPORTED;
 			}
 		if (reject != 0)
