@@ -1688,8 +1688,8 @@ static void do_phase1_am_packet2(struct sa_block *s, const char *shared_key)
 					else
 						DEBUG(2, printf("got unknown lifetime notice, ignoring..\n"));
 				} else {
-					DEBUG(1, printf("rejecting ISAKMP_PAYLOAD_N, type is not lifetime\n"));
-					reject = ISAKMP_N_INVALID_PAYLOAD_TYPE;
+					/* FortiGate sends a proprietary notify (e.g. type 0x7e7f) here; ignore it */
+					DEBUG(1, printf("ignoring ISAKMP_PAYLOAD_N type %d\n", rp->u.n.type));
 				}
 				break;
 			default:
