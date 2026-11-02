@@ -1687,9 +1687,12 @@ static void do_phase1_am_packet2(struct sa_block *s, const char *shared_key)
 						lifetime_ipsec_process(s, rp->u.n.attributes);
 					else
 						DEBUG(2, printf("got unknown lifetime notice, ignoring..\n"));
+				} else if (rp->u.n.type >= ISAKMP_N_CONNECTED) {
+					/* status notify (RFC 2408 3.14.1), e.g. FortiGate's 0x7e7f: informational only */
+					DEBUG(1, printf("ignoring unknown status notify type %d\n", rp->u.n.type));
 				} else {
-					/* FortiGate sends a proprietary notify (e.g. type 0x7e7f) here; ignore it */
-					DEBUG(1, printf("ignoring ISAKMP_PAYLOAD_N type %d\n", rp->u.n.type));
+					DEBUG(1, printf("rejecting ISAKMP_PAYLOAD_N, type is not lifetime\n"));
+					reject = ISAKMP_N_INVALID_PAYLOAD_TYPE;
 				}
 				break;
 			default:
